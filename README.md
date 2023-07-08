@@ -1,4 +1,4 @@
-# TypeScript HAF App Template
+# VSC-HAF
 
 [VSC](https://github.com/vsc-eco/vsc-node) HAF indexer and API server. Indexes Hive from the VSC genesis block number for the relevant VSC operations using the HAF app sync algorithm.
 

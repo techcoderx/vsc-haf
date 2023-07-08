@@ -1,8 +1,49 @@
--- Create HAF tables here
-CREATE TABLE IF NOT EXISTS vsc_app.table_name(
-    hive_rowid BIGINT NOT NULL DEFAULT nextval('hive.vsc_app_hive_rowid_seq'), -- registered tables must have this field
+CREATE TABLE IF NOT EXISTS vsc_app.l1_operation_types(
     id SERIAL PRIMARY KEY,
-    username VARCHAR
+    op_name VARCHAR(20)
+)
+
+CREATE TABLE IF NOT EXISTS vsc_app.l1_operations(
+    id BIGSERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    op_id BIGINT NOT NULL,
+    op_type INTEGER NOT NULL
+)
+
+CREATE TABLE IF NOT EXISTS vsc_app.blocks(
+    id SERIAL PRIMARY KEY,
+    announced_in_op BIGINT NOT NULL,
+    announcer INTEGER NOT NULL,
+    block_hash VARCHAR(59) NOT NULL,
+)
+
+CREATE TABLE IF NOT EXISTS vsc_app.contracts(
+    id SERIAL PRIMARY KEY,
+    created_in_op BIGINT NOT NULL,
+    contract_id VARCHAR NOT NULL,
+    name VARCHAR NOT NULL,
+    manifest_id VARCHAR NOT NULL,
+    code VARCHAR NOT NULL
+)
+
+CREATE TABLE IF NOT EXISTS vsc_app.witnesses(
+    id INTEGER PRIMARY KEY,
+    did VARCHAR NOT NULL,
+    enabled BOOLEAN DEFAULT FALSE,
+    enabled_at INTEGER,
+    disabled_at INTEGER
+)
+
+CREATE TABLE IF NOT EXISTS vsc_app.contract_commitments(
+    contract_id VARCHAR NOT NULL,
+    node_identity VARCHAR NOT NULL,
+    is_active BOOLEAN DEFAULT FALSE
+    PRIMARY KEY (contract_id, node_identity)
+)
+
+CREATE TABLE IF NOT EXISTS vsc_app.trusted_dids(
+    did VARCHAR PRIMARY KEY,
+    trusted BOOLEAN DEFAULT FALSE
 )
 
 CREATE TABLE IF NOT EXISTS vsc_app.state(

@@ -2,6 +2,8 @@ DROP TYPE IF EXISTS vsc_app.op_type CASCADE;
 CREATE TYPE vsc_app.op_type AS (
     id BIGINT,
     block_num INT,
+    trx_in_block SMALLINT,
+    trx_id TEXT,
     created_at TIMESTAMP,
     body TEXT
 );
@@ -11,18 +13,22 @@ RETURNS SETOF vsc_app.op_type
 AS
 $function$
 BEGIN
-    -- Adapt to desired operation type id
-    -- https://gitlab.syncad.com/hive/hive/-/blob/master/libraries/protocol/include/hive/protocol/operations.hpp
-    RETURN QUERY
-        SELECT
-            id,
-            block_num,
-            created_at,
-            body::TEXT
-        FROM hive.vsc_app_operations_view
-        JOIN hive.vsc_app_blocks_view ON hive.vsc_app_blocks_view.num = block_num
-        WHERE block_num >= _first_block AND block_num <= _last_block AND op_type_id=18
-        ORDER BY block_num, id;
+    -- Fetch custom_json and account_update operations
+    SELECT
+        id,
+        hive.operations_view.block_num,
+        hive.transactions_view.trx_in_block,
+        encode(hive.transactions_view.trx_hash::bytea, 'hex') AS trx_id,
+        created_at,
+        body::TEXT
+    FROM hive.operations_view
+    JOIN hive.blocks_view ON hive.blocks_view.num = hive.operations_view.block_num
+    JOIN hive.transactions_view ON
+        hive.transactions_view.block_num = hive.operations_view.block_num AND
+        hive.transactions_view.trx_in_block = hive.operations_view.trx_in_block
+    WHERE hive.operations_view.block_num >= _first_block AND hive.operations_view.block_num <= _last_block AND
+        (op_type_id=18 OR op_type_id=10)
+    ORDER BY block_num, id;
 END
 $function$
 LANGUAGE plpgsql STABLE;

@@ -5,7 +5,7 @@ import { START_BLOCK, DB_VERSION, APP_CONTEXT, SCHEMA_NAME } from './constants.j
 import db from './db.js'
 import context from './context.js'
 import logger from './logger.js'
-import { FKS_TYPE } from './schema_types.js'
+import { FKS_TYPE, INDEXES_TYPE, Ordering } from './schema_types.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -13,7 +13,66 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const HAF_TABLES: string[] = []
 
 // FK name: FKS_TYPE
-const HAF_FKS: FKS_TYPE = {}
+const HAF_FKS: FKS_TYPE = {
+    l1_op_user_id_fk: {
+        table: SCHEMA_NAME+'.l1_operations',
+        fk: 'user_id',
+        ref: 'hive.vsc_app_accounts(id)'
+    },
+    l1_op_type_fk: {
+        table: SCHEMA_NAME+'.l1_operations',
+        fk: 'op_type',
+        ref: SCHEMA_NAME+'.l1_operation_types(id)'
+    },
+    block_announced_in_op_fk: {
+        table: SCHEMA_NAME+'.blocks',
+        fk: 'announced_in_op',
+        ref: SCHEMA_NAME+'.l1_operations(id)'
+    },
+    block_announcer_fk: {
+        table: SCHEMA_NAME+'.blocks',
+        fk: 'announcer',
+        ref: 'hive.vsc_app_accounts(id)'
+    },
+    contract_created_in_op_fk: {
+        table: SCHEMA_NAME+'.contracts',
+        fk: 'created_in_op',
+        ref: SCHEMA_NAME+'.l1_operations(id)'
+    },
+    witness_account_fk: {
+        table: SCHEMA_NAME+'.witnesses',
+        fk: 'id',
+        ref: 'hive.vsc_app_accounts(id)'
+    }
+}
+
+// Indexes
+const INDEXES: INDEXES_TYPE = {
+    l1_operation_type_idx: {
+        table_name: SCHEMA_NAME+'.l1_operation_types',
+        columns: [{ col_name: 'op_name', order: Ordering.ASC }]
+    },
+    l1_operation_user_idx: {
+        table_name: SCHEMA_NAME+'.l1_operations',
+        columns: [{ col_name: 'user_id', order: Ordering.ASC }]
+    },
+    block_hash_idx: {
+        table_name: SCHEMA_NAME+'.blocks',
+        columns: [{ col_name: 'block_hash', order: Ordering.ASC }]
+    },
+    block_announcer_idx: {
+        table_name: SCHEMA_NAME+'.blocks',
+        columns: [{ col_name: 'announcer', order: Ordering.ASC }]
+    },
+    block_contract_id_idx: {
+        table_name: SCHEMA_NAME+'.contracts',
+        columns: [{ col_name: 'contract_id', order: Ordering.ASC }]
+    },
+    witness_did_idx: {
+        table_name: SCHEMA_NAME+'.witnesses',
+        columns: [{ col_name: 'did', order: Ordering.ASC }]
+    }
+}
 
 const schema = {
     setup: async () => {
@@ -83,6 +142,29 @@ const schema = {
                 await db.client.query(`ALTER TABLE ${HAF_FKS[fk].table} DROP CONSTRAINT IF EXISTS ${fk};`)
                 logger.info('FK',fk,'dropped in',(new Date().getTime()-start),'ms')
             }
+    },
+    indexExists: async (index_name: string): Promise<boolean> => {
+        return (await db.client.query('SELECT * FROM pg_indexes WHERE schemaname=$1 AND indexname=$2',[SCHEMA_NAME, index_name])).rowCount > 0
+    },
+    indexCreate: async () => {
+        for (let idx in INDEXES) {
+            if (await schema.indexExists(idx)) {
+                logger.info('Index',idx,'already exists, skipping')
+                continue
+            }
+            let start = new Date().getTime()
+            await db.client.query(`CREATE INDEX IF NOT EXISTS ${idx} ON ${INDEXES[idx].table_name}(${INDEXES[idx].columns.map(x => x.col_name+' '+Ordering[x.order]).join(',')});`)
+            logger.info('Index',idx,'created in',(new Date().getTime()-start),'ms')
+        }
+    },
+    indexDrop: async () => {
+        for (let idx in INDEXES) {
+            if (await schema.indexExists(idx)) {
+                let start = new Date().getTime()
+                await db.client.query(`DROP INDEX IF EXISTS ${idx} CASCADE;`)
+                logger.info('Index',idx,'dropped in',(new Date().getTime()-start),'ms')
+            }
+        }
     }
 }
 

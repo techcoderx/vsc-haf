@@ -1,11 +1,11 @@
 {
-  "name": "typescript-haf-app-template",
+  "name": "vsc-haf",
   "version": "1.0.0",
-  "description": "TypeScript HAF app template",
+  "description": "HAF indexer for VSC",
   "keywords": [
     "hive",
     "haf",
-    "template",
+    "vsc",
     "typescript"
   ],
   "main": "src/index.ts",
@@ -17,14 +17,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/techcoderx/typescript-haf-app-template.git"
+    "url": "git+https://github.com/techcoderx/vsc-haf.git"
   },
   "author": "techcoderx",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/techcoderx/typescript-haf-app-template/issues"
+    "url": "https://github.com/techcoderx/vsc-haf/issues"
   },
-  "homepage": "https://github.com/techcoderx/typescript-haf-app-template#readme",
+  "homepage": "https://github.com/techcoderx/vsc-haf#readme",
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",

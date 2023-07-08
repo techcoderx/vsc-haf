@@ -17,6 +17,6 @@ let config = {
 
 // Config overwrites through CLI args or environment vars
 for (let c in config)
-    config[c] = argv[c] || process.env['HAFAPP_' + c.toUpperCase()] || config[c]
+    config[c] = argv[c] || process.env['VSC_HAF_' + c.toUpperCase()] || config[c]
 
 export default config

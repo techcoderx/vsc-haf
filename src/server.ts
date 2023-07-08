@@ -11,7 +11,7 @@ app.use(cors())
 // init enums (if any) here
 
 app.get('/', async (req,res) => {
-    let query = await db.client.query('SELECT myhaf_api.home();')
+    let query = await db.client.query('SELECT vsc_api.home();')
     if (query.rowCount === 0)
         return res.status(503).send({ error: 'no state found' })
     res.send(query.rows[0].home)

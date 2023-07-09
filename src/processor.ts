@@ -4,7 +4,7 @@ import randomDID from './did.js'
 import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID } from './constants.js'
 import db from './db.js'
 import logger from './logger.js'
-import { BlockPayload, ContractCommitmentPayload, DIDPayload, NodeAnnouncePayload, ParsedOp, TxTypes } from './processor_types.js'
+import { BlockPayload, ContractCommitmentPayload, DIDPayload, NewContractPayload, NodeAnnouncePayload, ParsedOp, TxTypes } from './processor_types.js'
 import op_type_map from './operations.js'
 
 const processor = {
@@ -108,6 +108,7 @@ const processor = {
                 }
                 return details
             } else if (parsed.type === 'account_update_operation') {
+                if (!parsed.value.json_metadata) return { valid: false }
                 let payload = JSON.parse(parsed.value.json_metadata)
                 let details: ParsedOp = {
                     valid: true,
@@ -164,9 +165,13 @@ const processor = {
                     pl = result.payload as DIDPayload
                     await db.client.query(`SELECT ${SCHEMA_NAME}.trust_did($1,$2);`,[pl.did,false])
                     break
-                case op_type_map.map.create_contract:
+                case op_type_map.map.announce_block:
                     pl = result.payload as BlockPayload
                     await db.client.query(`SELECT ${SCHEMA_NAME}.insert_block($1,$2);`,[new_vsc_op.rows[0]._vsc_op_id,pl.block_hash])
+                    break
+                case op_type_map.map.insert_contract:
+                    pl = result.payload as NewContractPayload
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_contract($1,$2,$3,$4,$5);`,[new_vsc_op.rows[0]._vsc_op_id,result.tx_hash,pl.name,pl.manifest_id,pl.code])
                     break
                 case op_type_map.map.join_contract:
                     pl = result.payload as ContractCommitmentPayload

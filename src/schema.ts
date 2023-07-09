@@ -106,6 +106,12 @@ const schema = {
         // start block
         let startBlock = Math.max(START_BLOCK-1,0)
         logger.info('Set start block to #'+(startBlock+1))
+        if (startBlock > 0) {
+            logger.info('Updating state providers to starting block...')
+            let start = new Date().getTime()
+            await db.client.query('SELECT hive.app_state_providers_update($1,$2,$3);',[0,startBlock,APP_CONTEXT])
+            logger.info('State providers updated in',(new Date().getTime()-start),'ms')
+        }
 
         // fill with initial values
         await db.client.query(`INSERT INTO ${SCHEMA_NAME}.state(last_processed_block, db_version) VALUES($1, $2);`,[startBlock,DB_VERSION])

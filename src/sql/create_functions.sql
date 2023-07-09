@@ -27,6 +27,27 @@ END
 $function$
 LANGUAGE plpgsql STABLE;
 
+CREATE OR REPLACE FUNCTION vsc_app.enum_op2(IN _first_block INT, IN _last_block INT)
+RETURNS SETOF vsc_app.op_type
+AS
+$function$
+BEGIN
+    -- Queries non-app views for live sync only, app views are very slow in non-forking app for some reason
+    RETURN QUERY
+        SELECT
+            id,
+            block_num,
+            created_at,
+            body::TEXT
+        FROM hive.operations_view
+        JOIN hive.blocks_view ON hive.blocks_view.num = block_num
+        WHERE block_num >= _first_block AND block_num <= _last_block AND
+            (op_type_id=18 OR op_type_id=10)
+        ORDER BY block_num, id;
+END
+$function$
+LANGUAGE plpgsql STABLE;
+
 -- Process transactions
 CREATE OR REPLACE FUNCTION vsc_app.process_operation(_username VARCHAR, _op_id BIGINT, _op_type INTEGER)
 RETURNS BIGINT

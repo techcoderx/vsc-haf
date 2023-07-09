@@ -87,7 +87,7 @@ const sync = {
         let start = new Date().getTime()
         await db.client.query('START TRANSACTION;')
         await db.client.query('SELECT hive.app_state_providers_update($1,$2,$3);',[nextBlock,nextBlock,APP_CONTEXT])
-        let ops = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.enum_op($1,$2);`,[nextBlock,nextBlock])
+        let ops = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.enum_op2($1,$2);`,[nextBlock,nextBlock])
         let count = 0
         for (let op in ops.rows) {
             let processed = await processor.process(ops.rows[op])

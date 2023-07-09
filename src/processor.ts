@@ -13,8 +13,7 @@ const processor = {
             let parsed = JSON.parse(op.body)
             // sanitize and filter custom json
             // adjust operation field checking as necessary
-            if (parsed.type !== 'custom_json_operation' ||
-                parsed.type !== 'account_update_operation' ||
+            if ((parsed.type !== 'custom_json_operation' && parsed.type !== 'account_update_operation') ||
                 !parsed.value)
                 return { valid: false }
             if (parsed.type === 'custom_json_operation') {

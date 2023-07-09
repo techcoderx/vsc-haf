@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import { dirname } from 'path'
 import { fileURLToPath } from 'url'
-import { START_BLOCK, DB_VERSION, APP_CONTEXT, SCHEMA_NAME } from './constants.js'
+import { START_BLOCK, DB_VERSION, APP_CONTEXT, SCHEMA_NAME, CUSTOM_JSON_IDS } from './constants.js'
 import db from './db.js'
 import context from './context.js'
 import logger from './logger.js'
@@ -29,11 +29,6 @@ const HAF_FKS: FKS_TYPE = {
         fk: 'announced_in_op',
         ref: SCHEMA_NAME+'.l1_operations(id)'
     },
-    block_announcer_fk: {
-        table: SCHEMA_NAME+'.blocks',
-        fk: 'announcer',
-        ref: 'hive.vsc_app_accounts(id)'
-    },
     contract_created_in_op_fk: {
         table: SCHEMA_NAME+'.contracts',
         fk: 'created_in_op',
@@ -43,6 +38,16 @@ const HAF_FKS: FKS_TYPE = {
         table: SCHEMA_NAME+'.witnesses',
         fk: 'id',
         ref: 'hive.vsc_app_accounts(id)'
+    },
+    witness_enabled_at_fk: {
+        table: SCHEMA_NAME+'.witnesses',
+        fk: 'enabled_at',
+        ref: SCHEMA_NAME+'.l1_operations(id)'
+    },
+    witness_disabled_at_fk: {
+        table: SCHEMA_NAME+'.witnesses',
+        fk: 'disabled_at',
+        ref: SCHEMA_NAME+'.l1_operations(id)'
     }
 }
 
@@ -52,6 +57,10 @@ const INDEXES: INDEXES_TYPE = {
         table_name: SCHEMA_NAME+'.l1_operation_types',
         columns: [{ col_name: 'op_name', order: Ordering.ASC }]
     },
+    l1_operation_id_idx: {
+        table_name: SCHEMA_NAME+'.l1_operations',
+        columns: [{ col_name: 'op_id', order: Ordering.ASC }]
+    },
     l1_operation_user_idx: {
         table_name: SCHEMA_NAME+'.l1_operations',
         columns: [{ col_name: 'user_id', order: Ordering.ASC }]
@@ -59,10 +68,6 @@ const INDEXES: INDEXES_TYPE = {
     block_hash_idx: {
         table_name: SCHEMA_NAME+'.blocks',
         columns: [{ col_name: 'block_hash', order: Ordering.ASC }]
-    },
-    block_announcer_idx: {
-        table_name: SCHEMA_NAME+'.blocks',
-        columns: [{ col_name: 'announcer', order: Ordering.ASC }]
     },
     block_contract_id_idx: {
         table_name: SCHEMA_NAME+'.contracts',
@@ -104,6 +109,9 @@ const schema = {
 
         // fill with initial values
         await db.client.query(`INSERT INTO ${SCHEMA_NAME}.state(last_processed_block, db_version) VALUES($1, $2);`,[startBlock,DB_VERSION])
+        await db.client.query(`INSERT INTO ${SCHEMA_NAME}.l1_operation_types(op_name) VALUES('announce_node');`)
+        for (let c in CUSTOM_JSON_IDS)
+            await db.client.query(`INSERT INTO ${SCHEMA_NAME}.l1_operation_types(op_name) VALUES($1);`,[CUSTOM_JSON_IDS[c].split('.')[1]])
 
         // create relevant functions
         await schema.createFx()

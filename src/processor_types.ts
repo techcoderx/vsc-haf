@@ -1,5 +1,6 @@
 export type ParsedOp = {
     valid: boolean
+    id?: BigInt
     ts?: Date
     user?: string
     block_num?: number

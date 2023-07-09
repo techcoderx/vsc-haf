@@ -4,7 +4,8 @@ import randomDID from 'did.js'
 import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID } from './constants.js'
 import db from './db.js'
 import logger from './logger.js'
-import { ParsedOp, TxTypes } from './processor_types.js'
+import { BlockPayload, ContractCommitmentPayload, DIDPayload, NodeAnnouncePayload, ParsedOp, TxTypes } from './processor_types.js'
+import op_type_map from './operations.js'
 
 const processor = {
     validateAndParse: async (op: any): Promise<ParsedOp> => {
@@ -26,6 +27,7 @@ const processor = {
                 let payload = JSON.parse(parsed.value.json)
                 let details: ParsedOp = {
                     valid: true,
+                    id: op.id,
                     ts: new Date(op.created_at),
                     user: parsed.value.required_posting_auths[0],
                     block_num: op.block_num,
@@ -110,6 +112,7 @@ const processor = {
                 let payload = JSON.parse(parsed.value.json_metadata)
                 let details: ParsedOp = {
                     valid: true,
+                    id: op.id,
                     ts: new Date(op.created_at),
                     user: parsed.value.account,
                     block_num: op.block_num,
@@ -139,8 +142,44 @@ const processor = {
         let result = await processor.validateAndParse(op)
         if (result.valid) {
             logger.trace('Processing op',result)
-            // call the appropriate PL/pgSQL here to process operation
-            await db.client.query(`SELECT ${SCHEMA_NAME}.process_tx($1);`,[result.user])
+            let pl, op_number = op_type_map.translate(result.tx_type!, result.op_type!)
+            let new_vsc_op = await db.client.query(`SELECT ${SCHEMA_NAME}.process_operation($1,$2,$3);`,[result.user, result.id, op_number])
+            switch (op_number) {
+                case op_type_map.map.announce_node:
+                    pl = result.payload as NodeAnnouncePayload
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4);`,[result.user,pl.did,pl.witnessEnabled,new_vsc_op.rows[0]._vsc_op_id])
+                    break
+                case op_type_map.map.enable_witness:
+                    pl = result.payload as DIDPayload
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4);`,[result.user,pl.did,true,new_vsc_op.rows[0]._vsc_op_id])
+                    break
+                case op_type_map.map.disable_witness:
+                    pl = result.payload as DIDPayload
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4);`,[result.user,null,false,new_vsc_op.rows[0]._vsc_op_id])
+                    break
+                case op_type_map.map.allow_witness:
+                    pl = result.payload as DIDPayload
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.trust_did($1,$2);`,[pl.did,true])
+                    break
+                case op_type_map.map.disallow_witness:
+                    pl = result.payload as DIDPayload
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.trust_did($1,$2);`,[pl.did,false])
+                    break
+                case op_type_map.map.create_contract:
+                    pl = result.payload as BlockPayload
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_block($1,$2);`,[new_vsc_op.rows[0]._vsc_op_id,pl.block_hash])
+                    break
+                case op_type_map.map.join_contract:
+                    pl = result.payload as ContractCommitmentPayload
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_contract_commitment($1,$2,$3);`,[pl.contract_id,pl.node_identity,true])
+                    break
+                case op_type_map.map.leave_contract:
+                    pl = result.payload as ContractCommitmentPayload
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_contract_commitment($1,$2,$3);`,[pl.contract_id,pl.node_identity,false])
+                    break
+                default:
+                    break
+            }
         }
         return result.valid
     }

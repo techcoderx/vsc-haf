@@ -4,6 +4,7 @@ import context from './context.js'
 import logger from './logger.js'
 import processor from './processor.js'
 import { APP_CONTEXT, SCHEMA_NAME } from './constants.js'
+import op_type_map from './operations.js'
 
 const MASSIVE_SYNC_THRESHOLD = 100
 const MASSIVE_SYNC_BATCH = 1000
@@ -11,6 +12,8 @@ const MASSIVE_SYNC_BATCH = 1000
 const sync = {
     terminating: false,
     prebegin: async () => {
+        await op_type_map.retrieveMap()
+
         // attach context
         let head = (await db.client.query(`SELECT last_processed_block FROM ${SCHEMA_NAME}.state;`)).rows[0].last_processed_block
         await context.attach(head)
@@ -61,6 +64,7 @@ const sync = {
     },
     postMassive: async (lastBlock: number): Promise<void> => {
         logger.info('Begin post-massive sync')
+        await schema.indexCreate()
         await schema.fkCreate()
         logger.info('Post-masstive sync complete, entering live sync')
         await context.attach(lastBlock)

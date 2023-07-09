@@ -14,21 +14,22 @@ AS
 $function$
 BEGIN
     -- Fetch custom_json and account_update operations
-    SELECT
-        id,
-        hive.operations_view.block_num,
-        hive.transactions_view.trx_in_block,
-        encode(hive.transactions_view.trx_hash::bytea, 'hex') AS trx_id,
-        created_at,
-        body::TEXT
-    FROM hive.operations_view
-    JOIN hive.blocks_view ON hive.blocks_view.num = hive.operations_view.block_num
-    JOIN hive.transactions_view ON
-        hive.transactions_view.block_num = hive.operations_view.block_num AND
-        hive.transactions_view.trx_in_block = hive.operations_view.trx_in_block
-    WHERE hive.operations_view.block_num >= _first_block AND hive.operations_view.block_num <= _last_block AND
-        (op_type_id=18 OR op_type_id=10)
-    ORDER BY block_num, id;
+    RETURN QUERY
+        SELECT
+            id,
+            hive.operations_view.block_num,
+            hive.transactions_view.trx_in_block,
+            encode(hive.transactions_view.trx_hash::bytea, 'hex') AS trx_id,
+            created_at,
+            body::TEXT
+        FROM hive.operations_view
+        JOIN hive.blocks_view ON hive.blocks_view.num = hive.operations_view.block_num
+        JOIN hive.transactions_view ON
+            hive.transactions_view.block_num = hive.operations_view.block_num AND
+            hive.transactions_view.trx_in_block = hive.operations_view.trx_in_block
+        WHERE hive.operations_view.block_num >= _first_block AND hive.operations_view.block_num <= _last_block AND
+            (op_type_id=18 OR op_type_id=10)
+        ORDER BY block_num, id;
 END
 $function$
 LANGUAGE plpgsql STABLE;

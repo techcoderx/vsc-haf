@@ -1,20 +1,20 @@
 CREATE TABLE IF NOT EXISTS vsc_app.l1_operation_types(
     id SERIAL PRIMARY KEY,
     op_name VARCHAR(20)
-)
+);
 
 CREATE TABLE IF NOT EXISTS vsc_app.l1_operations(
     id BIGSERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
     op_id BIGINT NOT NULL,
     op_type INTEGER NOT NULL
-)
+);
 
 CREATE TABLE IF NOT EXISTS vsc_app.blocks(
     id SERIAL PRIMARY KEY,
     announced_in_op BIGINT NOT NULL,
-    block_hash VARCHAR(59) NOT NULL,
-)
+    block_hash VARCHAR(59) NOT NULL
+);
 
 CREATE TABLE IF NOT EXISTS vsc_app.contracts(
     id SERIAL PRIMARY KEY,
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.contracts(
     name VARCHAR NOT NULL,
     manifest_id VARCHAR NOT NULL,
     code VARCHAR NOT NULL
-)
+);
 
 CREATE TABLE IF NOT EXISTS vsc_app.witnesses(
     id INTEGER PRIMARY KEY,
@@ -31,19 +31,19 @@ CREATE TABLE IF NOT EXISTS vsc_app.witnesses(
     enabled BOOLEAN DEFAULT FALSE,
     enabled_at BIGINT,
     disabled_at BIGINT
-)
+);
 
 CREATE TABLE IF NOT EXISTS vsc_app.contract_commitments(
     contract_id VARCHAR NOT NULL,
     node_identity VARCHAR NOT NULL,
     is_active BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (contract_id, node_identity)
-)
+);
 
 CREATE TABLE IF NOT EXISTS vsc_app.trusted_dids(
     did VARCHAR PRIMARY KEY,
     trusted BOOLEAN DEFAULT FALSE
-)
+);
 
 CREATE TABLE IF NOT EXISTS vsc_app.state(
     id SERIAL PRIMARY KEY,

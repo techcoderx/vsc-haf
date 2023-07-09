@@ -1,6 +1,6 @@
 import { cid as isCID } from 'is-ipfs'
 import { CID } from 'multiformats/cid'
-import randomDID from 'did.js'
+import randomDID from './did.js'
 import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID } from './constants.js'
 import db from './db.js'
 import logger from './logger.js'

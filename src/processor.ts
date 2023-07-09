@@ -147,15 +147,15 @@ const processor = {
             switch (op_number) {
                 case op_type_map.map.announce_node:
                     pl = result.payload as NodeAnnouncePayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4);`,[result.user,pl.did,pl.witnessEnabled,new_vsc_op.rows[0]._vsc_op_id])
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4);`,[result.user,pl.did,pl.witnessEnabled,new_vsc_op.rows[0].process_operation])
                     break
                 case op_type_map.map.enable_witness:
                     pl = result.payload as DIDPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4);`,[result.user,pl.did,true,new_vsc_op.rows[0]._vsc_op_id])
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4);`,[result.user,pl.did,true,new_vsc_op.rows[0].process_operation])
                     break
                 case op_type_map.map.disable_witness:
                     pl = result.payload as DIDPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4);`,[result.user,null,false,new_vsc_op.rows[0]._vsc_op_id])
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4);`,[result.user,null,false,new_vsc_op.rows[0].process_operation])
                     break
                 case op_type_map.map.allow_witness:
                     pl = result.payload as DIDPayload
@@ -167,11 +167,11 @@ const processor = {
                     break
                 case op_type_map.map.announce_block:
                     pl = result.payload as BlockPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_block($1,$2);`,[new_vsc_op.rows[0]._vsc_op_id,pl.block_hash])
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_block($1,$2);`,[new_vsc_op.rows[0].process_operation,pl.block_hash])
                     break
                 case op_type_map.map.insert_contract:
                     pl = result.payload as NewContractPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_contract($1,$2,$3,$4,$5);`,[new_vsc_op.rows[0]._vsc_op_id,result.tx_hash,pl.name,pl.manifest_id,pl.code])
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_contract($1,$2,$3,$4,$5);`,[new_vsc_op.rows[0].process_operation,result.tx_hash,pl.name,pl.manifest_id,pl.code])
                     break
                 case op_type_map.map.join_contract:
                     pl = result.payload as ContractCommitmentPayload

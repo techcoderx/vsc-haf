@@ -88,13 +88,13 @@ BEGIN
             UPDATE vsc_app.witnesses SET
                 enabled = FALSE,
                 did = _did,
-                disabled_at = op_id
+                disabled_at = _op_id
             WHERE id = _hive_user_id;
         ELSE
             UPDATE vsc_app.witnesses SET
                 enabled = TRUE,
                 did = _did,
-                enabled_at = op_id
+                enabled_at = _op_id
             WHERE id = _hive_user_id;
         END IF;
     END IF;

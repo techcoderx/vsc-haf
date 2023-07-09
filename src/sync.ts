@@ -39,7 +39,7 @@ const sync = {
             sync.massive(firstBlock,Math.min(firstBlock+MASSIVE_SYNC_BATCH-1,Math.floor((firstBlock+MASSIVE_SYNC_BATCH-1)/MASSIVE_SYNC_BATCH)*MASSIVE_SYNC_BATCH,lastBlock),lastBlock)
         } else {
             logger.info('Begin live sync')
-            sync.live()
+            sync.live(firstBlock)
         }
     },
     massive: async (firstBlock: number, lastBlock: number ,targetBlock: number): Promise<void> => {
@@ -72,14 +72,16 @@ const sync = {
         await context.attach(lastBlock)
         sync.begin()
     },
-    live: async (): Promise<void> => {
+    live: async (nextBlock?: number): Promise<void> => {
         if (sync.terminating) return sync.close()
 
         // query next blocks
-        let nextBlock = (await context.nextBlocks()).first_block
-        if (nextBlock === null) {
-            setTimeout(() => sync.live(),500)
-            return
+        if (!nextBlock) {
+            nextBlock = (await context.nextBlocks()).first_block
+            if (nextBlock === null) {
+                setTimeout(() => sync.live(),500)
+                return
+            }
         }
 
         let start = new Date().getTime()

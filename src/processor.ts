@@ -30,7 +30,6 @@ const processor = {
                     ts: new Date(op.created_at),
                     user: parsed.value.required_posting_auths[0],
                     block_num: op.block_num,
-                    tx_hash: op.trx_id,
                     tx_type: TxTypes.CustomJSON,
                     op_type: cjidx
                 }
@@ -116,7 +115,6 @@ const processor = {
                     ts: new Date(op.created_at),
                     user: parsed.value.account,
                     block_num: op.block_num,
-                    tx_hash: op.trx_id,
                     tx_type: TxTypes.AccountUpdate
                 }
                 if (!payload.vsc_node || !payload.vsc_node.signed_proof || !payload.vsc_node.signed_proof.payload || !payload.vsc_node.signed_proof.signatures)
@@ -171,7 +169,7 @@ const processor = {
                     break
                 case op_type_map.map.insert_contract:
                     pl = result.payload as NewContractPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_contract($1,$2,$3,$4,$5);`,[new_vsc_op.rows[0].process_operation,result.tx_hash,pl.name,pl.manifest_id,pl.code])
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_contract($1,$2,$3,$4);`,[new_vsc_op.rows[0].process_operation,pl.name,pl.manifest_id,pl.code])
                     break
                 case op_type_map.map.join_contract:
                     pl = result.payload as ContractCommitmentPayload

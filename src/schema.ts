@@ -69,9 +69,9 @@ const INDEXES: INDEXES_TYPE = {
         table_name: SCHEMA_NAME+'.blocks',
         columns: [{ col_name: 'block_hash', order: Ordering.ASC }]
     },
-    block_contract_id_idx: {
+    contract_created_in_op_idx: {
         table_name: SCHEMA_NAME+'.contracts',
-        columns: [{ col_name: 'contract_id', order: Ordering.ASC }]
+        columns: [{ col_name: 'created_in_op', order: Ordering.ASC }]
     },
     witness_did_idx: {
         table_name: SCHEMA_NAME+'.witnesses',

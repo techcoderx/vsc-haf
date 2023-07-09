@@ -2,8 +2,6 @@ DROP TYPE IF EXISTS vsc_app.op_type CASCADE;
 CREATE TYPE vsc_app.op_type AS (
     id BIGINT,
     block_num INT,
-    trx_in_block SMALLINT,
-    trx_id TEXT,
     created_at TIMESTAMP,
     body TEXT
 );
@@ -17,17 +15,12 @@ BEGIN
     RETURN QUERY
         SELECT
             id,
-            hive.vsc_app_operations_view.block_num,
-            hive.vsc_app_transactions_view.trx_in_block,
-            encode(hive.vsc_app_transactions_view.trx_hash::bytea, 'hex') AS trx_id,
+            block_num,
             created_at,
             body::TEXT
         FROM hive.vsc_app_operations_view
-        JOIN hive.vsc_app_blocks_view ON hive.vsc_app_blocks_view.num = hive.vsc_app_operations_view.block_num
-        JOIN hive.vsc_app_transactions_view ON
-            hive.vsc_app_transactions_view.block_num = hive.vsc_app_operations_view.block_num AND
-            hive.vsc_app_transactions_view.trx_in_block = hive.vsc_app_operations_view.trx_in_block
-        WHERE hive.vsc_app_operations_view.block_num >= _first_block AND hive.vsc_app_operations_view.block_num <= _last_block AND
+        JOIN hive.vsc_app_blocks_view ON hive.vsc_app_blocks_view.num = block_num
+        WHERE block_num >= _first_block AND block_num <= _last_block AND
             (op_type_id=18 OR op_type_id=10)
         ORDER BY block_num, id;
 END
@@ -128,7 +121,6 @@ LANGUAGE plpgsql VOLATILE;
 
 CREATE OR REPLACE FUNCTION vsc_app.insert_contract(
     _created_in_op BIGINT,
-    _contract_id VARCHAR,
     _contract_name VARCHAR,
     _manifest_id VARCHAR,
     _code_hash VARCHAR)
@@ -136,8 +128,8 @@ RETURNS void
 AS
 $function$
 BEGIN
-    INSERT INTO vsc_app.blocks(created_in_op, contract_id, name, manifest_id, code)
-        VALUES(_created_in_op, _contract_id, _contract_name, _manifest_id, _code_hash);
+    INSERT INTO vsc_app.blocks(created_in_op, name, manifest_id, code)
+        VALUES(_created_in_op, _contract_name, _manifest_id, _code_hash);
 END
 $function$
 LANGUAGE plpgsql VOLATILE;

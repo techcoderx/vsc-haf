@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.blocks(
 CREATE TABLE IF NOT EXISTS vsc_app.contracts(
     id SERIAL PRIMARY KEY,
     created_in_op BIGINT NOT NULL,
-    contract_id VARCHAR NOT NULL, -- this should be PK
+    -- contract_id VARCHAR NOT NULL, -- this should be PK
     name VARCHAR NOT NULL,
     manifest_id VARCHAR NOT NULL,
     code VARCHAR NOT NULL

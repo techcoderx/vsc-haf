@@ -1,6 +1,6 @@
 export type ParsedOp = {
     valid: boolean
-    id?: string
+    id?: string // pg library returns strings for bigint type
     ts?: Date
     user?: string
     block_num?: number

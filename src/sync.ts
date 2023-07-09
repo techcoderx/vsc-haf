@@ -37,8 +37,10 @@ const sync = {
             await context.detach()
             logger.info('Begin massive sync')
             sync.massive(firstBlock,Math.min(firstBlock+MASSIVE_SYNC_BATCH-1,Math.floor((firstBlock+MASSIVE_SYNC_BATCH-1)/MASSIVE_SYNC_BATCH)*MASSIVE_SYNC_BATCH,lastBlock),lastBlock)
-        } else
+        } else {
+            logger.info('Begin live sync')
             sync.live()
+        }
     },
     massive: async (firstBlock: number, lastBlock: number ,targetBlock: number): Promise<void> => {
         if (sync.terminating) return sync.close()
@@ -68,7 +70,7 @@ const sync = {
         await schema.fkCreate()
         logger.info('Post-masstive sync complete, entering live sync')
         await context.attach(lastBlock)
-        sync.live()
+        sync.begin()
     },
     live: async (): Promise<void> => {
         if (sync.terminating) return sync.close()

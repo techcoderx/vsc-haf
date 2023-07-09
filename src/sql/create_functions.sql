@@ -17,17 +17,17 @@ BEGIN
     RETURN QUERY
         SELECT
             id,
-            hive.operations_view.block_num,
-            hive.transactions_view.trx_in_block,
-            encode(hive.transactions_view.trx_hash::bytea, 'hex') AS trx_id,
+            hive.vsc_app_operations_view.block_num,
+            hive.vsc_app_transactions_view.trx_in_block,
+            encode(hive.vsc_app_transactions_view.trx_hash::bytea, 'hex') AS trx_id,
             created_at,
             body::TEXT
-        FROM hive.operations_view
-        JOIN hive.blocks_view ON hive.blocks_view.num = hive.operations_view.block_num
-        JOIN hive.transactions_view ON
-            hive.transactions_view.block_num = hive.operations_view.block_num AND
-            hive.transactions_view.trx_in_block = hive.operations_view.trx_in_block
-        WHERE hive.operations_view.block_num >= _first_block AND hive.operations_view.block_num <= _last_block AND
+        FROM hive.vsc_app_operations_view
+        JOIN hive.vsc_app_blocks_view ON hive.vsc_app_blocks_view.num = hive.vsc_app_operations_view.block_num
+        JOIN hive.vsc_app_transactions_view ON
+            hive.vsc_app_transactions_view.block_num = hive.vsc_app_operations_view.block_num AND
+            hive.vsc_app_transactions_view.trx_in_block = hive.vsc_app_operations_view.trx_in_block
+        WHERE hive.vsc_app_operations_view.block_num >= _first_block AND hive.vsc_app_operations_view.block_num <= _last_block AND
             (op_type_id=18 OR op_type_id=10)
         ORDER BY block_num, id;
 END

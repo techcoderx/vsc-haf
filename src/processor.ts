@@ -8,7 +8,7 @@ import { BlockPayload, ContractCommitmentPayload, DIDPayload, NewContractPayload
 import op_type_map from './operations.js'
 
 const processor = {
-    validateAndParse: async (op: any): Promise<ParsedOp> => {
+    validateAndParse: async (op: any, ts: Date): Promise<ParsedOp> => {
         try {
             let parsed = JSON.parse(op.body)
             // sanitize and filter custom json
@@ -27,7 +27,7 @@ const processor = {
                 let details: ParsedOp = {
                     valid: true,
                     id: op.id,
-                    ts: new Date(op.created_at),
+                    ts: ts,
                     user: parsed.value.required_posting_auths[0],
                     block_num: op.block_num,
                     tx_type: TxTypes.CustomJSON,
@@ -52,8 +52,8 @@ const processor = {
                             if (typeof proof.payload !== 'object' ||
                                 !proof.payload.ts ||
                                 proof.payload.net_id !== NETWORK_ID ||
-                                typeof proof.payload.node_id !== 'string' ||
-                                (Math.abs(details.ts!.getTime() - new Date(proof.payload.ts).getTime()) > 30*1000)
+                                typeof proof.payload.node_id !== 'string'//) ||
+                                //(Math.abs(details.ts!.getTime() - new Date(proof.payload.ts).getTime()) > 30*1000)
                             )
                                 return { valid: false }
                             details.payload = {
@@ -112,7 +112,7 @@ const processor = {
                 let details: ParsedOp = {
                     valid: true,
                     id: op.id,
-                    ts: new Date(op.created_at),
+                    ts: ts,
                     user: parsed.value.account,
                     block_num: op.block_num,
                     tx_type: TxTypes.AccountUpdate
@@ -136,8 +136,8 @@ const processor = {
             return { valid: false }
         }
     },
-    process: async (op: any): Promise<boolean> => {
-        let result = await processor.validateAndParse(op)
+    process: async (op: any, ts: Date): Promise<boolean> => {
+        let result = await processor.validateAndParse(op, ts)
         if (result.valid) {
             logger.trace('Processing op',result)
             let pl, op_number = op_type_map.translate(result.tx_type!, result.op_type!)

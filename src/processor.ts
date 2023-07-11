@@ -52,8 +52,8 @@ const processor = {
                             if (typeof proof.payload !== 'object' ||
                                 !proof.payload.ts ||
                                 proof.payload.net_id !== NETWORK_ID ||
-                                typeof proof.payload.node_id !== 'string'//) ||
-                                //(Math.abs(details.ts!.getTime() - new Date(proof.payload.ts).getTime()) > 30*1000)
+                                typeof proof.payload.node_id !== 'string' ||
+                                (Math.abs(details.ts!.getTime() - new Date(proof.payload.ts).getTime()) > 30*1000)
                             )
                                 return { valid: false }
                             details.payload = {

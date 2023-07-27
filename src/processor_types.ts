@@ -6,7 +6,7 @@ export type ParsedOp = {
     block_num?: number
     tx_type?: TxTypes
     op_type?: number
-    payload?: DIDPayload | BlockPayload | NewContractPayload | ContractCommitmentPayload | NodeAnnouncePayload
+    payload?: DIDPayload | BlockPayload | NewContractPayload | ContractCommitmentPayload | NodeAnnouncePayload | MultisigTxRefPayload
 }
 
 export enum TxTypes {
@@ -36,4 +36,8 @@ export type ContractCommitmentPayload = {
 export type NodeAnnouncePayload = {
     did: string
     witnessEnabled: boolean
+}
+
+export type MultisigTxRefPayload = {
+    ref_id: string
 }

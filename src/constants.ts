@@ -9,7 +9,10 @@ export const CUSTOM_JSON_IDS = [
     'vsc.announce_block',
     'vsc.create_contract',
     'vsc.join_contract',
-    'vsc.leave_contract'
+    'vsc.leave_contract',
+    'vsc.multisig_txref',
+    'vsc.custom_json'
 ]
 export const START_BLOCK = 74869131
 export const NETWORK_ID = 'testnet/d12e6110-9c8c-4498-88f8-67ddf90d451c'
+export const MULTISIG_ACCOUNT = 'vsc.ptk-d12e6110'

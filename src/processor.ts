@@ -1,10 +1,10 @@
 import { cid as isCID } from 'is-ipfs'
 import { CID } from 'multiformats/cid'
 import randomDID from './did.js'
-import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID } from './constants.js'
+import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT } from './constants.js'
 import db from './db.js'
 import logger from './logger.js'
-import { BlockPayload, ContractCommitmentPayload, DIDPayload, NewContractPayload, NodeAnnouncePayload, ParsedOp, TxTypes } from './processor_types.js'
+import { BlockPayload, ContractCommitmentPayload, DIDPayload, MultisigTxRefPayload, NewContractPayload, NodeAnnouncePayload, ParsedOp, TxTypes } from './processor_types.js'
 import op_type_map from './operations.js'
 
 const processor = {
@@ -102,6 +102,16 @@ const processor = {
                             node_identity: payload.node_identity
                         }
                         break
+                    case 8:
+                        // multisig_txref
+                        if (details.user !== MULTISIG_ACCOUNT ||
+                            typeof payload.ref_id !== 'string' ||
+                            !isCID(payload.ref_id) ||
+                            CID.parse(payload.code).code !== 0x71)
+                            return { valid: false }
+                        details.payload = {
+                            ref_id: payload.ref_id
+                        }
                     default:
                         break
                 }
@@ -178,6 +188,10 @@ const processor = {
                 case op_type_map.map.leave_contract:
                     pl = result.payload as ContractCommitmentPayload
                     await db.client.query(`SELECT ${SCHEMA_NAME}.update_contract_commitment($1,$2,$3);`,[pl.contract_id,pl.node_identity,false])
+                    break
+                case op_type_map.map.multisig_txref:
+                case op_type_map.map.custom_json:
+                    // TODO what should be done here?
                     break
                 default:
                     break

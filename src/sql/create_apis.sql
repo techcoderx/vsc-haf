@@ -164,3 +164,50 @@ BEGIN
 END
 $function$
 LANGUAGE plpgsql STABLE;
+
+DROP TYPE IF EXISTS vsc_api.l1_op_type CASCADE;
+CREATE TYPE vsc_api.l1_op_type AS (
+    id BIGINT,
+    name VARCHAR,
+    op_type INTEGER,
+    block_num INTEGER,
+    body TEXT
+);
+
+CREATE OR REPLACE FUNCTION vsc_api.get_l1_operations_by_l1_blocks(l1_blk_start INTEGER, l1_blk_count INTEGER)
+RETURNS jsonb
+AS
+$function$
+DECLARE
+    op vsc_api.l1_op_type;
+    ops vsc_api.l1_op_type[];
+    ops_arr jsonb[] DEFAULT '{}';
+BEGIN
+    SELECT ARRAY(
+        SELECT ROW(o.id, hive.vsc_app_accounts.name, o.op_type, hive.operations_view.block_num, hive.operations_view.body::TEXT)::vsc_api.l1_op_type
+            FROM vsc_app.l1_operations o
+            JOIN hive.operations_view ON
+                hive.operations_view.id = o.op_id
+            JOIN hive.vsc_app_accounts ON
+                hive.vsc_app_accounts.id = o.user_id
+            WHERE hive.operations_view.block_num >= l1_blk_start AND hive.operations_view.block_num < l1_blk_start+l1_blk_count
+    ) INTO ops;
+    
+    FOREACH op IN ARRAY ops
+    LOOP
+        SELECT ARRAY_APPEND(ops_arr, jsonb_build_object(
+            'id', op.id,
+            'username', op.name,
+            'type', op.op_type,
+            'l1_block', op.block_num,
+            'payload', (op.body::jsonb->'value'->>'json')::jsonb
+        )) INTO ops_arr;
+    END LOOP;
+    
+    RETURN jsonb_build_object(
+        'count', ARRAY_LENGTH(ops, 1),
+        'ops', ops_arr
+    );
+END
+$function$
+LANGUAGE plpgsql STABLE;

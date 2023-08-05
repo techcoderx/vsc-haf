@@ -102,3 +102,63 @@ BEGIN
 END
 $function$
 LANGUAGE plpgsql STABLE;
+
+DROP TYPE IF EXISTS vsc_api.block_type CASCADE;
+CREATE TYPE vsc_api.block_type AS (
+    id INTEGER,
+    announced_in_op BIGINT,
+    block_hash VARCHAR,
+    announcer INTEGER
+);
+
+DROP FUNCTION vsc_api.get_block_range(integer,integer);
+
+CREATE OR REPLACE FUNCTION vsc_api.get_block_range(blk_id_start INTEGER, blk_count INTEGER)
+RETURNS jsonb
+AS
+$function$
+DECLARE
+    b vsc_api.block_type;
+    _block_details vsc_api.block_type[];
+    _blocks jsonb[] DEFAULT '{}';
+    _announced_in_tx_id BIGINT;
+    _announced_in_tx TEXT;
+    _announcer TEXT;
+BEGIN
+    IF blk_count > 1000 OR blk_count <= 0 THEN
+        RETURN jsonb_build_object(
+            'error', 'blk_count must be between 1 and 1000'
+        );
+    END IF;
+    SELECT ARRAY(
+        SELECT ROW(vsc_app.blocks.*)::vsc_api.block_type
+            FROM vsc_app.blocks
+            WHERE vsc_app.blocks.id >= blk_id_start AND vsc_app.blocks.id < blk_id_start+blk_count
+    ) INTO _block_details;
+    FOREACH b IN ARRAY _block_details
+    LOOP
+        SELECT l1_op.op_id INTO _announced_in_tx_id
+            FROM vsc_app.l1_operations l1_op
+            WHERE l1_op.id = b.announced_in_op;
+        SELECT encode(htx.trx_hash::bytea, 'hex') INTO _announced_in_tx
+            FROM hive.transactions_view htx
+            JOIN hive.operations_view ON
+                hive.operations_view.block_num = htx.block_num AND
+                hive.operations_view.trx_in_block = htx.trx_in_block
+            WHERE hive.operations_view.id = _announced_in_tx_id;
+        SELECT name INTO _announcer FROM hive.vsc_app_accounts WHERE id=b.announcer;
+        SELECT ARRAY_APPEND(_blocks, jsonb_build_object(
+            'id', b.id,
+            'block_hash', b.block_hash,
+            'announced_in_tx', _announced_in_tx,
+            'announcer', _announcer
+        )) INTO _blocks;
+    END LOOP;
+
+    RETURN jsonb_build_object(
+        'count', ARRAY_LENGTH(_block_details, 1),
+        'blocks', _blocks
+    );
+END
+$function$
+LANGUAGE plpgsql STABLE;

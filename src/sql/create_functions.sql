@@ -132,11 +132,12 @@ CREATE OR REPLACE FUNCTION vsc_app.insert_block(_announced_in_op BIGINT, _block_
 RETURNS void
 AS
 $function$
+DECLARE
+    _acc_id INTEGER;
 BEGIN
+    SELECT id INTO _acc_id FROM hive.vsc_app_accounts WHERE name=_announcer;
     INSERT INTO vsc_app.blocks(announced_in_op, block_hash, announcer)
-        VALUES(_announced_in_op, _block_hash, 
-            SELECT id FROM hive.vsc_app_accounts WHERE name=_announcer;
-        );
+        VALUES(_announced_in_op, _block_hash, _acc_id);
 END
 $function$
 LANGUAGE plpgsql VOLATILE;

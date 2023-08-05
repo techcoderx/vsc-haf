@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS vsc_app.l1_operations(
 CREATE TABLE IF NOT EXISTS vsc_app.blocks(
     id SERIAL PRIMARY KEY,
     announced_in_op BIGINT NOT NULL,
-    block_hash VARCHAR(59) NOT NULL
+    block_hash VARCHAR(59) NOT NULL,
+    announcer INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.contracts(

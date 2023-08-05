@@ -128,13 +128,15 @@ END
 $function$
 LANGUAGE plpgsql VOLATILE;
 
-CREATE OR REPLACE FUNCTION vsc_app.insert_block(_announced_in_op BIGINT, _block_hash VARCHAR)
+CREATE OR REPLACE FUNCTION vsc_app.insert_block(_announced_in_op BIGINT, _block_hash VARCHAR, _announcer VARCHAR)
 RETURNS void
 AS
 $function$
 BEGIN
-    INSERT INTO vsc_app.blocks(announced_in_op, block_hash)
-        VALUES(_announced_in_op, _block_hash);
+    INSERT INTO vsc_app.blocks(announced_in_op, block_hash, announcer)
+        VALUES(_announced_in_op, _block_hash, 
+            SELECT id FROM hive.vsc_app_accounts WHERE name=_announcer;
+        );
 END
 $function$
 LANGUAGE plpgsql VOLATILE;
@@ -148,7 +150,7 @@ RETURNS void
 AS
 $function$
 BEGIN
-    INSERT INTO vsc_app.blocks(created_in_op, name, manifest_id, code)
+    INSERT INTO vsc_app.contracts(created_in_op, name, manifest_id, code)
         VALUES(_created_in_op, _contract_name, _manifest_id, _code_hash);
 END
 $function$

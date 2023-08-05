@@ -51,7 +51,7 @@ BEGIN
         'id', _block_id,
         'block_hash', block_hash,
         'announced_in_tx', _announced_in_tx
-    )
+    );
 END
 $function$
 LANGUAGE plpgsql STABLE;

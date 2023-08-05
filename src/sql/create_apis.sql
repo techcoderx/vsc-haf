@@ -32,7 +32,7 @@ DECLARE
     _announced_in_op BIGINT;
     _block_id INTEGER;
     _announced_in_tx_id BIGINT;
-    _announced_in_tx TEXT;
+    _l1_tx TEXT;
     _announcer_id INTEGER;
     _announcer TEXT;
 BEGIN
@@ -46,7 +46,7 @@ BEGIN
     SELECT l1_op.op_id INTO _announced_in_tx_id
         FROM vsc_app.l1_operations l1_op
         WHERE l1_op.id = _announced_in_op;
-    SELECT encode(htx.trx_hash::bytea, 'hex') INTO _announced_in_tx
+    SELECT encode(htx.trx_hash::bytea, 'hex') INTO _l1_tx
         FROM hive.transactions_view htx
         JOIN hive.operations_view ON
             hive.operations_view.block_num = htx.block_num AND
@@ -57,7 +57,7 @@ BEGIN
     RETURN jsonb_build_object(
         'id', _block_id,
         'block_hash', blk_hash,
-        'announced_in_tx', _announced_in_tx,
+        'announced_in_tx', _l1_tx,
         'announcer', _announcer
     );
 END
@@ -72,9 +72,10 @@ DECLARE
     _announced_in_op BIGINT;
     _block_hash VARCHAR;
     _announced_in_tx_id BIGINT;
-    _announced_in_tx TEXT;
+    _l1_tx TEXT;
     _announcer_id INTEGER;
     _announcer TEXT;
+    _l1_block INTEGER;
 BEGIN
     SELECT block_hash, announced_in_op, announcer INTO _block_hash, _announced_in_op, _announcer_id
         FROM vsc_app.blocks
@@ -85,7 +86,7 @@ BEGIN
     SELECT l1_op.op_id INTO _announced_in_tx_id
         FROM vsc_app.l1_operations l1_op
         WHERE l1_op.id = _announced_in_op;
-    SELECT encode(htx.trx_hash::bytea, 'hex') INTO _announced_in_tx
+    SELECT encode(htx.trx_hash::bytea, 'hex'), htx.block_num INTO _l1_tx, _l1_block
         FROM hive.transactions_view htx
         JOIN hive.operations_view ON
             hive.operations_view.block_num = htx.block_num AND
@@ -96,8 +97,9 @@ BEGIN
     RETURN jsonb_build_object(
         'id', blk_id,
         'block_hash', _block_hash,
-        'announced_in_tx', _announced_in_tx,
-        'announcer', _announcer
+        'announcer', _announcer,
+        'l1_tx', _l1_tx,
+        'l1_block', _l1_block
     );
 END
 $function$
@@ -111,8 +113,6 @@ CREATE TYPE vsc_api.block_type AS (
     announcer INTEGER
 );
 
-DROP FUNCTION vsc_api.get_block_range(integer,integer);
-
 CREATE OR REPLACE FUNCTION vsc_api.get_block_range(blk_id_start INTEGER, blk_count INTEGER)
 RETURNS jsonb
 AS
@@ -122,8 +122,9 @@ DECLARE
     _block_details vsc_api.block_type[];
     _blocks jsonb[] DEFAULT '{}';
     _announced_in_tx_id BIGINT;
-    _announced_in_tx TEXT;
+    _l1_tx TEXT;
     _announcer TEXT;
+    _l1_block INTEGER;
 BEGIN
     IF blk_count > 1000 OR blk_count <= 0 THEN
         RETURN jsonb_build_object(
@@ -140,7 +141,7 @@ BEGIN
         SELECT l1_op.op_id INTO _announced_in_tx_id
             FROM vsc_app.l1_operations l1_op
             WHERE l1_op.id = b.announced_in_op;
-        SELECT encode(htx.trx_hash::bytea, 'hex') INTO _announced_in_tx
+        SELECT encode(htx.trx_hash::bytea, 'hex'), htx.block_num INTO _l1_tx, _l1_block
             FROM hive.transactions_view htx
             JOIN hive.operations_view ON
                 hive.operations_view.block_num = htx.block_num AND
@@ -150,8 +151,9 @@ BEGIN
         SELECT ARRAY_APPEND(_blocks, jsonb_build_object(
             'id', b.id,
             'block_hash', b.block_hash,
-            'announced_in_tx', _announced_in_tx,
-            'announcer', _announcer
+            'announcer', _announcer,
+            'l1_tx', _l1_tx,
+            'l1_block', _l1_block
         )) INTO _blocks;
     END LOOP;
 

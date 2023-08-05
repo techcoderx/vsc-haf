@@ -40,6 +40,9 @@ BEGIN
         FROM vsc_app.blocks
         WHERE vsc_app.blocks.block_hash = blk_hash
         LIMIT 1;
+    IF _block_id IS NULL THEN
+        RETURN jsonb_build_object('error', 'Block does not exist');
+    END IF;
     SELECT l1_op.op_id INTO _announced_in_tx_id
         FROM vsc_app.l1_operations l1_op
         WHERE l1_op.id = _announced_in_op;
@@ -54,6 +57,45 @@ BEGIN
     RETURN jsonb_build_object(
         'id', _block_id,
         'block_hash', blk_hash,
+        'announced_in_tx', _announced_in_tx,
+        'announcer', _announcer
+    );
+END
+$function$
+LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION vsc_api.get_block_by_id(blk_id INTEGER)
+RETURNS jsonb
+AS
+$function$
+DECLARE
+    _announced_in_op BIGINT;
+    _block_hash VARCHAR;
+    _announced_in_tx_id BIGINT;
+    _announced_in_tx TEXT;
+    _announcer_id INTEGER;
+    _announcer TEXT;
+BEGIN
+    SELECT block_hash, announced_in_op, announcer INTO _block_hash, _announced_in_op, _announcer_id
+        FROM vsc_app.blocks
+        WHERE vsc_app.blocks.id = blk_id;
+    IF _block_hash IS NULL THEN
+        RETURN jsonb_build_object('error', 'Block does not exist');
+    END IF;
+    SELECT l1_op.op_id INTO _announced_in_tx_id
+        FROM vsc_app.l1_operations l1_op
+        WHERE l1_op.id = _announced_in_op;
+    SELECT encode(htx.trx_hash::bytea, 'hex') INTO _announced_in_tx
+        FROM hive.transactions_view htx
+        JOIN hive.operations_view ON
+            hive.operations_view.block_num = htx.block_num AND
+            hive.operations_view.trx_in_block = htx.trx_in_block
+        WHERE hive.operations_view.id = _announced_in_tx_id;
+    SELECT name INTO _announcer FROM hive.vsc_app_accounts WHERE id=_announcer_id;
+    
+    RETURN jsonb_build_object(
+        'id', blk_id,
+        'block_hash', _block_hash,
         'announced_in_tx', _announced_in_tx,
         'announcer', _announcer
     );

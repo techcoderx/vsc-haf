@@ -322,3 +322,69 @@ BEGIN
 END
 $function$
 LANGUAGE plpgsql STABLE;
+
+DROP TYPE IF EXISTS vsc_api.op_history_type CASCADE;
+CREATE TYPE vsc_api.op_history_type AS (
+    id BIGINT,
+    username VARCHAR(16),
+    op_id BIGINT,
+    op_name VARCHAR(20),
+    body TEXT
+);
+
+CREATE OR REPLACE FUNCTION vsc_api.get_op_history_by_l1_user(username VARCHAR, last_id BIGINT = 9223372036854775807, count INTEGER = 50)
+RETURNS jsonb
+AS
+$function$
+DECLARE
+    result vsc_api.op_history_type;
+    results vsc_api.op_history_type[];
+    results_arr jsonb[] DEFAULT '{}';
+    _l1_tx VARCHAR;
+    _l1_blk INTEGER;
+    _payload TEXT;
+BEGIN
+    IF last_id < 0 THEN
+        RETURN jsonb_build_object(
+            'error', 'last_id must be greater than or equal to 0'
+        );
+    ELSIF count <= 0 OR count > 1000 THEN
+        RETURN jsonb_build_object(
+            'error', 'count must be between 1 and 1000'
+        );
+    END IF;
+    SELECT ARRAY(
+        SELECT ROW(o.id, a.name, o.op_id, ot.op_name, ho.body::jsonb->>'value')::vsc_api.op_history_type
+            FROM vsc_app.l1_operations o
+            JOIN vsc_app.l1_operation_types ot ON
+                ot.id = o.op_type
+            JOIN hive.vsc_app_accounts a ON
+                a.id = o.user_id
+            JOIN hive.operations_view ho ON
+                ho.id = o.op_id
+            WHERE a.name = username AND o.id <= last_id
+            ORDER BY o.id DESC
+            LIMIT count
+    ) INTO results;
+
+    FOREACH result IN ARRAY results
+    LOOP
+        SELECT trx_hash, block_num INTO _l1_tx, _l1_blk FROM vsc_api.helper_get_tx_by_op_id(result.op_id);
+        IF result.op_name = 'announce_node' THEN
+            _payload := (result.body::jsonb->>'json_metadata')::jsonb->>'vsc_node';
+        ELSE
+            _payload := result.body::jsonb->>'json';
+        END IF;
+        SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
+            'id', result.id,
+            'username', result.username,
+            'l1_tx', _l1_tx,
+            'l1_block', _l1_blk,
+            'payload', _payload::jsonb
+        )) INTO results_arr;
+    END LOOP;
+    
+    RETURN array_to_json(results_arr)::jsonb;
+END
+$function$
+LANGUAGE plpgsql STABLE;

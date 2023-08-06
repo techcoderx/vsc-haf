@@ -190,6 +190,9 @@ const processor = {
                     await db.client.query(`SELECT ${SCHEMA_NAME}.update_contract_commitment($1,$2,$3);`,[pl.contract_id,pl.node_identity,false])
                     break
                 case op_type_map.map.multisig_txref:
+                    pl = result.payload as MultisigTxRefPayload
+                    await db.client.query(`SELECT vsc_app.insert_multisig_txref($1,$2);`,[new_vsc_op.rows[0].process_operation,pl.ref_id])
+                    break
                 case op_type_map.map.custom_json:
                     // TODO what should be done here?
                     break

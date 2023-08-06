@@ -7,6 +7,7 @@ ALTER TABLE vsc_app.contracts DROP CONSTRAINT IF EXISTS contract_created_in_op_f
 ALTER TABLE vsc_app.witnesses DROP CONSTRAINT IF EXISTS witness_account_fk;
 ALTER TABLE vsc_app.witnesses DROP CONSTRAINT IF EXISTS witness_enabled_at_fk;
 ALTER TABLE vsc_app.witnesses DROP CONSTRAINT IF EXISTS witness_disabled_at_fk;
+ALTER TABLE vsc_app.multisig_txrefs DROP CONSTRAINT IF EXISTS multisig_txref_in_op_fk;
 
 -- Drop all state providers
 SELECT hive.app_state_provider_drop_all('vsc_app');

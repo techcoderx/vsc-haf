@@ -51,3 +51,9 @@ CREATE TABLE IF NOT EXISTS vsc_app.state(
     last_processed_block INTEGER NOT NULL DEFAULT 0,
     db_version INTEGER NOT NULL DEFAULT 1
 );
+
+CREATE TABLE IF NOT EXISTS vsc_app.multisig_txrefs(
+    id SERIAL PRIMARY KEY,
+    in_op BIGINT NOT NULL,
+    ref_id VARCHAR(59) NOT NULL
+);

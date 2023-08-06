@@ -53,6 +53,11 @@ const HAF_FKS: FKS_TYPE = {
         table: SCHEMA_NAME+'.witnesses',
         fk: 'disabled_at',
         ref: SCHEMA_NAME+'.l1_operations(id)'
+    },
+    multisig_txref_in_op_fk: {
+        table: SCHEMA_NAME+'.multisig_txrefs',
+        fk: 'in_op',
+        ref: SCHEMA_NAME+'.l1_operations(id)'
     }
 }
 

@@ -173,3 +173,17 @@ BEGIN
 END
 $function$
 LANGUAGE plpgsql VOLATILE;
+
+CREATE OR REPLACE FUNCTION vsc_app.insert_multisig_txref(
+    _in_op BIGINT,
+    _txref VARCHAR
+)
+RETURNS void
+AS
+$function$
+BEGIN
+    INSERT INTO vsc_app.multisig_txrefs(in_op, ref_id)
+        VALUES(_in_op, _txref);
+END
+$function$
+LANGUAGE plpgsql VOLATILE;

@@ -332,7 +332,7 @@ CREATE TYPE vsc_api.op_history_type AS (
     body TEXT
 );
 
-CREATE OR REPLACE FUNCTION vsc_api.get_op_history_by_l1_user(username VARCHAR, last_id BIGINT = 9223372036854775807, count INTEGER = 50)
+CREATE OR REPLACE FUNCTION vsc_api.get_op_history_by_l1_user(username VARCHAR, last_id BIGINT = 9223372036854775807, count INTEGER = 50, bitmask_filter BIGINT = NULL)
 RETURNS jsonb
 AS
 $function$
@@ -353,19 +353,36 @@ BEGIN
             'error', 'count must be between 1 and 1000'
         );
     END IF;
-    SELECT ARRAY(
-        SELECT ROW(o.id, a.name, o.op_id, ot.op_name, ho.body::jsonb->>'value')::vsc_api.op_history_type
-            FROM vsc_app.l1_operations o
-            JOIN vsc_app.l1_operation_types ot ON
-                ot.id = o.op_type
-            JOIN hive.vsc_app_accounts a ON
-                a.id = o.user_id
-            JOIN hive.operations_view ho ON
-                ho.id = o.op_id
-            WHERE a.name = username AND o.id <= last_id
-            ORDER BY o.id DESC
-            LIMIT count
-    ) INTO results;
+
+    IF bitmask_filter IS NULL THEN
+        SELECT ARRAY(
+            SELECT ROW(o.id, a.name, o.op_id, ot.op_name, ho.body::jsonb->>'value')::vsc_api.op_history_type
+                FROM vsc_app.l1_operations o
+                JOIN vsc_app.l1_operation_types ot ON
+                    ot.id = o.op_type
+                JOIN hive.vsc_app_accounts a ON
+                    a.id = o.user_id
+                JOIN hive.operations_view ho ON
+                    ho.id = o.op_id
+                WHERE a.name = username AND o.id <= last_id
+                ORDER BY o.id DESC
+                LIMIT count
+        ) INTO results;
+    ELSE
+        SELECT ARRAY(
+            SELECT ROW(o.id, a.name, o.op_id, ot.op_name, ho.body::jsonb->>'value')::vsc_api.op_history_type
+                FROM vsc_app.l1_operations o
+                JOIN vsc_app.l1_operation_types ot ON
+                    ot.id = o.op_type
+                JOIN hive.vsc_app_accounts a ON
+                    a.id = o.user_id
+                JOIN hive.operations_view ho ON
+                    ho.id = o.op_id
+                WHERE a.name = username AND o.id <= last_id AND (ot.filterer & bitmask_filter) > 0
+                ORDER BY o.id DESC
+                LIMIT count
+        ) INTO results;
+    END IF;
 
     FOREACH result IN ARRAY results
     LOOP

@@ -86,6 +86,10 @@ const INDEXES: INDEXES_TYPE = {
     witness_did_idx: {
         table_name: SCHEMA_NAME+'.witnesses',
         columns: [{ col_name: 'did', order: Ordering.ASC }]
+    },
+    txref_in_op_idx: {
+        table_name: SCHEMA_NAME+'.multisig_txrefs',
+        columns: [{ col_name: 'in_op', order: Ordering.ASC }]
     }
 }
 

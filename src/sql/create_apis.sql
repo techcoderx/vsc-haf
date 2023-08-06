@@ -15,13 +15,21 @@ DECLARE
     _last_processed_block INTEGER;
     _db_version INTEGER;
     _l2_block_height INTEGER;
+    _contracts INTEGER;
+    _witnesses BIGINT;
+    _txrefs INTEGER;
 BEGIN
     SELECT last_processed_block, db_version INTO _last_processed_block, _db_version FROM vsc_app.state;
     SELECT id INTO _l2_block_height FROM vsc_app.blocks ORDER BY id DESC LIMIT 1;
+    SELECT id INTO _contracts FROM vsc_app.contracts ORDER BY id DESC LIMIT 1;
+    SELECT COUNT(*) INTO _witnesses FROM vsc_app.witnesses;
+    SELECT id INTO _txrefs FROM vsc_app.multisig_txrefs ORDER BY id DESC LIMIT 1;
     RETURN jsonb_build_object(
         'last_processed_block', _last_processed_block,
         'db_version', _db_version,
-        'l2_block_height', _l2_block_height
+        'l2_block_height', _l2_block_height,
+        'contracts', _witnesses,
+        'txrefs', _txrefs
     );
 END
 $function$
@@ -280,6 +288,36 @@ BEGIN
     RETURN jsonb_build_object(
         'did', _did,
         'trusted', _is_trusted
+    );
+END
+$function$
+LANGUAGE plpgsql STABLE;
+
+DROP TYPE IF EXISTS vsc_api.txref_type CASCADE;
+CREATE TYPE vsc_api.txref_type AS (
+    id INTEGER,
+    in_op BIGINT,
+    ref_id VARCHAR(59)
+);
+
+CREATE OR REPLACE FUNCTION vsc_api.get_txrefs_by_id(_id INTEGER)
+RETURNS jsonb
+AS
+$function$
+DECLARE
+    result vsc_api.txref_type;
+    in_l1_txhash VARCHAR;
+    in_l1_block INTEGER;
+BEGIN
+    SELECT * INTO result FROM vsc_app.multisig_txrefs WHERE id=_id;
+    SELECT trx_hash, block_num INTO in_l1_txhash, in_l1_block FROM vsc_api.helper_get_tx_by_op_id(
+        (SELECT op_id FROM vsc_app.l1_operations WHERE id=result.in_op)
+    );
+    RETURN jsonb_build_object(
+        'id', _id,
+        'l1_tx', in_l1_txhash,
+        'l1_block', in_l1_block,
+        'ref_id', result.ref_id
     );
 END
 $function$

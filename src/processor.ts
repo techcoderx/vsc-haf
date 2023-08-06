@@ -57,7 +57,7 @@ const processor = {
                             )
                                 return { valid: false }
                             details.payload = {
-                                did: proof.kid.split('#')[0]
+                                did: proof.payload.node_id
                             }
                         } catch {
                             return { valid: false }

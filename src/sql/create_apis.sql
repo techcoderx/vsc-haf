@@ -99,7 +99,7 @@ BEGIN
         'announcer', _announcer,
         'ts', _l1_tx.created_at,
         'l1_tx', _l1_tx.trx_hash,
-        'l1_block', _l1_tx.block_num,
+        'l1_block', _l1_tx.block_num
     );
 END
 $function$

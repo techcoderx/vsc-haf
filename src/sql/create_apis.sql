@@ -244,7 +244,7 @@ BEGIN
             'username', op.name,
             'type', op.op_type,
             'l1_block', op.block_num,
-            'ts', op.created_at,
+            'ts', op.ts,
             'payload', op_payload
         )) INTO ops_arr;
     END LOOP;

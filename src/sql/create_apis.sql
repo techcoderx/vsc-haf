@@ -341,7 +341,7 @@ END
 $function$
 LANGUAGE plpgsql STABLE;
 
-CREATE OR REPLACE FUNCTION vsc_api.list_txrefs(last_id INTEGER, count INTEGER = 50)
+CREATE OR REPLACE FUNCTION vsc_api.list_txrefs(last_id INTEGER = 0, count INTEGER = 50)
 RETURNS jsonb
 AS
 $function$
@@ -351,9 +351,20 @@ DECLARE
     results_arr jsonb[] DEFAULT '{}';
     l1_tx vsc_api.l1_tx_type;
 BEGIN
-    SELECT ARRAY(
-        SELECT ROW(t.*) FROM vsc_app.multisig_txrefs t WHERE t.id <= last_id ORDER BY t.id DESC LIMIT count
-    ) INTO results;
+    IF count > 1000 OR count <= 0 THEN
+        RETURN jsonb_build_object(
+            'error', 'count must be between 1 and 1000'
+        );
+    END IF;
+    IF last_id <= 0 THEN
+        SELECT ARRAY(
+            SELECT ROW(t.*) FROM vsc_app.multisig_txrefs t ORDER BY t.id DESC LIMIT count
+        ) INTO results;
+    ELSE
+        SELECT ARRAY(
+            SELECT ROW(t.*) FROM vsc_app.multisig_txrefs t WHERE t.id <= last_id ORDER BY t.id DESC LIMIT count
+        ) INTO results;
+    END IF;
 
     FOREACH r IN ARRAY results
     LOOP

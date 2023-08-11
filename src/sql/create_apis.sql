@@ -212,6 +212,15 @@ DECLARE
     ops vsc_api.l1_op_type[];
     ops_arr jsonb[] DEFAULT '{}';
 BEGIN
+    IF l1_blk_count > 1000 OR l1_blk_count <= 0 THEN
+        RETURN jsonb_build_object(
+            'error', 'l1_blk_count must be between 1 and 1000'
+        );
+    ELSIF l1_blk_start <= 0 THEN
+        RETURN jsonb_build_object(
+            'error', 'l1_blk_start must be greater than or equal to 1'
+        );
+    END IF;
     SELECT ARRAY(
         SELECT ROW(o.id, hive.vsc_app_accounts.name, o.op_type, ho.block_num, hb.created_at, ho.body::TEXT)::vsc_api.l1_op_type
             FROM vsc_app.l1_operations o

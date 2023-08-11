@@ -211,6 +211,7 @@ DECLARE
     op vsc_api.l1_op_type;
     ops vsc_api.l1_op_type[];
     ops_arr jsonb[] DEFAULT '{}';
+    op_payload jsonb;
 BEGIN
     IF l1_blk_count > 1000 OR l1_blk_count <= 0 THEN
         RETURN jsonb_build_object(
@@ -235,13 +236,18 @@ BEGIN
     
     FOREACH op IN ARRAY ops
     LOOP
+        IF op.op_type = 1 THEN
+            op_payload := ((op.body::jsonb->'value'->>'json_metadata')::jsonb)->>'vsc_node';
+        ELSE
+            op_payload := (op.body::jsonb->'value'->>'json')::jsonb;
+        END IF;
         SELECT ARRAY_APPEND(ops_arr, jsonb_build_object(
             'id', op.id,
             'username', op.name,
             'type', op.op_type,
             'l1_block', op.block_num,
             'ts', op.created_at,
-            'payload', (op.body::jsonb->'value'->>'json')::jsonb
+            'payload', op_payload
         )) INTO ops_arr;
     END LOOP;
     

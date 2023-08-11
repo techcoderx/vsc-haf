@@ -106,8 +106,7 @@ const sync = {
         logger.info('Live Sync - Block #'+nextBlock+' - '+count+' ops - '+timeTakenMs+'ms')
         if (nextBlock! % LIVE_SYNC_CONNECTION_CYCLE_BLKS === 0) {
             // restart db connection every 1k blocks to ensure no memory leak from long running db connection
-            await db.client.end()
-            await db.client.connect()
+            await db.restart()
         }
         sync.live()
     },

@@ -199,7 +199,7 @@ CREATE TYPE vsc_api.l1_op_type AS (
     name VARCHAR,
     op_type INTEGER,
     block_num INTEGER,
-    created_at TIMESTAMP,
+    ts TIMESTAMP,
     body TEXT
 );
 
@@ -223,14 +223,12 @@ BEGIN
         );
     END IF;
     SELECT ARRAY(
-        SELECT ROW(o.id, hive.vsc_app_accounts.name, o.op_type, ho.block_num, hb.created_at, ho.body::TEXT)::vsc_api.l1_op_type
+        SELECT ROW(o.id, hive.vsc_app_accounts.name, o.op_type, ho.block_num, o.ts, ho.body::TEXT)::vsc_api.l1_op_type
             FROM vsc_app.l1_operations o
             JOIN hive.operations_view ho ON
                 ho.id = o.op_id
             JOIN hive.vsc_app_accounts ON
                 hive.vsc_app_accounts.id = o.user_id
-            JOIN hive.blocks_view hb ON
-                hb.num = ho.block_num
             WHERE ho.block_num >= l1_blk_start AND ho.block_num < l1_blk_start+l1_blk_count
     ) INTO ops;
     

@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS vsc_app.l1_operations(
     id BIGSERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
     op_id BIGINT NOT NULL,
-    op_type INTEGER NOT NULL
+    op_type INTEGER NOT NULL,
+    ts TIMESTAMP NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.blocks(

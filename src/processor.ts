@@ -152,7 +152,7 @@ const processor = {
         if (result.valid) {
             logger.trace('Processing op',result)
             let pl, op_number = op_type_map.translate(result.tx_type!, result.op_type!)
-            let new_vsc_op = await db.client.query(`SELECT ${SCHEMA_NAME}.process_operation($1,$2,$3);`,[result.user, result.id, op_number])
+            let new_vsc_op = await db.client.query(`SELECT ${SCHEMA_NAME}.process_operation($1,$2,$3,$4);`,[result.user, result.id, op_number, result.ts])
             switch (op_number) {
                 case op_type_map.map.announce_node:
                     pl = result.payload as NodeAnnouncePayload

@@ -48,7 +48,7 @@ $function$
 LANGUAGE plpgsql STABLE;
 
 -- Process transactions
-CREATE OR REPLACE FUNCTION vsc_app.process_operation(_username VARCHAR, _op_id BIGINT, _op_type INTEGER)
+CREATE OR REPLACE FUNCTION vsc_app.process_operation(_username VARCHAR, _op_id BIGINT, _op_type INTEGER, _ts TIMESTAMP)
 RETURNS BIGINT
 AS
 $function$
@@ -61,8 +61,8 @@ BEGIN
         RAISE EXCEPTION 'Could not process non-existent user %', _username;
     END IF;
 
-    INSERT INTO vsc_app.l1_operations(user_id, op_id, op_type)
-        VALUES(_hive_user_id, _op_id, _op_type)
+    INSERT INTO vsc_app.l1_operations(user_id, op_id, op_type, ts)
+        VALUES(_hive_user_id, _op_id, _op_type, _ts)
         RETURNING id INTO _vsc_op_id;
 
     RETURN _vsc_op_id;

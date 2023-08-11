@@ -198,6 +198,7 @@ CREATE TYPE vsc_api.l1_op_type AS (
     id BIGINT,
     name VARCHAR,
     op_type INTEGER,
+    op_name VARCHAR,
     block_num INTEGER,
     ts TIMESTAMP,
     body TEXT
@@ -223,8 +224,10 @@ BEGIN
         );
     END IF;
     SELECT ARRAY(
-        SELECT ROW(o.id, hive.vsc_app_accounts.name, o.op_type, ho.block_num, o.ts, ho.body::TEXT)::vsc_api.l1_op_type
+        SELECT ROW(o.id, hive.vsc_app_accounts.name, o.op_type, ot.op_name, ho.block_num, o.ts, ho.body::TEXT)::vsc_api.l1_op_type
             FROM vsc_app.l1_operations o
+            JOIN vsc_app.l1_operation_types ot ON
+                ot.id = o.op_type
             JOIN hive.operations_view ho ON
                 ho.id = o.op_id
             JOIN hive.vsc_app_accounts ON
@@ -242,7 +245,7 @@ BEGIN
         SELECT ARRAY_APPEND(ops_arr, jsonb_build_object(
             'id', op.id,
             'username', op.name,
-            'type', op.op_type,
+            'type', op.op_name,
             'l1_block', op.block_num,
             'ts', op.ts,
             'payload', op_payload

@@ -34,7 +34,8 @@ CREATE TABLE IF NOT EXISTS vsc_app.witnesses(
     did VARCHAR NOT NULL,
     enabled BOOLEAN DEFAULT FALSE,
     enabled_at BIGINT,
-    disabled_at BIGINT
+    disabled_at BIGINT,
+    last_block INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.contract_commitments(

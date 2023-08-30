@@ -134,10 +134,18 @@ AS
 $function$
 DECLARE
     _acc_id INTEGER;
+    _new_block_id INTEGER;
 BEGIN
     SELECT id INTO _acc_id FROM hive.vsc_app_accounts WHERE name=_announcer;
     INSERT INTO vsc_app.blocks(announced_in_op, block_hash, announcer)
-        VALUES(_announced_in_op, _block_hash, _acc_id);
+        VALUES(_announced_in_op, _block_hash, _acc_id)
+        RETURNING id INTO _new_block_id;
+    
+    IF EXISTS (SELECT 1 FROM vsc_app.witnesses w WHERE w.id=_acc_id) THEN
+        UPDATE vsc_app.witnesses SET
+            last_block=_new_block_id
+        WHERE id=_acc_id;
+    END IF;
 END
 $function$
 LANGUAGE plpgsql VOLATILE;

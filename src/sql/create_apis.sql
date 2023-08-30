@@ -28,7 +28,8 @@ BEGIN
         'last_processed_block', _last_processed_block,
         'db_version', _db_version,
         'l2_block_height', _l2_block_height,
-        'contracts', _witnesses,
+        'contracts', _contracts,
+        'witnesses', _witnesses,
         'txrefs', _txrefs
     );
 END

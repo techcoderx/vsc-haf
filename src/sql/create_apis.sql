@@ -291,6 +291,7 @@ BEGIN
     SELECT trx_hash INTO _disabled_at_txhash FROM vsc_api.helper_get_tx_by_op_id(result.disabled_at);
     
     RETURN jsonb_build_object(
+        'id', result.witness_id,
         'username', result.name,
         'did', result.did,
         'enabled', result.enabled,

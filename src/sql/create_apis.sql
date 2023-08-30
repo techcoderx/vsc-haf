@@ -266,7 +266,8 @@ CREATE TYPE vsc_api.witness_type AS (
     enabled BOOLEAN,
     enabled_at BIGINT,
     disabled_at BIGINT,
-    last_block INTEGER
+    last_block INTEGER,
+    produced INTEGER
 );
 
 CREATE OR REPLACE FUNCTION vsc_api.get_witness(username VARCHAR)
@@ -278,7 +279,7 @@ DECLARE
     _enabled_at_txhash VARCHAR;
     _disabled_at_txhash VARCHAR;
 BEGIN
-    SELECT w.witness_id, name, w.did, w.enabled, l1_e.op_id AS enabled_at, l1_d.op_id AS disabled_at, w.last_block
+    SELECT w.witness_id, name, w.did, w.enabled, l1_e.op_id AS enabled_at, l1_d.op_id AS disabled_at, w.last_block, w.produced
         INTO result
         FROM vsc_app.witnesses w
         JOIN hive.vsc_app_accounts ON
@@ -298,7 +299,8 @@ BEGIN
         'enabled', result.enabled,
         'enabled_at', _enabled_at_txhash,
         'disabled_at', _disabled_at_txhash,
-        'last_block', result.last_block
+        'last_block', result.last_block,
+        'produced', result.produced
     );
 END
 $function$
@@ -319,7 +321,7 @@ BEGIN
         );
     END IF;
     SELECT ARRAY(
-        SELECT ROW(w.witness_id, name, w.did, w.enabled, l1_e.op_id, l1_d.op_id, w.last_block)
+        SELECT ROW(w.witness_id, name, w.did, w.enabled, l1_e.op_id, l1_d.op_id, w.last_block, w.produced)
             FROM vsc_app.witnesses w
             JOIN hive.vsc_app_accounts ON
                 hive.vsc_app_accounts.id = w.id
@@ -340,7 +342,8 @@ BEGIN
             'enabled', result.enabled,
             'enabled_at', (SELECT trx_hash FROM vsc_api.helper_get_tx_by_op_id(result.enabled_at)),
             'disabled_at', (SELECT trx_hash FROM vsc_api.helper_get_tx_by_op_id(result.disabled_at)),
-            'last_block', result.last_block
+            'last_block', result.last_block,
+            'produced', result.produced
         )) INTO result_arr;
     END LOOP;
     

@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS vsc_app.witnesses(
     enabled BOOLEAN DEFAULT FALSE,
     enabled_at BIGINT,
     disabled_at BIGINT,
-    last_block INTEGER
+    last_block INTEGER,
+    produced INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.contract_commitments(

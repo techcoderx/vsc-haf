@@ -143,7 +143,8 @@ BEGIN
     
     IF EXISTS (SELECT 1 FROM vsc_app.witnesses w WHERE w.id=_acc_id) THEN
         UPDATE vsc_app.witnesses SET
-            last_block=_new_block_id
+            last_block=_new_block_id,
+            produced=produced+1
         WHERE id=_acc_id;
     END IF;
 END

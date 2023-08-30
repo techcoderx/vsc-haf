@@ -319,9 +319,9 @@ BEGIN
             FROM vsc_app.witnesses w
             JOIN hive.vsc_app_accounts ON
                 hive.vsc_app_accounts.id = w.id
-            JOIN vsc_app.l1_operations l1_e ON
+            LEFT JOIN vsc_app.l1_operations l1_e ON
                 l1_e.id = w.enabled_at
-            JOIN vsc_app.l1_operations l1_d ON
+            LEFT JOIN vsc_app.l1_operations l1_d ON
                 l1_d.id = w.disabled_at
             WHERE w.witness_id >= id_start
             ORDER BY w.witness_id

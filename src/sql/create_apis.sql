@@ -22,7 +22,7 @@ BEGIN
     SELECT last_processed_block, db_version INTO _last_processed_block, _db_version FROM vsc_app.state;
     SELECT id INTO _l2_block_height FROM vsc_app.blocks ORDER BY id DESC LIMIT 1;
     SELECT id INTO _contracts FROM vsc_app.contracts ORDER BY id DESC LIMIT 1;
-    SELECT COUNT(*) INTO _witnesses FROM vsc_app.witnesses;
+    SELECT witness_id INTO _witnesses FROM vsc_app.witnesses ORDER BY witness_id DESC LIMIT 1;
     SELECT id INTO _txrefs FROM vsc_app.multisig_txrefs ORDER BY id DESC LIMIT 1;
     RETURN jsonb_build_object(
         'last_processed_block', _last_processed_block,
@@ -259,6 +259,7 @@ LANGUAGE plpgsql STABLE;
 
 DROP TYPE IF EXISTS vsc_api.witness_type CASCADE;
 CREATE TYPE vsc_api.witness_type AS (
+    witness_id INTEGER,
     name VARCHAR,
     did VARCHAR,
     enabled BOOLEAN,
@@ -275,7 +276,7 @@ DECLARE
     _enabled_at_txhash VARCHAR;
     _disabled_at_txhash VARCHAR;
 BEGIN
-    SELECT name, w.did, w.enabled, l1_e.op_id AS enabled_at, l1_d.op_id AS disabled_at
+    SELECT w.witness_id, name, w.did, w.enabled, l1_e.op_id AS enabled_at, l1_d.op_id AS disabled_at
         INTO result
         FROM vsc_app.witnesses w
         JOIN hive.vsc_app_accounts ON
@@ -295,6 +296,50 @@ BEGIN
         'enabled_at', _enabled_at_txhash,
         'disabled_at', _disabled_at_txhash
     );
+END
+$function$
+LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION vsc_api.list_witnesses_by_id(id_start INTEGER = 0, count INTEGER = 50)
+RETURNS jsonb 
+AS
+$function$
+DECLARE
+    result vsc_api.witness_type;
+    results vsc_api.witness_type[];
+    result_arr jsonb[] DEFAULT '{}';
+BEGIN
+    IF count > 50 OR count <= 0 THEN
+        RETURN jsonb_build_object(
+            'error', 'count must be between 1 and 50'
+        );
+    END IF;
+    SELECT ARRAY(
+        SELECT ROW(w.witness_id, name, w.did, w.enabled, l1_e.op_id, l1_d.op_id)
+            FROM vsc_app.witnesses w
+            JOIN hive.vsc_app_accounts ON
+                hive.vsc_app_accounts.id = w.id
+            JOIN vsc_app.l1_operations l1_e ON
+                l1_e.id = w.enabled_at
+            JOIN vsc_app.l1_operations l1_d ON
+                l1_d.id = w.disabled_at
+            WHERE w.witness_id >= id_start
+            ORDER BY w.witness_id
+            LIMIT count
+    ) INTO results;
+    FOREACH result IN ARRAY results
+    LOOP
+        SELECT ARRAY_APPEND(result_arr, jsonb_build_object(
+            'id', result.witness_id,
+            'username', result.name,
+            'did', result.did,
+            'enabled', result.enabled,
+            'enabled_at', (SELECT trx_hash FROM vsc_api.helper_get_tx_by_op_id(result.enabled_at)),
+            'disabled_at', (SELECT trx_hash FROM vsc_api.helper_get_tx_by_op_id(result.disabled_at))
+        )) INTO result_arr;
+    END LOOP;
+    
+    RETURN array_to_json(result_arr)::jsonb;
 END
 $function$
 LANGUAGE plpgsql STABLE;

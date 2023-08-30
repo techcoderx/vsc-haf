@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS vsc_app.contracts(
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.witnesses(
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY, -- hive user id
+    witness_id SERIAL, -- vsc witness id
     did VARCHAR NOT NULL,
     enabled BOOLEAN DEFAULT FALSE,
     enabled_at BIGINT,

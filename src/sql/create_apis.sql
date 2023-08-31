@@ -606,7 +606,57 @@ BEGIN
             )) INTO results_arr;
         END IF;
     END LOOP;
-    
+
+    RETURN array_to_json(results_arr)::jsonb;
+END
+$function$
+LANGUAGE plpgsql STABLE;
+
+DROP TYPE IF EXISTS vsc_api.contract_type CASCADE;
+CREATE TYPE vsc_api.contract_type AS (
+    id INTEGER,
+    created_in_op BIGINT,
+    name VARCHAR,
+    manifest_id VARCHAR,
+    code VARCHAR
+);
+
+CREATE OR REPLACE FUNCTION vsc_api.list_latest_contracts(count INTEGER = 100)
+RETURNS jsonb
+AS
+$function$
+DECLARE
+    result vsc_api.contract_type;
+    results vsc_api.contract_type[];
+    results_arr jsonb[] DEFAULT '{}';
+    _l1_tx vsc_api.l1_tx_type;
+BEGIN
+    IF count <= 0 OR count > 100 THEN
+        RETURN jsonb_build_object(
+            'error', 'count must be between 1 and 100'
+        );
+    END IF;
+    SELECT ARRAY(
+        SELECT ROW(c.*)
+        FROM vsc_app.contracts c
+        ORDER BY id DESC
+        LIMIT count
+    ) INTO results;
+
+    FOREACH result IN ARRAY results
+    LOOP
+        SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(result.created_in_op);
+        SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
+            'id', result.id,
+            'created_in_op', _l1_tx.trx_hash,
+            'created_in_l1_block', _l1_tx.block_num,
+            'created_at', _l1_tx.created_at,
+            'name', result.name,
+            'manifest_id', result.manifest_id,
+            'code', result.code
+        )) INTO results_arr;
+    END LOOP;
+
     RETURN array_to_json(results_arr)::jsonb;
 END
 $function$

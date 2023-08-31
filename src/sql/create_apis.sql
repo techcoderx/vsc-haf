@@ -618,7 +618,8 @@ CREATE TYPE vsc_api.contract_type AS (
     created_in_op BIGINT,
     name VARCHAR,
     manifest_id VARCHAR,
-    code VARCHAR
+    code VARCHAR,
+    op_id BIGINT
 );
 
 CREATE OR REPLACE FUNCTION vsc_api.list_latest_contracts(count INTEGER = 100)
@@ -637,15 +638,17 @@ BEGIN
         );
     END IF;
     SELECT ARRAY(
-        SELECT ROW(c.*)
+        SELECT ROW(c.*, o.op_id)
         FROM vsc_app.contracts c
-        ORDER BY id DESC
+        JOIN vsc_app.l1_operations o ON
+            o.id=c.created_in_op
+        ORDER BY c.id DESC
         LIMIT count
     ) INTO results;
 
     FOREACH result IN ARRAY results
     LOOP
-        SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(result.created_in_op);
+        SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(result.op_id);
         SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
             'id', result.id,
             'created_in_op', _l1_tx.trx_hash,

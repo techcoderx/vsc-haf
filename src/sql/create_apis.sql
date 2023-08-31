@@ -15,12 +15,14 @@ DECLARE
     _last_processed_block INTEGER;
     _db_version INTEGER;
     _l2_block_height INTEGER;
+    _ops BIGINT;
     _contracts INTEGER;
     _witnesses BIGINT;
     _txrefs INTEGER;
 BEGIN
     SELECT last_processed_block, db_version INTO _last_processed_block, _db_version FROM vsc_app.state;
     SELECT id INTO _l2_block_height FROM vsc_app.blocks ORDER BY id DESC LIMIT 1;
+    SELECT id INTO _ops FROM vsc_app.l1_operations ORDER BY id DESC LIMIT 1;
     SELECT id INTO _contracts FROM vsc_app.contracts ORDER BY id DESC LIMIT 1;
     SELECT witness_id INTO _witnesses FROM vsc_app.witnesses ORDER BY witness_id DESC LIMIT 1;
     SELECT id INTO _txrefs FROM vsc_app.multisig_txrefs ORDER BY id DESC LIMIT 1;
@@ -28,6 +30,7 @@ BEGIN
         'last_processed_block', _last_processed_block,
         'db_version', _db_version,
         'l2_block_height', _l2_block_height,
+        'operations', _ops,
         'contracts', _contracts,
         'witnesses', _witnesses,
         'txrefs', _txrefs
@@ -520,6 +523,88 @@ BEGIN
             'l1_block', _l1_tx.block_num,
             'payload', _payload::jsonb
         )) INTO results_arr;
+    END LOOP;
+    
+    RETURN array_to_json(results_arr)::jsonb;
+END
+$function$
+LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION vsc_api.list_latest_ops(count INTEGER = 100, bitmask_filter BIGINT = NULL, with_payload BOOLEAN = FALSE)
+RETURNS jsonb
+AS
+$function$
+DECLARE
+    result vsc_api.op_history_type;
+    results vsc_api.op_history_type[];
+    results_arr jsonb[] DEFAULT '{}';
+    _l1_tx vsc_api.l1_tx_type;
+    _payload TEXT;
+BEGIN
+    IF count <= 0 OR count > 100 THEN
+        RETURN jsonb_build_object(
+            'error', 'count must be between 1 and 100'
+        );
+    END IF;
+
+    IF bitmask_filter IS NULL THEN
+        SELECT ARRAY(
+            SELECT ROW(o.id, a.name, o.op_id, ot.op_name, ho.body::jsonb->>'value')::vsc_api.op_history_type
+                FROM vsc_app.l1_operations o
+                JOIN vsc_app.l1_operation_types ot ON
+                    ot.id = o.op_type
+                JOIN hive.vsc_app_accounts a ON
+                    a.id = o.user_id
+                JOIN hive.operations_view ho ON
+                    ho.id = o.op_id
+                ORDER BY o.id DESC
+                LIMIT count
+        ) INTO results;
+    ELSE
+        SELECT ARRAY(
+            SELECT ROW(o.id, a.name, o.op_id, ot.op_name, ho.body::jsonb->>'value')::vsc_api.op_history_type
+                FROM vsc_app.l1_operations o
+                JOIN vsc_app.l1_operation_types ot ON
+                    ot.id = o.op_type
+                JOIN hive.vsc_app_accounts a ON
+                    a.id = o.user_id
+                JOIN hive.operations_view ho ON
+                    ho.id = o.op_id
+                WHERE (ot.filterer & bitmask_filter) > 0
+                ORDER BY o.id DESC
+                LIMIT count
+        ) INTO results;
+    END IF;
+
+    FOREACH result IN ARRAY results
+    LOOP
+        SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(result.op_id);
+        IF with_payload IS TRUE THEN
+            IF result.op_name = 'announce_node' THEN
+                _payload := (result.body::jsonb->>'json_metadata')::jsonb->>'vsc_node';
+            ELSE
+                _payload := result.body::jsonb->>'json';
+            END IF;
+        
+            SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
+                'id', result.id,
+                'username', result.username,
+                'type', result.op_name,
+                'ts', _l1_tx.created_at,
+                'l1_tx', _l1_tx.trx_hash,
+                'l1_block', _l1_tx.block_num,
+                'payload', _payload::jsonb
+            )) INTO results_arr;
+        ELSE
+            SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
+                'id', result.id,
+                'username', result.username,
+                'type', result.op_name,
+                'ts', _l1_tx.created_at,
+                'l1_tx', _l1_tx.trx_hash,
+                'l1_block', _l1_tx.block_num
+            )) INTO results_arr;
+        END IF;
     END LOOP;
     
     RETURN array_to_json(results_arr)::jsonb;

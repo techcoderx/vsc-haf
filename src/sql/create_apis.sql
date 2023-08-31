@@ -78,6 +78,7 @@ AS
 $function$
 DECLARE
     _announced_in_op BIGINT;
+    _prev_block_hash VARCHAR = NULL;
     _block_id INTEGER;
     _announced_in_tx_id BIGINT;
     _l1_tx vsc_api.l1_tx_type;
@@ -91,6 +92,11 @@ BEGIN
     IF _block_id IS NULL THEN
         RETURN jsonb_build_object('error', 'Block does not exist');
     END IF;
+    IF _block_id > 1 THEN
+        SELECT block_hash INTO _prev_block_hash
+            FROM vsc_app.blocks
+            WHERE vsc_app.blocks.id = _block_id-1;
+    END IF;
     SELECT l1_op.op_id INTO _announced_in_tx_id
         FROM vsc_app.l1_operations l1_op
         WHERE l1_op.id = _announced_in_op;
@@ -99,6 +105,7 @@ BEGIN
     
     RETURN jsonb_build_object(
         'id', _block_id,
+        'prev_block_hash', _prev_block_hash,
         'block_hash', blk_hash,
         'announcer', _announcer,
         'ts', _l1_tx.created_at,
@@ -115,6 +122,7 @@ AS
 $function$
 DECLARE
     _announced_in_op BIGINT;
+    _prev_block_hash VARCHAR = NULL;
     _block_hash VARCHAR;
     _announced_in_tx_id BIGINT;
     _l1_tx vsc_api.l1_tx_type;
@@ -127,6 +135,11 @@ BEGIN
     IF _block_hash IS NULL THEN
         RETURN jsonb_build_object('error', 'Block does not exist');
     END IF;
+    IF blk_id > 1 THEN
+        SELECT block_hash INTO _prev_block_hash
+            FROM vsc_app.blocks
+            WHERE vsc_app.blocks.id = blk_id-1;
+    END IF;
     SELECT l1_op.op_id INTO _announced_in_tx_id
         FROM vsc_app.l1_operations l1_op
         WHERE l1_op.id = _announced_in_op;
@@ -135,6 +148,7 @@ BEGIN
     
     RETURN jsonb_build_object(
         'id', blk_id,
+        'prev_block_hash', _prev_block_hash,
         'block_hash', _block_hash,
         'announcer', _announcer,
         'ts', _l1_tx.created_at,

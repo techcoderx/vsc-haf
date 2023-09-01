@@ -12,6 +12,12 @@ CREATE TABLE IF NOT EXISTS vsc_app.l1_operations(
     ts TIMESTAMP NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS vsc_app.l1_users(
+    id INTEGER PRIMARY KEY,
+    count BIGINT DEFAULT 0,
+    last_op_ts TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS vsc_app.blocks(
     id SERIAL PRIMARY KEY,
     announced_in_op BIGINT NOT NULL,

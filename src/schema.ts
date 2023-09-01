@@ -24,6 +24,11 @@ const HAF_FKS: FKS_TYPE = {
         fk: 'op_type',
         ref: SCHEMA_NAME+'.l1_operation_types(id)'
     },
+    l1_users_fk: {
+        table: SCHEMA_NAME+'.l1_users',
+        fk: 'id',
+        ref: 'hive.vsc_app_accounts(id)'
+    },
     block_announced_in_op_fk: {
         table: SCHEMA_NAME+'.blocks',
         fk: 'announced_in_op',

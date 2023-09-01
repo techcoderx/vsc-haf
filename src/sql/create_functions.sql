@@ -61,6 +61,16 @@ BEGIN
         RAISE EXCEPTION 'Could not process non-existent user %', _username;
     END IF;
 
+    IF EXISTS (SELECT 1 FROM vsc_app.l1_users WHERE u.id=_hive_user_id) THEN
+        UPDATE vsc_app.l1_users SET
+            count=count+1,
+            last_op_ts=_ts
+        WHERE id=_hive_user_id;
+    ELSE
+        INSERT INTO vsc_app.l1_users(id, count, last_op_ts)
+            VALUES(_hive_user_id, 1, _ts);
+    END IF;
+
     INSERT INTO vsc_app.l1_operations(user_id, op_id, op_type, ts)
         VALUES(_hive_user_id, _op_id, _op_type, _ts)
         RETURNING id INTO _vsc_op_id;

@@ -313,6 +313,7 @@ BEGIN
         'id', result.witness_id,
         'username', result.name,
         'did', result.did,
+        'trusted', COALESCE((SELECT d.trusted FROM vsc_app.trusted_dids d WHERE d.did=result.did), FALSE),
         'enabled', result.enabled,
         'enabled_at', _enabled_at_txhash,
         'disabled_at', _disabled_at_txhash,

@@ -61,7 +61,7 @@ BEGIN
         RAISE EXCEPTION 'Could not process non-existent user %', _username;
     END IF;
 
-    IF EXISTS (SELECT 1 FROM vsc_app.l1_users WHERE u.id=_hive_user_id) THEN
+    IF EXISTS (SELECT 1 FROM vsc_app.l1_users WHERE id=_hive_user_id) THEN
         UPDATE vsc_app.l1_users SET
             count=count+1,
             last_op_ts=_ts

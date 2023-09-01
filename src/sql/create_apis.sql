@@ -275,6 +275,30 @@ END
 $function$
 LANGUAGE plpgsql STABLE;
 
+CREATE OR REPLACE FUNCTION vsc_api.get_l1_user(username VARCHAR)
+RETURNS jsonb 
+AS
+$function$
+DECLARE
+    _count BIGINT;
+    _last_op_ts TIMESTAMP;
+BEGIN
+    SELECT u.count, u.last_op_ts
+        INTO _count, _last_op_ts
+        FROM vsc_app.l1_users u
+        JOIN hive.vsc_app_accounts ac ON
+            ac.id = u.id
+        WHERE ac.name=username;
+    
+    RETURN jsonb_build_object(
+        'name', username,
+        'tx_count', _count,
+        'last_activity', _last_op_ts
+    );
+END
+$function$
+LANGUAGE plpgsql STABLE;
+
 DROP TYPE IF EXISTS vsc_api.witness_type CASCADE;
 CREATE TYPE vsc_api.witness_type AS (
     witness_id INTEGER,

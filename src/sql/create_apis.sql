@@ -490,6 +490,7 @@ DROP TYPE IF EXISTS vsc_api.op_history_type CASCADE;
 CREATE TYPE vsc_api.op_history_type AS (
     id BIGINT,
     username VARCHAR(16),
+    nonce BIGINT,
     op_id BIGINT,
     op_name VARCHAR(20),
     body TEXT
@@ -518,7 +519,7 @@ BEGIN
 
     IF bitmask_filter IS NULL THEN
         SELECT ARRAY(
-            SELECT ROW(o.id, a.name, o.op_id, ot.op_name, ho.body::jsonb->>'value')::vsc_api.op_history_type
+            SELECT ROW(o.id, a.name, o.nonce, o.op_id, ot.op_name, ho.body::jsonb->>'value')::vsc_api.op_history_type
                 FROM vsc_app.l1_operations o
                 JOIN vsc_app.l1_operation_types ot ON
                     ot.id = o.op_type
@@ -532,7 +533,7 @@ BEGIN
         ) INTO results;
     ELSE
         SELECT ARRAY(
-            SELECT ROW(o.id, a.name, o.op_id, ot.op_name, ho.body::jsonb->>'value')::vsc_api.op_history_type
+            SELECT ROW(o.id, a.name, o.nonce, o.op_id, ot.op_name, ho.body::jsonb->>'value')::vsc_api.op_history_type
                 FROM vsc_app.l1_operations o
                 JOIN vsc_app.l1_operation_types ot ON
                     ot.id = o.op_type
@@ -557,6 +558,7 @@ BEGIN
         SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
             'id', result.id,
             'username', result.username,
+            'nonce', result.nonce,
             'ts', _l1_tx.created_at,
             'type', result.op_name,
             'l1_tx', _l1_tx.trx_hash,
@@ -589,7 +591,7 @@ BEGIN
 
     IF bitmask_filter IS NULL THEN
         SELECT ARRAY(
-            SELECT ROW(o.id, a.name, o.op_id, ot.op_name, ho.body::jsonb->>'value')::vsc_api.op_history_type
+            SELECT ROW(o.id, a.name, o.nonce, o.op_id, ot.op_name, ho.body::jsonb->>'value')::vsc_api.op_history_type
                 FROM vsc_app.l1_operations o
                 JOIN vsc_app.l1_operation_types ot ON
                     ot.id = o.op_type
@@ -602,7 +604,7 @@ BEGIN
         ) INTO results;
     ELSE
         SELECT ARRAY(
-            SELECT ROW(o.id, a.name, o.op_id, ot.op_name, ho.body::jsonb->>'value')::vsc_api.op_history_type
+            SELECT ROW(o.id, a.name, o.nonce, o.op_id, ot.op_name, ho.body::jsonb->>'value')::vsc_api.op_history_type
                 FROM vsc_app.l1_operations o
                 JOIN vsc_app.l1_operation_types ot ON
                     ot.id = o.op_type
@@ -629,6 +631,7 @@ BEGIN
             SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
                 'id', result.id,
                 'username', result.username,
+                'nonce', result.nonce,
                 'type', result.op_name,
                 'ts', _l1_tx.created_at,
                 'l1_tx', _l1_tx.trx_hash,
@@ -639,6 +642,7 @@ BEGIN
             SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
                 'id', result.id,
                 'username', result.username,
+                'nonce', result.nonce,
                 'type', result.op_name,
                 'ts', _l1_tx.created_at,
                 'l1_tx', _l1_tx.trx_hash,

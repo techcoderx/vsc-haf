@@ -55,13 +55,15 @@ $function$
 DECLARE
     _hive_user_id INTEGER = NULL;
     _vsc_op_id BIGINT = NULL;
+    _nonce BIGINT = NULL;
 BEGIN
     SELECT id INTO _hive_user_id FROM hive.vsc_app_accounts WHERE name=_username;
     IF _hive_user_id IS NULL THEN
         RAISE EXCEPTION 'Could not process non-existent user %', _username;
     END IF;
 
-    IF EXISTS (SELECT 1 FROM vsc_app.l1_users WHERE id=_hive_user_id) THEN
+    SELECT count INTO _nonce FROM vsc_app.l1_users WHERE id=_hive_user_id;
+    IF _nonce IS NOT NULL THEN
         UPDATE vsc_app.l1_users SET
             count=count+1,
             last_op_ts=_ts
@@ -71,8 +73,8 @@ BEGIN
             VALUES(_hive_user_id, 1, _ts);
     END IF;
 
-    INSERT INTO vsc_app.l1_operations(user_id, op_id, op_type, ts)
-        VALUES(_hive_user_id, _op_id, _op_type, _ts)
+    INSERT INTO vsc_app.l1_operations(user_id, nonce, op_id, op_type, ts)
+        VALUES(_hive_user_id, COALESCE(_nonce, 0), _op_id, _op_type, _ts)
         RETURNING id INTO _vsc_op_id;
 
     RETURN _vsc_op_id;

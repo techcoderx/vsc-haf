@@ -534,6 +534,7 @@ BEGIN
             'id', result.id,
             'username', result.username,
             'ts', _l1_tx.created_at,
+            'type', result.op_name,
             'l1_tx', _l1_tx.trx_hash,
             'l1_block', _l1_tx.block_num,
             'payload', _payload::jsonb

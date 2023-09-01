@@ -496,7 +496,7 @@ CREATE TYPE vsc_api.op_history_type AS (
     body TEXT
 );
 
-CREATE OR REPLACE FUNCTION vsc_api.get_op_history_by_l1_user(username VARCHAR, count INTEGER = 50, last_id BIGINT = NULL, bitmask_filter BIGINT = NULL)
+CREATE OR REPLACE FUNCTION vsc_api.get_op_history_by_l1_user(username VARCHAR, count INTEGER = 50, last_nonce BIGINT = NULL, bitmask_filter BIGINT = NULL)
 RETURNS jsonb
 AS
 $function$
@@ -507,9 +507,9 @@ DECLARE
     _l1_tx vsc_api.l1_tx_type;
     _payload TEXT;
 BEGIN
-    IF last_id IS NOT NULL AND last_id < 0 THEN
+    IF last_nonce IS NOT NULL AND last_nonce < 0 THEN
         RETURN jsonb_build_object(
-            'error', 'last_id must be greater than or equal to 0 if not null'
+            'error', 'last_nonce must be greater than or equal to 0 if not null'
         );
     ELSIF count <= 0 OR count > 1000 THEN
         RETURN jsonb_build_object(
@@ -527,7 +527,7 @@ BEGIN
                     a.id = o.user_id
                 JOIN hive.operations_view ho ON
                     ho.id = o.op_id
-                WHERE a.name = username AND o.id <= COALESCE(last_id, 9223372036854775807)
+                WHERE a.name = username AND o.nonce <= COALESCE(last_nonce, 9223372036854775807)
                 ORDER BY o.id DESC
                 LIMIT count
         ) INTO results;
@@ -541,7 +541,7 @@ BEGIN
                     a.id = o.user_id
                 JOIN hive.operations_view ho ON
                     ho.id = o.op_id
-                WHERE a.name = username AND o.id <= COALESCE(last_id, 9223372036854775807) AND (ot.filterer & bitmask_filter) > 0
+                WHERE a.name = username AND o.nonce <= COALESCE(last_nonce, 9223372036854775807) AND (ot.filterer & bitmask_filter) > 0
                 ORDER BY o.id DESC
                 LIMIT count
         ) INTO results;

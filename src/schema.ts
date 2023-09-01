@@ -80,6 +80,10 @@ const INDEXES: INDEXES_TYPE = {
         table_name: SCHEMA_NAME+'.l1_operations',
         columns: [{ col_name: 'user_id', order: Ordering.ASC }]
     },
+    l1_operation_user_nonce_idx: {
+        table_name: SCHEMA_NAME+'.l1_operations',
+        columns: [{ col_name: 'user_id', order: Ordering.ASC }, { col_name: 'nonce', order: Ordering.DESC }]
+    },
     block_hash_idx: {
         table_name: SCHEMA_NAME+'.blocks',
         columns: [{ col_name: 'block_hash', order: Ordering.ASC }]

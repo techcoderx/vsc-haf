@@ -215,6 +215,7 @@ DROP TYPE IF EXISTS vsc_api.l1_op_type CASCADE;
 CREATE TYPE vsc_api.l1_op_type AS (
     id BIGINT,
     name VARCHAR,
+    nonce BIGINT,
     op_type INTEGER,
     op_name VARCHAR,
     block_num INTEGER,
@@ -242,7 +243,7 @@ BEGIN
         );
     END IF;
     SELECT ARRAY(
-        SELECT ROW(o.id, hive.vsc_app_accounts.name, o.op_type, ot.op_name, ho.block_num, o.ts, ho.body::TEXT)::vsc_api.l1_op_type
+        SELECT ROW(o.id, hive.vsc_app_accounts.name, o.nonce, o.op_type, ot.op_name, ho.block_num, o.ts, ho.body::TEXT)::vsc_api.l1_op_type
             FROM vsc_app.l1_operations o
             JOIN vsc_app.l1_operation_types ot ON
                 ot.id = o.op_type
@@ -263,6 +264,7 @@ BEGIN
         SELECT ARRAY_APPEND(ops_arr, jsonb_build_object(
             'id', op.id,
             'username', op.name,
+            'nonce', op.nonce,
             'type', op.op_name,
             'l1_block', op.block_num,
             'ts', op.ts,
@@ -567,6 +569,61 @@ BEGIN
         )) INTO results_arr;
     END LOOP;
     
+    RETURN array_to_json(results_arr)::jsonb;
+END
+$function$
+LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION vsc_api.get_ops_by_l1_tx(trx_id VARCHAR)
+RETURNS jsonb
+AS
+$function$
+DECLARE
+    _block_num INTEGER[];
+    _trxs_in_blk SMALLINT[];
+    _trx_in_blk SMALLINT;
+    _op vsc_api.l1_op_type;
+    _payload TEXT;
+    results_arr jsonb[] DEFAULT '{}';
+BEGIN
+    SELECT ARRAY_AGG(block_num), ARRAY_AGG(trx_in_block) INTO _block_num, _trxs_in_blk
+        FROM hive.transactions_view
+        WHERE trx_hash = decode(trx_id, 'hex');
+
+    IF _block_num IS NULL THEN
+        RETURN '[]'::jsonb;
+    END IF;
+
+    FOREACH _trx_in_blk IN ARRAY _trxs_in_blk
+    LOOP
+        SELECT vo.id, va.name, vo.nonce, vo.op_type, vt.op_name, ho.block_num, vo.ts, ho.body::jsonb->>'value'
+            INTO _op
+            FROM hive.operations_view ho
+            JOIN vsc_app.l1_operations vo ON
+                vo.op_id=ho.id
+            JOIN vsc_app.l1_operation_types vt ON
+                vt.id=vo.op_type
+            JOIN hive.vsc_app_accounts va ON
+                va.id=vo.user_id
+            WHERE ho.block_num=_block_num[1] AND ho.trx_in_block=_trx_in_blk;
+        IF _op IS NOT NULL THEN
+            IF _op.op_name = 'announce_node' THEN
+                _payload := (_op.body::jsonb->>'json_metadata')::jsonb->>'vsc_node';
+            ELSE
+                _payload := _op.body::jsonb->>'json';
+            END IF;
+            SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
+                'id', _op.id,
+                'name', _op.name,
+                'nonce', _op.nonce,
+                'type', _op.op_name,
+                'l1_block', _op.block_num,
+                'ts', _op.ts,
+                'payload', _payload::jsonb
+            )) INTO results_arr;
+        END IF;
+    END LOOP;
+
     RETURN array_to_json(results_arr)::jsonb;
 END
 $function$

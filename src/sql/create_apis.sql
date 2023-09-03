@@ -618,6 +618,7 @@ BEGIN
                 'nonce', _op.nonce,
                 'type', _op.op_name,
                 'l1_block', _op.block_num,
+                'l1_tx', trx_id,
                 'ts', _op.ts,
                 'payload', _payload::jsonb
             )) INTO results_arr;

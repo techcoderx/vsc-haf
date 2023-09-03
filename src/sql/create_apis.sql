@@ -614,7 +614,7 @@ BEGIN
             END IF;
             SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
                 'id', _op.id,
-                'name', _op.name,
+                'username', _op.name,
                 'nonce', _op.nonce,
                 'type', _op.op_name,
                 'l1_block', _op.block_num,

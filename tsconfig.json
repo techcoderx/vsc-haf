@@ -9,6 +9,7 @@
                 "src/*"
             ]
         },
+        "skipLibCheck": true,
         "esModuleInterop": true,
         "sourceMap": true,
         "outDir": "dist",

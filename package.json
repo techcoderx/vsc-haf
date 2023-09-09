@@ -25,10 +25,10 @@
   },
   "homepage": "https://github.com/techcoderx/vsc-haf#readme",
   "dependencies": {
-    "dids": "^4.0.3",
+    "dids": "^4.0.4",
     "dotenv": "^16.3.1",
     "is-ipfs": "^8.0.1",
-    "key-did-provider-ed25519": "^3.0.1",
+    "key-did-provider-ed25519": "^3.0.2",
     "key-did-resolver": "^3.0.0",
     "log4js": "^6.9.1",
     "multiformats": "^12.0.1",
@@ -39,6 +39,7 @@
   "devDependencies": {
     "@types/pg": "^8.10.2",
     "@types/randombytes": "^2.0.0",
+    "@types/yargs": "^17.0.24",
     "ts-node": "^10.9.1",
     "typescript": "^5.1.6"
   }

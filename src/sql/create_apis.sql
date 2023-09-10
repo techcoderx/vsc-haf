@@ -574,38 +574,46 @@ END
 $function$
 LANGUAGE plpgsql STABLE;
 
+DROP TYPE IF EXISTS vsc_api.l1_op_blk_trx CASCADE;
+CREATE TYPE vsc_api.l1_op_blk_trx AS (
+    id BIGINT,
+    block_num INTEGER,
+    timestamp TIMESTAMP,
+    body TEXT
+);
 CREATE OR REPLACE FUNCTION vsc_api.get_ops_by_l1_tx(trx_id VARCHAR)
 RETURNS jsonb
 AS
 $function$
 DECLARE
-    _block_num INTEGER[];
-    _trxs_in_blk SMALLINT[];
-    _trx_in_blk SMALLINT;
+    _trxs vsc_api.l1_op_blk_trx[];
+    _trx vsc_api.l1_op_blk_trx;
     _op vsc_api.l1_op_type;
     _payload TEXT;
     results_arr jsonb[] DEFAULT '{}';
 BEGIN
-    SELECT ARRAY_AGG(block_num), ARRAY_AGG(trx_in_block) INTO _block_num, _trxs_in_blk
-        FROM hive.transactions_view
-        WHERE trx_hash = decode(trx_id, 'hex');
+    SELECT ARRAY(
+        SELECT ROW(ho.id, ho.block_num, ho.timestamp, ho.body::TEXT)
+            FROM hive.transactions_view ht
+            JOIN hive.operations_view ho ON
+                ho.block_num = ht.block_num AND ho.trx_in_block = ht.trx_in_block
+            WHERE trx_hash = decode(trx_id, 'hex')
+    ) INTO _trxs;
 
-    IF _block_num IS NULL THEN
+    IF _trxs IS NULL THEN
         RETURN '[]'::jsonb;
     END IF;
 
-    FOREACH _trx_in_blk IN ARRAY _trxs_in_blk
+    FOREACH _trx IN ARRAY _trxs
     LOOP
-        SELECT vo.id, va.name, vo.nonce, vo.op_type, vt.op_name, ho.block_num, vo.ts, ho.body::jsonb->>'value'
+        SELECT vo.id, va.name, vo.nonce, vo.op_type, vt.op_name, _trx.block_num, vo.ts, _trx.body::jsonb->>'value'
             INTO _op
-            FROM hive.operations_view ho
-            JOIN vsc_app.l1_operations vo ON
-                vo.op_id=ho.id
+            FROM vsc_app.l1_operations vo
             JOIN vsc_app.l1_operation_types vt ON
                 vt.id=vo.op_type
             JOIN hive.vsc_app_accounts va ON
                 va.id=vo.user_id
-            WHERE ho.block_num=_block_num[1] AND ho.trx_in_block=_trx_in_blk;
+            WHERE vo.op_id = _trx.id;
         IF _op IS NOT NULL THEN
             IF _op.op_name = 'announce_node' THEN
                 _payload := (_op.body::jsonb->>'json_metadata')::jsonb->>'vsc_node';

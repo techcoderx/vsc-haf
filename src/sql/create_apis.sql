@@ -327,9 +327,9 @@ BEGIN
         FROM vsc_app.witnesses w
         JOIN hive.vsc_app_accounts ON
             hive.vsc_app_accounts.id = w.id
-        JOIN vsc_app.l1_operations l1_e ON
+        LEFT JOIN vsc_app.l1_operations l1_e ON
             l1_e.id = w.enabled_at
-        JOIN vsc_app.l1_operations l1_d ON
+        LEFT JOIN vsc_app.l1_operations l1_d ON
             l1_d.id = w.disabled_at
         WHERE hive.vsc_app_accounts.name = username;
     SELECT trx_hash INTO _enabled_at_txhash FROM vsc_api.helper_get_tx_by_op_id(result.enabled_at);

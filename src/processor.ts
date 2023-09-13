@@ -18,12 +18,19 @@ const processor = {
                 return { valid: false }
             if (parsed.type === 'custom_json_operation') {
                 let cjidx = CUSTOM_JSON_IDS.indexOf(parsed.value.id)
-                if (cjidx === -1 ||
+                let validId = parsed.value.id.startsWith('vsc.') || parsed.value.id === 'vsc-testnet-hive'
+                if ((cjidx === -1 && !validId) ||
                     !Array.isArray(parsed.value.required_posting_auths) ||
                     parsed.value.required_posting_auths.length === 0 || // use posting auth only
                     !parsed.value.json)
                     return { valid: false }
                 let payload = JSON.parse(parsed.value.json)
+                if (cjidx !== 8 && cjidx !== 9 && validId && payload.action) {
+                    // likely bug in vsc-node that reads op action from json.action instead of custom json id
+                    cjidx = CUSTOM_JSON_IDS.indexOf('vsc.'+payload.action)
+                    if (cjidx === -1)
+                        return { valid: false }
+                }
                 let details: ParsedOp = {
                     valid: true,
                     id: op.id,

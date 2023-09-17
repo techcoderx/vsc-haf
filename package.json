@@ -11,7 +11,9 @@
   "main": "src/index.ts",
   "type": "module",
   "scripts": {
-    "start": "tsc && node dist/index.js",
+    "start": "node dist/index.js",
+    "compile": "tsc; cp -r src/sql dist",
+    "dev": "node --loader ts-node/esm src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -40,6 +42,7 @@
     "@types/pg": "^8.10.2",
     "@types/randombytes": "^2.0.0",
     "@types/yargs": "^17.0.24",
+    "ts-node": "^10.9.1",
     "typescript": "^5.1.6"
   }
 }

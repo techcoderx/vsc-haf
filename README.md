@@ -27,6 +27,18 @@ GRANT vsc_user TO vsc_app;
 psql -f src/sql/create_apis.sql block_log
 ```
 
+## Installation
+```
+git clone https://github.com/techcoderx/vsc-haf
+cd vsc-haf
+npm i
+```
+
+## Compile
+```
+npm run compile
+```
+
 ## Sync
 ```bash
 npm start

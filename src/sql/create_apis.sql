@@ -215,7 +215,7 @@ DROP TYPE IF EXISTS vsc_api.l1_op_type CASCADE;
 CREATE TYPE vsc_api.l1_op_type AS (
     id BIGINT,
     name VARCHAR,
-    nonce BIGINT,
+    nonce INTEGER,
     op_type INTEGER,
     op_name VARCHAR,
     block_num INTEGER,
@@ -492,13 +492,13 @@ DROP TYPE IF EXISTS vsc_api.op_history_type CASCADE;
 CREATE TYPE vsc_api.op_history_type AS (
     id BIGINT,
     username VARCHAR(16),
-    nonce BIGINT,
+    nonce INTEGER,
     op_id BIGINT,
     op_name VARCHAR(20),
     body TEXT
 );
 
-CREATE OR REPLACE FUNCTION vsc_api.get_op_history_by_l1_user(username VARCHAR, count INTEGER = 50, last_nonce BIGINT = NULL, bitmask_filter BIGINT = NULL)
+CREATE OR REPLACE FUNCTION vsc_api.get_op_history_by_l1_user(username VARCHAR, count INTEGER = 50, last_nonce INTEGER = NULL, bitmask_filter BIGINT = NULL)
 RETURNS jsonb
 AS
 $function$

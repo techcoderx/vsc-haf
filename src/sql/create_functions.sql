@@ -55,7 +55,7 @@ $function$
 DECLARE
     _hive_user_id INTEGER = NULL;
     _vsc_op_id BIGINT = NULL;
-    _nonce BIGINT = NULL;
+    _nonce INTEGER = NULL;
 BEGIN
     SELECT id INTO _hive_user_id FROM hive.vsc_app_accounts WHERE name=_username;
     IF _hive_user_id IS NULL THEN

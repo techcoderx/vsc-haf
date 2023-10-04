@@ -216,6 +216,7 @@ CREATE TYPE vsc_api.l1_op_type AS (
     id BIGINT,
     name VARCHAR,
     nonce INTEGER,
+    op_id BIGINT,
     op_type INTEGER,
     op_name VARCHAR,
     block_num INTEGER,
@@ -243,7 +244,7 @@ BEGIN
         );
     END IF;
     SELECT ARRAY(
-        SELECT ROW(o.id, hive.vsc_app_accounts.name, o.nonce, o.op_type, ot.op_name, ho.block_num, o.ts, ho.body::TEXT)::vsc_api.l1_op_type
+        SELECT ROW(o.id, hive.vsc_app_accounts.name, o.nonce, o.op_id, o.op_type, ot.op_name, ho.block_num, o.ts, ho.body::TEXT)::vsc_api.l1_op_type
             FROM vsc_app.l1_operations o
             JOIN vsc_app.l1_operation_types ot ON
                 ot.id = o.op_type
@@ -267,6 +268,7 @@ BEGIN
             'nonce', op.nonce,
             'type', op.op_name,
             'l1_block', op.block_num,
+            'l1_tx', (SELECT trx_hash FROM vsc_api.helper_get_tx_by_op_id(op.op_id)),
             'ts', op.ts,
             'payload', op_payload
         )) INTO ops_arr;
@@ -606,7 +608,7 @@ BEGIN
 
     FOREACH _trx IN ARRAY _trxs
     LOOP
-        SELECT vo.id, va.name, vo.nonce, vo.op_type, vt.op_name, _trx.block_num, vo.ts, _trx.body::jsonb->>'value'
+        SELECT vo.id, va.name, vo.nonce, vo.op_id, vo.op_type, vt.op_name, _trx.block_num, vo.ts, _trx.body::jsonb->>'value'
             INTO _op
             FROM vsc_app.l1_operations vo
             JOIN vsc_app.l1_operation_types vt ON

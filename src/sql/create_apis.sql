@@ -224,7 +224,7 @@ CREATE TYPE vsc_api.l1_op_type AS (
     body TEXT
 );
 
-CREATE OR REPLACE FUNCTION vsc_api.get_l1_operations_by_l1_blocks(l1_blk_start INTEGER, l1_blk_count INTEGER)
+CREATE OR REPLACE FUNCTION vsc_api.get_l1_operations_by_l1_blocks(l1_blk_start INTEGER, l1_blk_count INTEGER, full_tx_body BOOLEAN = FALSE)
 RETURNS jsonb
 AS
 $function$
@@ -257,7 +257,9 @@ BEGIN
     
     FOREACH op IN ARRAY ops
     LOOP
-        IF op.op_type = 1 THEN
+        IF full_tx_body IS TRUE THEN
+            op_payload := (op.body::jsonb->'value')::jsonb;
+        ELSIF op.op_type = 1 THEN
             op_payload := ((op.body::jsonb->'value'->>'json_metadata')::jsonb)->>'vsc_node';
         ELSE
             op_payload := (op.body::jsonb->'value'->>'json')::jsonb;

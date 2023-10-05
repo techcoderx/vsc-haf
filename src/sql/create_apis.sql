@@ -558,6 +558,9 @@ BEGIN
         SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(result.op_id);
         IF result.op_name = 'announce_node' THEN
             _payload := (result.body::jsonb->>'json_metadata')::jsonb->>'vsc_node';
+        ELSIF result.op_name = 'deposit' OR result.op_name = 'withdrawal' THEN
+            _payload := result.body::jsonb;
+            _payload := jsonb_set(_payload::jsonb, '{memo}', (result.body::jsonb->>'memo')::jsonb);
         ELSE
             _payload := result.body::jsonb->>'json';
         END IF;
@@ -621,6 +624,9 @@ BEGIN
         IF _op IS NOT NULL THEN
             IF _op.op_name = 'announce_node' THEN
                 _payload := (_op.body::jsonb->>'json_metadata')::jsonb->>'vsc_node';
+            ELSIF _op.op_name = 'deposit' OR _op.op_name = 'withdrawal' THEN
+                _payload := _op.body::jsonb;
+                _payload := jsonb_set(_payload::jsonb, '{memo}', (_op.body::jsonb->>'memo')::jsonb);
             ELSE
                 _payload := _op.body::jsonb->>'json';
             END IF;
@@ -694,6 +700,9 @@ BEGIN
         IF with_payload IS TRUE THEN
             IF result.op_name = 'announce_node' THEN
                 _payload := (result.body::jsonb->>'json_metadata')::jsonb->>'vsc_node';
+            ELSIF result.op_name = 'deposit' OR result.op_name = 'withdrawal' THEN
+                _payload := result.body::jsonb;
+                _payload := jsonb_set(_payload::jsonb, '{memo}', (result.body::jsonb->>'memo')::jsonb);
             ELSE
                 _payload := result.body::jsonb->>'json';
             END IF;

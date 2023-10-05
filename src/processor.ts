@@ -11,8 +11,7 @@ const processor = {
     validateAndParse: async (op: Op, ts: Date): Promise<ParsedOp> => {
         try {
             let parsed = JSON.parse(op.body)
-            if ((parsed.type !== 'custom_json_operation' && parsed.type !== 'account_update_operation') ||
-                !parsed.value)
+            if (!parsed.value)
                 return { valid: false }
             if (parsed.type === 'custom_json_operation') {
                 let cjidx = CUSTOM_JSON_IDS.indexOf(parsed.value.id)

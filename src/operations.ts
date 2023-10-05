@@ -1,7 +1,7 @@
 import db from './db.js'
 import logger from './logger.js'
 import { TxTypes } from './processor_types.js'
-import { CUSTOM_JSON_IDS } from './constants.js'
+import { CUSTOM_JSON_IDS, XFER_ACTIONS } from './constants.js'
 
 type OpTypeIDMap = {
     [key: string]: number
@@ -28,6 +28,8 @@ const op_type_map: OpTypeMod = {
             return op_type_map.map.announce_node
         else if (tx_type === TxTypes.CustomJSON)
             return op_type_map.map[CUSTOM_JSON_IDS[idx].split('.')[1]]
+        else if (tx_type === TxTypes.Transfer)
+            return op_type_map.map[XFER_ACTIONS[idx]]
         else
             return -1
     }

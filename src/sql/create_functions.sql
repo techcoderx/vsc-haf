@@ -10,7 +10,7 @@ RETURNS SETOF vsc_app.op_type
 AS
 $function$
 BEGIN
-    -- Fetch custom_json and account_update operations
+    -- Fetch transfer, custom_json and account_update operations
     RETURN QUERY
         SELECT
             id,
@@ -18,7 +18,7 @@ BEGIN
             body::TEXT
         FROM hive.vsc_app_operations_view
         WHERE block_num >= _first_block AND block_num <= _last_block AND
-            (op_type_id=18 OR op_type_id=10)
+            (op_type_id=2 OR op_type_id=18 OR op_type_id=10)
         ORDER BY block_num, id;
 END
 $function$
@@ -205,6 +205,38 @@ $function$
 BEGIN
     INSERT INTO vsc_app.multisig_txrefs(in_op, ref_id)
         VALUES(_in_op, _txref);
+END
+$function$
+LANGUAGE plpgsql VOLATILE;
+
+CREATE OR REPLACE FUNCTION vsc_app.insert_deposit(
+    _in_op BIGINT,
+    _amount INTEGER,
+    _asset SMALLINT,
+    _contract_id VARCHAR
+)
+RETURNS void
+AS
+$function$
+BEGIN
+    INSERT INTO vsc_app.deposits(in_op, amount, asset, contract_id)
+        VALUES(_in_op, _amount, _asset, _contract_id);
+END
+$function$
+LANGUAGE plpgsql VOLATILE;
+
+CREATE OR REPLACE FUNCTION vsc_app.insert_withdrawal(
+    _in_op BIGINT,
+    _amount INTEGER,
+    _asset SMALLINT,
+    _contract_id VARCHAR
+)
+RETURNS void
+AS
+$function$
+BEGIN
+    INSERT INTO vsc_app.withdrawals(in_op, amount, asset, contract_id)
+        VALUES(_in_op, _amount, _asset, _contract_id);
 END
 $function$
 LANGUAGE plpgsql VOLATILE;

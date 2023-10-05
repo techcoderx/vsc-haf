@@ -1,3 +1,9 @@
+export type Op = {
+    id: string
+    block_num: number
+    body: string
+}
+
 export type ParsedOp = {
     valid: boolean
     id?: string // pg library returns strings for bigint type
@@ -6,12 +12,13 @@ export type ParsedOp = {
     block_num?: number
     tx_type?: TxTypes
     op_type?: number
-    payload?: DIDPayload | BlockPayload | NewContractPayload | ContractCommitmentPayload | NodeAnnouncePayload | MultisigTxRefPayload
+    payload?: DIDPayload | BlockPayload | NewContractPayload | ContractCommitmentPayload | NodeAnnouncePayload | MultisigTxRefPayload | DepositPayload
 }
 
 export enum TxTypes {
     CustomJSON,
-    AccountUpdate
+    AccountUpdate,
+    Transfer
 }
 
 export type DIDPayload = {
@@ -40,4 +47,10 @@ export type NodeAnnouncePayload = {
 
 export type MultisigTxRefPayload = {
     ref_id: string
+}
+
+export type DepositPayload = {
+    amount: number
+    asset: number
+    contract_id?: string
 }

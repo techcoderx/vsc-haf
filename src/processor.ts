@@ -1,18 +1,16 @@
 import { cid as isCID } from 'is-ipfs'
 import { CID } from 'multiformats/cid'
 import randomDID from './did.js'
-import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT } from './constants.js'
+import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS } from './constants.js'
 import db from './db.js'
 import logger from './logger.js'
-import { BlockPayload, ContractCommitmentPayload, DIDPayload, MultisigTxRefPayload, NewContractPayload, NodeAnnouncePayload, ParsedOp, TxTypes } from './processor_types.js'
+import { BlockPayload, ContractCommitmentPayload, DIDPayload, DepositPayload, MultisigTxRefPayload, NewContractPayload, NodeAnnouncePayload, Op, ParsedOp, TxTypes } from './processor_types.js'
 import op_type_map from './operations.js'
 
 const processor = {
-    validateAndParse: async (op: any, ts: Date): Promise<ParsedOp> => {
+    validateAndParse: async (op: Op, ts: Date): Promise<ParsedOp> => {
         try {
             let parsed = JSON.parse(op.body)
-            // sanitize and filter custom json
-            // adjust operation field checking as necessary
             if ((parsed.type !== 'custom_json_operation' && parsed.type !== 'account_update_operation') ||
                 !parsed.value)
                 return { valid: false }
@@ -139,8 +137,45 @@ const processor = {
                     witnessEnabled: proof && proof.witness && proof.witness.enabled
                 }
                 return details
+            } else if (parsed.type === 'transfer_operation') {
+                if ((parsed.value.from !== MULTISIG_ACCOUNT && parsed.value.to !== MULTISIG_ACCOUNT)|| !parsed.value.memo)
+                    return { valid: false }
+                let payload = JSON.parse(parsed.value.memo)
+                let details: ParsedOp = {
+                    valid: true,
+                    id: op.id,
+                    ts: ts,
+                    block_num: op.block_num,
+                    tx_type: TxTypes.Transfer
+                }
+                if (parsed.value.to === MULTISIG_ACCOUNT) {
+                    // deposit
+                    details.op_type = 0
+                    details.user = parsed.value.from
+                    if (payload.net_id !== NETWORK_ID || payload.action !== 'deposit')
+                        return { valid: false }
+                    details.payload = {
+                        amount: parseInt(parsed.value.amount.amount),
+                        asset: L1_ASSETS.indexOf(parsed.value.amount.nai)
+                    }
+                    if (payload.contract_id && typeof payload.contract_id === 'string')
+                        details.payload.contract_id = payload.contract_id
+                    if (details.payload.asset !== -1)
+                        return { valid: false } // this should not happen
+                    return details
+                } else if (parsed.value.from === MULTISIG_ACCOUNT) {
+                    // withdrawal
+                    details.op_type = 1
+                    details.user = parsed.value.to
+                    details.payload = {
+                        amount: parseInt(parsed.value.amount.amount),
+                        asset: L1_ASSETS.indexOf(parsed.value.amount.nai)
+                    }
+                    if (details.payload.asset !== -1)
+                        return { valid: false } // again, this should not happen
+                    return details
+                }
             }
-            // validate operation here
             return { valid: false }
         } catch {
             logger.trace('Failed to parse operation, id:',op.id,'block:',op.block_num)
@@ -196,6 +231,14 @@ const processor = {
                     break
                 case op_type_map.map.custom_json:
                     // TODO what should be done here?
+                    break
+                case op_type_map.map.deposit:
+                    pl = result.payload as DepositPayload
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_deposit($1,$2,$3,$4);`,[new_vsc_op.rows[0].process_operation,pl.amount,pl.asset,pl.contract_id])
+                    break
+                case op_type_map.map.withdrawal:
+                    pl = result.payload as DepositPayload
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_withdrawal($1,$2,$3,$4);`,[new_vsc_op.rows[0].process_operation,pl.amount,pl.asset,pl.contract_id])
                     break
                 default:
                     break

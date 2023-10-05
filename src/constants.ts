@@ -13,6 +13,14 @@ export const CUSTOM_JSON_IDS = [
     'vsc.multisig_txref',
     'vsc.custom_json'
 ]
+export const XFER_ACTIONS = [
+    'deposit',
+    'withdrawal'
+]
+export const L1_ASSETS = [
+    '@@000000021', // HIVE
+    '@@000000013', // HBD
+]
 export const START_BLOCK = 74869131
 export const NETWORK_ID = 'testnet/d12e6110-9c8c-4498-88f8-67ddf90d451c'
 export const MULTISIG_ACCOUNT = 'vsc.ptk-d12e6110'

@@ -69,3 +69,19 @@ CREATE TABLE IF NOT EXISTS vsc_app.multisig_txrefs(
     in_op BIGINT NOT NULL,
     ref_id VARCHAR(59) NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS vsc_app.deposits(
+    id SERIAL PRIMARY KEY,
+    in_op BIGINT NOT NULL,
+    amount INTEGER NOT NULL,
+    asset SMALLINT NOT NULL,
+    contract_id VARCHAR(40)
+);
+
+CREATE TABLE IF NOT EXISTS vsc_app.withdrawals(
+    id SERIAL PRIMARY KEY,
+    in_op BIGINT NOT NULL,
+    amount INTEGER NOT NULL,
+    asset SMALLINT NOT NULL,
+    contract_id VARCHAR(40)
+);

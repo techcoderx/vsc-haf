@@ -160,7 +160,7 @@ const processor = {
                     }
                     if (payload.contract_id && typeof payload.contract_id === 'string')
                         details.payload.contract_id = payload.contract_id
-                    if (details.payload.asset !== -1)
+                    if (details.payload.asset === -1)
                         return { valid: false } // this should not happen
                     return details
                 } else if (parsed.value.from === MULTISIG_ACCOUNT) {
@@ -171,7 +171,7 @@ const processor = {
                         amount: parseInt(parsed.value.amount.amount),
                         asset: L1_ASSETS.indexOf(parsed.value.amount.nai)
                     }
-                    if (details.payload.asset !== -1)
+                    if (details.payload.asset === -1)
                         return { valid: false } // again, this should not happen
                     return details
                 }

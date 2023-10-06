@@ -47,6 +47,23 @@ END
 $function$
 LANGUAGE plpgsql STABLE;
 
+-- SMALLINT to ASSET string mapping
+CREATE OR REPLACE FUNCTION vsc_app.asset_by_id(id SMALLINT = -1)
+RETURNS VARCHAR
+AS
+$function$
+BEGIN
+    IF id = 0 THEN
+        RETURN 'HIVE';
+    ELSIF id = 1 THEN
+        RETURN 'HBD';
+    ELSE
+        RETURN '';
+    END IF;
+END
+$function$
+LANGUAGE plpgsql IMMUTABLE;
+
 -- Process transactions
 CREATE OR REPLACE FUNCTION vsc_app.process_operation(_username VARCHAR, _op_id BIGINT, _op_type INTEGER, _ts TIMESTAMP)
 RETURNS BIGINT

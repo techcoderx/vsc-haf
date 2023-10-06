@@ -790,3 +790,59 @@ BEGIN
 END
 $function$
 LANGUAGE plpgsql STABLE;
+
+DROP TYPE IF EXISTS vsc_api.deposit_type CASCADE;
+CREATE TYPE vsc_api.deposit_type AS (
+    id INTEGER,
+    in_op BIGINT,
+    amount INTEGER,
+    asset SMALLINT,
+    contract_id VARCHAR,
+    name VARCHAR,
+    op_id BIGINT
+);
+
+CREATE OR REPLACE FUNCTION vsc_api.list_latest_deposits(count INTEGER = 100)
+RETURNS jsonb
+AS
+$function$
+DECLARE
+    result vsc_api.deposit_type;
+    results vsc_api.deposit_type[];
+    results_arr jsonb[] DEFAULT '{}';
+    _l1_tx vsc_api.l1_tx_type;
+BEGIN
+    IF count <= 0 OR count > 100 THEN
+        RETURN jsonb_build_object(
+            'error', 'count must be between 1 and 100'
+        );
+    END IF;
+    SELECT ARRAY(
+        SELECT ROW(c.*, a.name, o.op_id)
+        FROM vsc_app.deposits c
+        JOIN vsc_app.l1_operations o ON
+            o.id=c.in_op
+        JOIN hive.vsc_app_accounts a ON
+            a.id=o.user_id
+        ORDER BY c.id DESC
+        LIMIT count
+    ) INTO results;
+
+    FOREACH result IN ARRAY results
+    LOOP
+        SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(result.op_id);
+        SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
+            'id', result.id,
+            'ts', _l1_tx.created_at,
+            'in_op', _l1_tx.trx_hash,
+            'l1_block', _l1_tx.block_num,
+            'username', result.name,
+            'amount', ROUND(result.amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(result.asset)),
+            'contract_id', result.contract_id
+        )) INTO results_arr;
+    END LOOP;
+
+    RETURN array_to_json(results_arr)::jsonb;
+END
+$function$
+LANGUAGE plpgsql STABLE;

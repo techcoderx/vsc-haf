@@ -259,9 +259,9 @@ BEGIN
     LOOP
         IF full_tx_body IS TRUE THEN
             op_payload := (op.body::jsonb->'value')::jsonb;
-        ELSIF op.op_type = 1 THEN
+        ELSIF op.op_name = 'announce_node' THEN
             op_payload := ((op.body::jsonb->'value'->>'json_metadata')::jsonb)->>'vsc_node';
-        ELSIF op.op_type = 12 OR op.op_type = 13 THEN
+        ELSIF op.op_name = 'deposit' OR op.op_name = 'withdrawal' THEN
             op_payload := (op.body::jsonb->'value')::jsonb;
             op_payload := jsonb_set(op_payload::jsonb, '{memo}', (op_payload::jsonb->>'memo')::jsonb);
         ELSE

@@ -11,7 +11,8 @@ export const CUSTOM_JSON_IDS = [
     'vsc.join_contract',
     'vsc.leave_contract',
     'vsc.multisig_txref',
-    'vsc.custom_json'
+    'vsc.custom_json',
+    'vsc.withdraw_request'
 ]
 export const XFER_ACTIONS = [
     'deposit',

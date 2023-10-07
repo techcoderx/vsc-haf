@@ -110,6 +110,15 @@ const processor = {
                             ref_id: payload.ref_id
                         }
                         break
+                    case 10:
+                        // withdrawal request
+                        if (payload.net_id !== NETWORK_ID || isNaN(parseFloat(payload.amount)))
+                            return { valid: false }
+                        details.payload = {
+                            amount: parseFloat(payload.amount),
+                            asset: 0 // not sure
+                        }
+                        break
                     default:
                         break
                 }

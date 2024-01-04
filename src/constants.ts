@@ -12,7 +12,8 @@ export const CUSTOM_JSON_IDS = [
     'vsc.leave_contract',
     'vsc.multisig_txref',
     'vsc.custom_json',
-    'vsc.withdraw_request'
+    'vsc.withdraw_request',
+    'vsc.withdraw_finalization'
 ]
 export const XFER_ACTIONS = [
     'deposit',
@@ -22,6 +23,6 @@ export const L1_ASSETS = [
     '@@000000021', // HIVE
     '@@000000013', // HBD
 ]
-export const START_BLOCK = 74869131
-export const NETWORK_ID = 'testnet/d12e6110-9c8c-4498-88f8-67ddf90d451c'
+export const START_BLOCK = 81614028
+export const NETWORK_ID = 'testnet/0bf2e474-6b9e-4165-ad4e-a0d78968d20c'
 export const MULTISIG_ACCOUNT = 'vsc.ptk-d12e6110'

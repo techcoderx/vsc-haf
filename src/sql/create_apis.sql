@@ -21,11 +21,11 @@ DECLARE
     _txrefs INTEGER;
 BEGIN
     SELECT last_processed_block, db_version INTO _last_processed_block, _db_version FROM vsc_app.state;
-    SELECT id INTO _l2_block_height FROM vsc_app.blocks ORDER BY id DESC LIMIT 1;
-    SELECT id INTO _ops FROM vsc_app.l1_operations ORDER BY id DESC LIMIT 1;
-    SELECT id INTO _contracts FROM vsc_app.contracts ORDER BY id DESC LIMIT 1;
-    SELECT witness_id INTO _witnesses FROM vsc_app.witnesses ORDER BY witness_id DESC LIMIT 1;
-    SELECT id INTO _txrefs FROM vsc_app.multisig_txrefs ORDER BY id DESC LIMIT 1;
+    SELECT COUNT(*) INTO _l2_block_height FROM vsc_app.blocks;
+    SELECT COUNT(*) INTO _ops FROM vsc_app.l1_operations;
+    SELECT COUNT(*) INTO _contracts FROM vsc_app.contracts;
+    SELECT COUNT(*) INTO _witnesses FROM vsc_app.witnesses;
+    SELECT COUNT(*) INTO _txrefs FROM vsc_app.multisig_txrefs;
     RETURN jsonb_build_object(
         'last_processed_block', _last_processed_block,
         'db_version', _db_version,

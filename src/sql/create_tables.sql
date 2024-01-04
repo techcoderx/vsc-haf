@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS vsc_app.l1_operation_types(
     id SERIAL PRIMARY KEY,
-    op_name VARCHAR(20),
+    op_name VARCHAR(25),
     filterer BIGINT GENERATED ALWAYS AS (2^(id-1)) STORED
 );
 

@@ -346,7 +346,6 @@ BEGIN
         'id', result.witness_id,
         'username', result.name,
         'did', result.did,
-        'trusted', COALESCE((SELECT d.trusted FROM vsc_app.trusted_dids d WHERE d.did=result.did), FALSE),
         'enabled', result.enabled,
         'enabled_at', _enabled_at_txhash,
         'disabled_at', _disabled_at_txhash,
@@ -399,25 +398,6 @@ BEGIN
     END LOOP;
     
     RETURN array_to_json(result_arr)::jsonb;
-END
-$function$
-LANGUAGE plpgsql STABLE;
-
-CREATE OR REPLACE FUNCTION vsc_api.is_did_trusted(_did VARCHAR)
-RETURNS jsonb 
-AS
-$function$
-DECLARE
-    _is_trusted BOOLEAN DEFAULT FALSE;
-BEGIN
-    SELECT d.trusted INTO _is_trusted FROM vsc_app.trusted_dids d WHERE d.did=_did;
-    IF _is_trusted IS NULL THEN
-        _is_trusted := FALSE;
-    END IF;
-    RETURN jsonb_build_object(
-        'did', _did,
-        'trusted', _is_trusted
-    );
 END
 $function$
 LANGUAGE plpgsql STABLE;

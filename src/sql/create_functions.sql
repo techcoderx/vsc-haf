@@ -144,19 +144,6 @@ END
 $function$
 LANGUAGE plpgsql VOLATILE;
 
-CREATE OR REPLACE FUNCTION vsc_app.trust_did(_did VARCHAR, _is_trusted BOOLEAN)
-RETURNS void
-AS
-$function$
-BEGIN
-    INSERT INTO vsc_app.trusted_dids(did, trusted)
-        VALUES(_did, _is_trusted)
-        ON CONFLICT (did) DO UPDATE
-        SET trusted=_is_trusted;
-END
-$function$
-LANGUAGE plpgsql VOLATILE;
-
 CREATE OR REPLACE FUNCTION vsc_app.insert_block(_announced_in_op BIGINT, _block_hash VARCHAR, _announcer VARCHAR)
 RETURNS void
 AS

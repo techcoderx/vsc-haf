@@ -209,14 +209,6 @@ const processor = {
                     pl = result.payload as DIDPayload
                     await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4);`,[result.user,null,false,new_vsc_op.rows[0].process_operation])
                     break
-                case op_type_map.map.allow_witness:
-                    pl = result.payload as DIDPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.trust_did($1,$2);`,[pl.did,true])
-                    break
-                case op_type_map.map.disallow_witness:
-                    pl = result.payload as DIDPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.trust_did($1,$2);`,[pl.did,false])
-                    break
                 case op_type_map.map.announce_block:
                     pl = result.payload as BlockPayload
                     await db.client.query(`SELECT ${SCHEMA_NAME}.insert_block($1,$2,$3);`,[new_vsc_op.rows[0].process_operation,pl.block_hash,result.user])

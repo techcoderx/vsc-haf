@@ -25,4 +25,4 @@ export const L1_ASSETS = [
 ]
 export const START_BLOCK = 81614028
 export const NETWORK_ID = 'testnet/0bf2e474-6b9e-4165-ad4e-a0d78968d20c'
-export const MULTISIG_ACCOUNT = 'vsc.ptk-d12e6110'
+export const MULTISIG_ACCOUNT = 'vsc.ms-8968d20c'

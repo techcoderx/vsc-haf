@@ -143,7 +143,7 @@ const processor = {
                 details.payload = {
                     did: did,
                     witnessEnabled: proof && proof.witness && proof.witness.enabled,
-                    git_commit: (proof && proof.git_commit) ?? ''
+                    git_commit: (proof && typeof proof.git_commit === 'string') ? (proof.git_commit as string).trim().slice(0,40) : ''
                 }
                 return details
             } else if (parsed.type === 'transfer_operation') {

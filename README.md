@@ -48,3 +48,8 @@ npm start
 ```bash
 ./scripts/postgrest_start.sh postgres://vsc_app:<vsc_app_password>@localhost:5432/block_log <server_port>
 ```
+
+## Periodically fetch latest [vsc-node](https://github.com/vsc-eco/vsc-node) commit in crontab
+```cron
+*/5 * * * * /path/to/this/repo/scripts/github_fetch_head.sh <psql_url> <github_api_key>
+```

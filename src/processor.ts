@@ -200,15 +200,15 @@ const processor = {
             switch (op_number) {
                 case op_type_map.map.announce_node:
                     pl = result.payload as NodeAnnouncePayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4);`,[result.user,pl.did,pl.witnessEnabled,new_vsc_op.rows[0].process_operation])
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4,$5);`,[result.user,pl.did,pl.witnessEnabled,new_vsc_op.rows[0].process_operation,pl.git_commit])
                     break
                 case op_type_map.map.enable_witness:
                     pl = result.payload as DIDPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4);`,[result.user,pl.did,true,new_vsc_op.rows[0].process_operation])
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4,$5);`,[result.user,pl.did,true,new_vsc_op.rows[0].process_operation,null])
                     break
                 case op_type_map.map.disable_witness:
                     pl = result.payload as DIDPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4);`,[result.user,null,false,new_vsc_op.rows[0].process_operation])
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4,$5);`,[result.user,null,false,new_vsc_op.rows[0].process_operation,null])
                     break
                 case op_type_map.map.announce_block:
                     pl = result.payload as BlockPayload

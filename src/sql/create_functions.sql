@@ -99,7 +99,7 @@ END
 $function$
 LANGUAGE plpgsql VOLATILE;
 
-CREATE OR REPLACE FUNCTION vsc_app.update_witness(_username VARCHAR, _did VARCHAR, _enabled BOOLEAN, _op_id BIGINT, _git_commit VARCHAR)
+CREATE OR REPLACE FUNCTION vsc_app.update_witness(_username VARCHAR, _did VARCHAR, _enabled BOOLEAN, _op_id BIGINT, _git_commit VARCHAR = NULL)
 RETURNS void
 AS
 $function$
@@ -108,6 +108,7 @@ DECLARE
     _enabled_at INTEGER = NULL;
     _disabled_at INTEGER = NULL;
     _witness_exists BOOLEAN = NULL;
+    _current_git_commit VARCHAR = NULL;
 BEGIN
     SELECT id INTO _hive_user_id FROM hive.vsc_app_accounts WHERE name=_username;
     IF _hive_user_id IS NULL THEN
@@ -115,13 +116,13 @@ BEGIN
     END IF;
 
     SELECT EXISTS INTO _witness_exists(
-        SELECT 1 FROM vsc_app.witnesses WHERE id=_hive_user_id
+        SELECT git_commit INTO _current_git_commit FROM vsc_app.witnesses WHERE id=_hive_user_id
     );
 
     IF _witness_exists IS FALSE THEN
         IF _enabled IS TRUE THEN
             INSERT INTO vsc_app.witnesses(id, did, enabled, enabled_at, git_commit)
-                VALUES (_hive_user_id, _did, TRUE, _op_id, _git_commit);
+                VALUES (_hive_user_id, _did, TRUE, _op_id, COALESCE(_git_commit, _current_git_commit));
         ELSE
             RETURN;
         END IF;
@@ -131,14 +132,14 @@ BEGIN
                 enabled = FALSE,
                 did = _did,
                 disabled_at = _op_id,
-                git_commit = _git_commit
+                git_commit = COALESCE(_git_commit, _current_git_commit)
             WHERE id = _hive_user_id;
         ELSE
             UPDATE vsc_app.witnesses SET
                 enabled = TRUE,
                 did = _did,
                 enabled_at = _op_id,
-                git_commit = _git_commit
+                git_commit = COALESCE(_git_commit, _current_git_commit)
             WHERE id = _hive_user_id;
         END IF;
     END IF;

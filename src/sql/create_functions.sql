@@ -247,3 +247,16 @@ BEGIN
 END
 $function$
 LANGUAGE plpgsql VOLATILE;
+
+CREATE OR REPLACE FUNCTION vsc_app.set_vsc_node_git_hash(_commit_hash VARCHAR)
+RETURNS void
+AS
+$function$
+BEGIN
+    INSERT INTO vsc_app.vsc_node_git(id, git_commit)
+        VALUES(1, _commit_hash)
+        ON CONFLICT(id) DO UPDATE
+        SET git_commit=_commit_hash;
+END
+$function$
+LANGUAGE plpgsql VOLATILE;

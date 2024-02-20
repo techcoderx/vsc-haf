@@ -47,6 +47,11 @@ CREATE TABLE IF NOT EXISTS vsc_app.witnesses(
     produced INTEGER DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS vsc_app.vsc_node_git(
+    id INTEGER PRIMARY KEY,
+    git_commit VARCHAR(40)
+);
+
 CREATE TABLE IF NOT EXISTS vsc_app.contract_commitments(
     contract_id VARCHAR NOT NULL,
     node_identity VARCHAR NOT NULL,

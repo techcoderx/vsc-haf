@@ -353,6 +353,7 @@ BEGIN
         'enabled_at', _enabled_at_txhash,
         'disabled_at', _disabled_at_txhash,
         'git_commit', result.git_commit,
+        'latest_git_commit', _latest_git_commit,
         'is_up_to_date', (result.git_commit = _latest_git_commit),
         'last_block', result.last_block,
         'produced', result.produced

@@ -329,6 +329,7 @@ DECLARE
     result vsc_api.witness_type;
     _enabled_at_txhash VARCHAR;
     _disabled_at_txhash VARCHAR;
+    _latest_git_commit VARCHAR;
 BEGIN
     SELECT w.witness_id, name, w.did, w.enabled, l1_e.op_id AS enabled_at, l1_d.op_id AS disabled_at, w.git_commit, w.last_block, w.produced
         INTO result
@@ -342,6 +343,7 @@ BEGIN
         WHERE hive.vsc_app_accounts.name = username;
     SELECT trx_hash INTO _enabled_at_txhash FROM vsc_api.helper_get_tx_by_op_id(result.enabled_at);
     SELECT trx_hash INTO _disabled_at_txhash FROM vsc_api.helper_get_tx_by_op_id(result.disabled_at);
+    SELECT git_commit INTO _latest_git_commit FROM vsc_app.vsc_node_git WHERE id=1;
     
     RETURN jsonb_build_object(
         'id', result.witness_id,
@@ -351,6 +353,7 @@ BEGIN
         'enabled_at', _enabled_at_txhash,
         'disabled_at', _disabled_at_txhash,
         'git_commit', result.git_commit,
+        'is_up_to_date', (result.git_commit = _latest_git_commit),
         'last_block', result.last_block,
         'produced', result.produced
     );
@@ -366,6 +369,7 @@ DECLARE
     result vsc_api.witness_type;
     results vsc_api.witness_type[];
     result_arr jsonb[] DEFAULT '{}';
+    _latest_git_commit VARCHAR;
 BEGIN
     IF count > 50 OR count <= 0 THEN
         RETURN jsonb_build_object(
@@ -385,6 +389,7 @@ BEGIN
             ORDER BY w.witness_id
             LIMIT count
     ) INTO results;
+    SELECT git_commit INTO _latest_git_commit FROM vsc_app.vsc_node_git WHERE id=1;
     FOREACH result IN ARRAY results
     LOOP
         SELECT ARRAY_APPEND(result_arr, jsonb_build_object(
@@ -395,6 +400,7 @@ BEGIN
             'enabled_at', (SELECT trx_hash FROM vsc_api.helper_get_tx_by_op_id(result.enabled_at)),
             'disabled_at', (SELECT trx_hash FROM vsc_api.helper_get_tx_by_op_id(result.disabled_at)),
             'git_commit', result.git_commit,
+            'is_up_to_date', (result.git_commit = _latest_git_commit),
             'last_block', result.last_block,
             'produced', result.produced
         )) INTO result_arr;

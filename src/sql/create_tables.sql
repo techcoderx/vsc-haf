@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.witnesses(
     enabled BOOLEAN DEFAULT FALSE,
     enabled_at BIGINT,
     disabled_at BIGINT,
+    git_commit VARCHAR(40),
     last_block INTEGER,
     produced INTEGER DEFAULT 0
 );

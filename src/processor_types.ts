@@ -43,6 +43,7 @@ export type ContractCommitmentPayload = {
 export type NodeAnnouncePayload = {
     did: string
     witnessEnabled: boolean
+    git_commit: string
 }
 
 export type MultisigTxRefPayload = {

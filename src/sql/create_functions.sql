@@ -99,7 +99,7 @@ END
 $function$
 LANGUAGE plpgsql VOLATILE;
 
-CREATE OR REPLACE FUNCTION vsc_app.update_witness(_username VARCHAR, _did VARCHAR, _enabled BOOLEAN, _op_id BIGINT)
+CREATE OR REPLACE FUNCTION vsc_app.update_witness(_username VARCHAR, _did VARCHAR, _enabled BOOLEAN, _op_id BIGINT, _git_commit VARCHAR)
 RETURNS void
 AS
 $function$
@@ -120,8 +120,8 @@ BEGIN
 
     IF _witness_exists IS FALSE THEN
         IF _enabled IS TRUE THEN
-            INSERT INTO vsc_app.witnesses(id, did, enabled, enabled_at)
-                VALUES (_hive_user_id, _did, TRUE, _op_id);
+            INSERT INTO vsc_app.witnesses(id, did, enabled, enabled_at, git_commit)
+                VALUES (_hive_user_id, _did, TRUE, _op_id, _git_commit);
         ELSE
             RETURN;
         END IF;
@@ -130,13 +130,15 @@ BEGIN
             UPDATE vsc_app.witnesses SET
                 enabled = FALSE,
                 did = _did,
-                disabled_at = _op_id
+                disabled_at = _op_id,
+                git_commit = _git_commit
             WHERE id = _hive_user_id;
         ELSE
             UPDATE vsc_app.witnesses SET
                 enabled = TRUE,
                 did = _did,
-                enabled_at = _op_id
+                enabled_at = _op_id,
+                git_commit = _git_commit
             WHERE id = _hive_user_id;
         END IF;
     END IF;

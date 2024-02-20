@@ -142,7 +142,8 @@ const processor = {
                     return { valid: false }
                 details.payload = {
                     did: did,
-                    witnessEnabled: proof && proof.witness && proof.witness.enabled
+                    witnessEnabled: proof && proof.witness && proof.witness.enabled,
+                    git_commit: (proof && proof.git_commit) ?? ''
                 }
                 return details
             } else if (parsed.type === 'transfer_operation') {

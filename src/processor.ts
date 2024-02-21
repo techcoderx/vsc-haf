@@ -221,7 +221,7 @@ const processor = {
                     break
                 case op_type_map.map.propose_block:
                     pl = result.payload as BlockPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_block($1,$2,$3);`,[new_vsc_op.rows[0].process_operation,pl.block_hash,result.user])
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_block($1,$2,$3,$4,$5);`,[new_vsc_op.rows[0].process_operation,pl.block_hash,result.user,pl.signature.sig,pl.signature.bv])
                     break
                 case op_type_map.map.create_contract:
                     pl = result.payload as NewContractPayload

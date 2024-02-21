@@ -61,11 +61,11 @@ const processor = {
                         }
                         break
                     case 4:
-                        // announce block
+                        // propose block
+                        logger.trace('new block',payload)
                         if (payload.net_id !== NETWORK_ID ||
                             payload.experiment_id !== 2 ||
                             typeof payload.signed_block !== 'object' ||
-                            typeof payload.signed_block.block !== 'string' ||
                             !isCID(payload.signed_block.block) ||
                             CID.parse(payload.signed_block.block).code !== 0x71 ||
                             typeof payload.signed_block.signature !== 'object' ||

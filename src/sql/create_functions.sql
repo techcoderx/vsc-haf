@@ -107,7 +107,6 @@ DECLARE
     _hive_user_id INTEGER = NULL;
     _enabled_at INTEGER = NULL;
     _disabled_at INTEGER = NULL;
-    _witness_exists BOOLEAN = NULL;
     _current_git_commit VARCHAR = NULL;
 BEGIN
     SELECT id INTO _hive_user_id FROM hive.vsc_app_accounts WHERE name=_username;
@@ -115,11 +114,9 @@ BEGIN
         RAISE EXCEPTION 'Could not process non-existent user %', _username;
     END IF;
 
-    SELECT EXISTS INTO _witness_exists(
-        SELECT git_commit INTO _current_git_commit FROM vsc_app.witnesses WHERE id=_hive_user_id
-    );
+    SELECT git_commit INTO _current_git_commit FROM vsc_app.witnesses WHERE id=_hive_user_id;
 
-    IF _witness_exists IS FALSE THEN
+    IF _current_git_commit IS NULL THEN
         IF _enabled IS TRUE THEN
             INSERT INTO vsc_app.witnesses(id, did, enabled, enabled_at, git_commit)
                 VALUES (_hive_user_id, _did, TRUE, _op_id, COALESCE(_git_commit, _current_git_commit));

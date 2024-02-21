@@ -33,7 +33,7 @@ const processor = {
                     valid: true,
                     id: op.id,
                     ts: ts,
-                    user: parsed.value.required_posting_auths[0],
+                    user: requiresActiveAuth ? parsed.value.required_auths[0] : parsed.value.required_posting_auths[0],
                     block_num: op.block_num,
                     tx_type: TxTypes.CustomJSON,
                     op_type: cjidx

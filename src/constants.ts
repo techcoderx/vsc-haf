@@ -6,7 +6,7 @@ export const CUSTOM_JSON_IDS = [
     'vsc.disable_witness',
     'vsc.allow_witness',
     'vsc.disallow_witness',
-    'vsc.announce_block',
+    'vsc.propose_block.experiment',
     'vsc.create_contract',
     'vsc.join_contract',
     'vsc.leave_contract',

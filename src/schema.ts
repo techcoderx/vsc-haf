@@ -34,9 +34,9 @@ const HAF_FKS: FKS_TYPE = {
         fk: 'announced_in_op',
         ref: SCHEMA_NAME+'.l1_operations(id)'
     },
-    block_announcer_fk: {
+    block_proposer_fk: {
         table: SCHEMA_NAME+'.blocks',
-        fk: 'announcer',
+        fk: 'proposer',
         ref: 'hive.vsc_app_accounts(id)'
     },
     contract_created_in_op_fk: {

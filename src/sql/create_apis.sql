@@ -82,10 +82,12 @@ DECLARE
     _block_id INTEGER;
     _announced_in_tx_id BIGINT;
     _l1_tx vsc_api.l1_tx_type;
-    _announcer_id INTEGER;
-    _announcer TEXT;
+    _proposer_id INTEGER;
+    _proposer TEXT;
+    _sig VARCHAR;
+    _bv VARCHAR;
 BEGIN
-    SELECT id, announced_in_op, announcer INTO _block_id, _announced_in_op, _announcer_id
+    SELECT id, announced_in_op, proposer, sig, bv INTO _block_id, _announced_in_op, _proposer_id, _sig, _bv
         FROM vsc_app.blocks
         WHERE vsc_app.blocks.block_hash = blk_hash
         LIMIT 1;
@@ -101,16 +103,20 @@ BEGIN
         FROM vsc_app.l1_operations l1_op
         WHERE l1_op.id = _announced_in_op;
     SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(_announced_in_tx_id);
-    SELECT name INTO _announcer FROM hive.vsc_app_accounts WHERE id=_announcer_id;
+    SELECT name INTO _proposer FROM hive.vsc_app_accounts WHERE id=_proposer_id;
     
     RETURN jsonb_build_object(
         'id', _block_id,
         'prev_block_hash', _prev_block_hash,
         'block_hash', blk_hash,
-        'announcer', _announcer,
+        'proposer', _proposer,
         'ts', _l1_tx.created_at,
         'l1_tx', _l1_tx.trx_hash,
-        'l1_block', _l1_tx.block_num
+        'l1_block', _l1_tx.block_num,
+        'signature', (jsonb_build_object(
+            'sig', _sig,
+            'bv', _bv
+        ))
     );
 END
 $function$
@@ -126,10 +132,12 @@ DECLARE
     _block_hash VARCHAR;
     _announced_in_tx_id BIGINT;
     _l1_tx vsc_api.l1_tx_type;
-    _announcer_id INTEGER;
-    _announcer TEXT;
+    _proposer_id INTEGER;
+    _proposer TEXT;
+    _sig VARCHAR;
+    _bv VARCHAR;
 BEGIN
-    SELECT block_hash, announced_in_op, announcer INTO _block_hash, _announced_in_op, _announcer_id
+    SELECT block_hash, announced_in_op, proposer, sig, bv INTO _block_hash, _announced_in_op, _proposer_id, _sig, _bv
         FROM vsc_app.blocks
         WHERE vsc_app.blocks.id = blk_id;
     IF _block_hash IS NULL THEN
@@ -144,16 +152,20 @@ BEGIN
         FROM vsc_app.l1_operations l1_op
         WHERE l1_op.id = _announced_in_op;
     SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(_announced_in_tx_id);
-    SELECT name INTO _announcer FROM hive.vsc_app_accounts WHERE id=_announcer_id;
+    SELECT name INTO _proposer FROM hive.vsc_app_accounts WHERE id=_proposer_id;
     
     RETURN jsonb_build_object(
         'id', blk_id,
         'prev_block_hash', _prev_block_hash,
         'block_hash', _block_hash,
-        'announcer', _announcer,
+        'proposer', _proposer,
         'ts', _l1_tx.created_at,
         'l1_tx', _l1_tx.trx_hash,
-        'l1_block', _l1_tx.block_num
+        'l1_block', _l1_tx.block_num,
+        'signature', (jsonb_build_object(
+            'sig', _sig,
+            'bv', _bv
+        ))
     );
 END
 $function$
@@ -164,7 +176,7 @@ CREATE TYPE vsc_api.block_type AS (
     id INTEGER,
     announced_in_op BIGINT,
     block_hash VARCHAR,
-    announcer INTEGER
+    proposer INTEGER
 );
 
 CREATE OR REPLACE FUNCTION vsc_api.get_block_range(blk_id_start INTEGER, blk_count INTEGER)
@@ -177,7 +189,7 @@ DECLARE
     _blocks jsonb[] DEFAULT '{}';
     _announced_in_tx_id BIGINT;
     _l1_tx vsc_api.l1_tx_type;
-    _announcer TEXT;
+    _proposer TEXT;
 BEGIN
     IF blk_count > 1000 OR blk_count <= 0 THEN
         RETURN jsonb_build_object(
@@ -195,12 +207,12 @@ BEGIN
             FROM vsc_app.l1_operations l1_op
             WHERE l1_op.id = b.announced_in_op;
         SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(_announced_in_tx_id);
-        SELECT name INTO _announcer FROM hive.vsc_app_accounts WHERE id=b.announcer;
+        SELECT name INTO _proposer FROM hive.vsc_app_accounts WHERE id=b.proposer;
         SELECT ARRAY_APPEND(_blocks, jsonb_build_object(
             'id', b.id,
             'ts', _l1_tx.created_at,
             'block_hash', b.block_hash,
-            'announcer', _announcer,
+            'proposer', _proposer,
             'l1_tx', _l1_tx.trx_hash,
             'l1_block', _l1_tx.block_num
         )) INTO _blocks;

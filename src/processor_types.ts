@@ -27,6 +27,10 @@ export type DIDPayload = {
 
 export type BlockPayload = {
     block_hash: string
+    signature: {
+        sig: string,
+        bv: string
+    }
 }
 
 export type NewContractPayload = {

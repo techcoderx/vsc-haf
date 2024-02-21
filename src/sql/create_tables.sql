@@ -23,7 +23,9 @@ CREATE TABLE IF NOT EXISTS vsc_app.blocks(
     id SERIAL PRIMARY KEY,
     announced_in_op BIGINT NOT NULL,
     block_hash VARCHAR(59) NOT NULL,
-    announcer INTEGER NOT NULL
+    proposer INTEGER NOT NULL,
+    sig VARCHAR NOT NULL,
+    bv VARCHAR NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.contracts(

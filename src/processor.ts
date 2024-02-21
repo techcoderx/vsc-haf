@@ -63,12 +63,21 @@ const processor = {
                     case 4:
                         // announce block
                         if (payload.net_id !== NETWORK_ID ||
-                            typeof payload.block_hash !== 'string' ||
-                            !isCID(payload.block_hash) ||
-                            CID.parse(payload.block_hash).code !== 0x71)
+                            payload.experiment_id !== 2 ||
+                            typeof payload.signed_block !== 'object' ||
+                            typeof payload.signed_block.block !== 'string' ||
+                            !isCID(payload.signed_block.block) ||
+                            CID.parse(payload.signed_block.block).code !== 0x71 ||
+                            typeof payload.signed_block.signature !== 'object' ||
+                            typeof payload.signed_block.signature.sig !== 'string' ||
+                            typeof payload.signed_block.signature.bv !== 'string')
                             return { valid: false }
                         details.payload = {
-                            block_hash: payload.block_hash
+                            block_hash: payload.signed_block.block,
+                            signature: {
+                                sig: payload.signed_block.signature.sig,
+                                bv: payload.signed_block.signature.bv
+                            }
                         }
                         break
                     case 5:
@@ -210,7 +219,7 @@ const processor = {
                     pl = result.payload as DIDPayload
                     await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4,$5);`,[result.user,null,false,new_vsc_op.rows[0].process_operation,null])
                     break
-                case op_type_map.map.announce_block:
+                case op_type_map.map.propose_block:
                     pl = result.payload as BlockPayload
                     await db.client.query(`SELECT ${SCHEMA_NAME}.insert_block($1,$2,$3);`,[new_vsc_op.rows[0].process_operation,pl.block_hash,result.user])
                     break

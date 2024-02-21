@@ -176,7 +176,9 @@ CREATE TYPE vsc_api.block_type AS (
     id INTEGER,
     announced_in_op BIGINT,
     block_hash VARCHAR,
-    proposer INTEGER
+    proposer INTEGER,
+    sig VARCHAR,
+    bv VARCHAR
 );
 
 CREATE OR REPLACE FUNCTION vsc_api.get_block_range(blk_id_start INTEGER, blk_count INTEGER)

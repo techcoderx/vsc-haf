@@ -15,10 +15,18 @@ const processor = {
                 return { valid: false }
             if (parsed.type === 'custom_json_operation') {
                 let cjidx = CUSTOM_JSON_IDS.indexOf(parsed.value.id)
-                if (cjidx === -1 ||
-                    !Array.isArray(parsed.value.required_posting_auths) ||
-                    parsed.value.required_posting_auths.length === 0 || // use posting auth only
-                    !parsed.value.json)
+                let requiresActiveAuth = cjidx === 2 || cjidx === 3
+                if (cjidx === -1 || !parsed.value.json)
+                    return { valid: false }
+
+                // block proposals and contract creation requires active auth (possibly more?)
+                if (requiresActiveAuth && (!Array.isArray(parsed.value.required_auths) ||
+                    parsed.value.required_auths.length === 0))
+                    return { valid: false }
+
+                // everything else requires posting auth
+                else if (!requiresActiveAuth && (!Array.isArray(parsed.value.required_posting_auths) ||
+                    parsed.value.required_posting_auths.length === 0))
                     return { valid: false }
                 let payload = JSON.parse(parsed.value.json)
                 let details: ParsedOp = {
@@ -40,29 +48,7 @@ const processor = {
                         }
                         break
                     case 2:
-                    case 3:
-                        // allow/disallow witness
-                        try {
-                            if (typeof payload.proof !== 'object')
-                                return { valid: false }
-                            let proof = await randomDID.verifyJWS(payload.proof)
-                            if (typeof proof.payload !== 'object' ||
-                                !proof.payload.ts ||
-                                proof.payload.net_id !== NETWORK_ID ||
-                                typeof proof.payload.node_id !== 'string' ||
-                                (Math.abs(details.ts!.getTime() - new Date(proof.payload.ts).getTime()) > 30*1000)
-                            )
-                                return { valid: false }
-                            details.payload = {
-                                did: proof.payload.node_id
-                            }
-                        } catch {
-                            return { valid: false }
-                        }
-                        break
-                    case 4:
                         // propose block
-                        logger.trace('new block',payload)
                         if (payload.net_id !== NETWORK_ID ||
                             payload.experiment_id !== 2 ||
                             typeof payload.signed_block !== 'object' ||
@@ -80,7 +66,7 @@ const processor = {
                             }
                         }
                         break
-                    case 5:
+                    case 3:
                         // create contract
                         if (payload.net_id !== NETWORK_ID ||
                             typeof payload.name !== 'string' ||
@@ -96,8 +82,8 @@ const processor = {
                             code: payload.code
                         }
                         break
-                    case 6:
-                    case 7:
+                    case 4:
+                    case 5:
                         // join/leave contract
                         if (payload.net_id !== NETWORK_ID ||
                             typeof payload.contract_id !== 'string' ||
@@ -108,7 +94,7 @@ const processor = {
                             node_identity: payload.node_identity
                         }
                         break
-                    case 8:
+                    case 6:
                         // multisig_txref
                         if (details.user !== MULTISIG_ACCOUNT ||
                             typeof payload.ref_id !== 'string' ||
@@ -119,7 +105,7 @@ const processor = {
                             ref_id: payload.ref_id
                         }
                         break
-                    case 10:
+                    case 8:
                         // withdrawal request
                         if (payload.net_id !== NETWORK_ID || isNaN(parseFloat(payload.amount)))
                             return { valid: false }

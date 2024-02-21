@@ -4,8 +4,6 @@ export const SCHEMA_NAME = 'vsc_app'
 export const CUSTOM_JSON_IDS = [
     'vsc.enable_witness',
     'vsc.disable_witness',
-    'vsc.allow_witness',
-    'vsc.disallow_witness',
     'vsc.propose_block.experiment',
     'vsc.create_contract',
     'vsc.join_contract',

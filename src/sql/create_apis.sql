@@ -273,13 +273,8 @@ BEGIN
     LOOP
         IF full_tx_body IS TRUE THEN
             op_payload := (op.body::jsonb->'value')::jsonb;
-        ELSIF op.op_name = 'announce_node' THEN
-            op_payload := ((op.body::jsonb->'value'->>'json_metadata')::jsonb)->>'vsc_node';
-        ELSIF op.op_name = 'deposit' OR op.op_name = 'withdrawal' THEN
-            op_payload := (op.body::jsonb->'value')::jsonb;
-            op_payload := jsonb_set(op_payload::jsonb, '{memo}', (op_payload::jsonb->>'memo')::jsonb);
         ELSE
-            op_payload := (op.body::jsonb->'value'->>'json')::jsonb;
+            op_payload := (SELECT vsc_app.parse_l1_payload(op.op_name, op.body));
         END IF;
         SELECT ARRAY_APPEND(ops_arr, jsonb_build_object(
             'id', op.id,
@@ -518,7 +513,6 @@ DECLARE
     results vsc_api.op_history_type[];
     results_arr jsonb[] DEFAULT '{}';
     _l1_tx vsc_api.l1_tx_type;
-    _payload TEXT;
 BEGIN
     IF last_nonce IS NOT NULL AND last_nonce < 0 THEN
         RETURN jsonb_build_object(
@@ -563,14 +557,6 @@ BEGIN
     FOREACH result IN ARRAY results
     LOOP
         SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(result.op_id);
-        IF result.op_name = 'announce_node' THEN
-            _payload := (result.body::jsonb->>'json_metadata')::jsonb->>'vsc_node';
-        ELSIF result.op_name = 'deposit' OR result.op_name = 'withdrawal' THEN
-            _payload := result.body::jsonb;
-            _payload := jsonb_set(_payload::jsonb, '{memo}', (result.body::jsonb->>'memo')::jsonb);
-        ELSE
-            _payload := result.body::jsonb->>'json';
-        END IF;
         SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
             'id', result.id,
             'username', result.username,
@@ -579,7 +565,7 @@ BEGIN
             'type', result.op_name,
             'l1_tx', _l1_tx.trx_hash,
             'l1_block', _l1_tx.block_num,
-            'payload', _payload::jsonb
+            'payload', (SELECT vsc_app.parse_l1_payload(result.op_name, result.body))
         )) INTO results_arr;
     END LOOP;
     
@@ -603,7 +589,6 @@ DECLARE
     _trxs vsc_api.l1_op_blk_trx[];
     _trx vsc_api.l1_op_blk_trx;
     _op vsc_api.l1_op_type;
-    _payload TEXT;
     results_arr jsonb[] DEFAULT '{}';
 BEGIN
     SELECT ARRAY(
@@ -629,14 +614,6 @@ BEGIN
                 va.id=vo.user_id
             WHERE vo.op_id = _trx.id;
         IF _op IS NOT NULL THEN
-            IF _op.op_name = 'announce_node' THEN
-                _payload := (_op.body::jsonb->>'json_metadata')::jsonb->>'vsc_node';
-            ELSIF _op.op_name = 'deposit' OR _op.op_name = 'withdrawal' THEN
-                _payload := _op.body::jsonb;
-                _payload := jsonb_set(_payload::jsonb, '{memo}', (_op.body::jsonb->>'memo')::jsonb);
-            ELSE
-                _payload := _op.body::jsonb->>'json';
-            END IF;
             SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
                 'id', _op.id,
                 'username', _op.name,
@@ -645,7 +622,7 @@ BEGIN
                 'l1_block', _op.block_num,
                 'l1_tx', trx_id,
                 'ts', _op.ts,
-                'payload', _payload::jsonb
+                'payload', (SELECT vsc_app.parse_l1_payload(_op.op_name, _op.body))
             )) INTO results_arr;
         END IF;
     END LOOP;
@@ -664,7 +641,6 @@ DECLARE
     results vsc_api.op_history_type[];
     results_arr jsonb[] DEFAULT '{}';
     _l1_tx vsc_api.l1_tx_type;
-    _payload TEXT;
 BEGIN
     IF count <= 0 OR count > 100 THEN
         RETURN jsonb_build_object(
@@ -705,15 +681,6 @@ BEGIN
     LOOP
         SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(result.op_id);
         IF with_payload IS TRUE THEN
-            IF result.op_name = 'announce_node' THEN
-                _payload := (result.body::jsonb->>'json_metadata')::jsonb->>'vsc_node';
-            ELSIF result.op_name = 'deposit' OR result.op_name = 'withdrawal' THEN
-                _payload := result.body::jsonb;
-                _payload := jsonb_set(_payload::jsonb, '{memo}', (result.body::jsonb->>'memo')::jsonb);
-            ELSE
-                _payload := result.body::jsonb->>'json';
-            END IF;
-        
             SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
                 'id', result.id,
                 'username', result.username,
@@ -722,7 +689,7 @@ BEGIN
                 'ts', _l1_tx.created_at,
                 'l1_tx', _l1_tx.trx_hash,
                 'l1_block', _l1_tx.block_num,
-                'payload', _payload::jsonb
+                'payload', (SELECT vsc_app.parse_l1_payload(result.op_name, result.body))
             )) INTO results_arr;
         ELSE
             SELECT ARRAY_APPEND(results_arr, jsonb_build_object(

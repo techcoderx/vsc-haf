@@ -2,7 +2,7 @@
 ALTER TABLE vsc_app.l1_operations DROP CONSTRAINT IF EXISTS l1_op_user_id_fk;
 ALTER TABLE vsc_app.l1_operations DROP CONSTRAINT IF EXISTS l1_op_type_fk;
 ALTER TABLE vsc_app.l1_users DROP CONSTRAINT IF EXISTS l1_users_fk;
-ALTER TABLE vsc_app.blocks DROP CONSTRAINT IF EXISTS block_announced_in_op_fk;
+ALTER TABLE vsc_app.blocks DROP CONSTRAINT IF EXISTS block_proposed_in_op_fk;
 ALTER TABLE vsc_app.blocks DROP CONSTRAINT IF EXISTS block_proposer_fk;
 ALTER TABLE vsc_app.contracts DROP CONSTRAINT IF EXISTS contract_created_in_op_fk;
 ALTER TABLE vsc_app.witnesses DROP CONSTRAINT IF EXISTS witness_account_fk;

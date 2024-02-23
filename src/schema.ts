@@ -29,9 +29,9 @@ const HAF_FKS: FKS_TYPE = {
         fk: 'id',
         ref: 'hive.vsc_app_accounts(id)'
     },
-    block_announced_in_op_fk: {
+    block_proposed_in_op_fk: {
         table: SCHEMA_NAME+'.blocks',
-        fk: 'announced_in_op',
+        fk: 'proposed_in_op',
         ref: SCHEMA_NAME+'.l1_operations(id)'
     },
     block_proposer_fk: {

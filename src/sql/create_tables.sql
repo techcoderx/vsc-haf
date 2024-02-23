@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.l1_users(
 
 CREATE TABLE IF NOT EXISTS vsc_app.blocks(
     id SERIAL PRIMARY KEY,
-    announced_in_op BIGINT NOT NULL,
+    proposed_in_op BIGINT NOT NULL,
     block_hash VARCHAR(59) NOT NULL,
     proposer INTEGER NOT NULL,
     sig VARCHAR NOT NULL,

@@ -77,17 +77,17 @@ RETURNS jsonb
 AS
 $function$
 DECLARE
-    _announced_in_op BIGINT;
+    _proposed_in_op BIGINT;
     _prev_block_hash VARCHAR = NULL;
     _block_id INTEGER;
-    _announced_in_tx_id BIGINT;
+    _proposed_in_tx_id BIGINT;
     _l1_tx vsc_api.l1_tx_type;
     _proposer_id INTEGER;
     _proposer TEXT;
     _sig VARCHAR;
     _bv VARCHAR;
 BEGIN
-    SELECT id, announced_in_op, proposer, sig, bv INTO _block_id, _announced_in_op, _proposer_id, _sig, _bv
+    SELECT id, proposed_in_op, proposer, sig, bv INTO _block_id, _proposed_in_op, _proposer_id, _sig, _bv
         FROM vsc_app.blocks
         WHERE vsc_app.blocks.block_hash = blk_hash
         LIMIT 1;
@@ -99,10 +99,10 @@ BEGIN
             FROM vsc_app.blocks
             WHERE vsc_app.blocks.id = _block_id-1;
     END IF;
-    SELECT l1_op.op_id INTO _announced_in_tx_id
+    SELECT l1_op.op_id INTO _proposed_in_tx_id
         FROM vsc_app.l1_operations l1_op
-        WHERE l1_op.id = _announced_in_op;
-    SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(_announced_in_tx_id);
+        WHERE l1_op.id = _proposed_in_op;
+    SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(_proposed_in_tx_id);
     SELECT name INTO _proposer FROM hive.vsc_app_accounts WHERE id=_proposer_id;
     
     RETURN jsonb_build_object(
@@ -127,17 +127,17 @@ RETURNS jsonb
 AS
 $function$
 DECLARE
-    _announced_in_op BIGINT;
+    _proposed_in_op BIGINT;
     _prev_block_hash VARCHAR = NULL;
     _block_hash VARCHAR;
-    _announced_in_tx_id BIGINT;
+    _proposed_in_tx_id BIGINT;
     _l1_tx vsc_api.l1_tx_type;
     _proposer_id INTEGER;
     _proposer TEXT;
     _sig VARCHAR;
     _bv VARCHAR;
 BEGIN
-    SELECT block_hash, announced_in_op, proposer, sig, bv INTO _block_hash, _announced_in_op, _proposer_id, _sig, _bv
+    SELECT block_hash, proposed_in_op, proposer, sig, bv INTO _block_hash, _proposed_in_op, _proposer_id, _sig, _bv
         FROM vsc_app.blocks
         WHERE vsc_app.blocks.id = blk_id;
     IF _block_hash IS NULL THEN
@@ -148,10 +148,10 @@ BEGIN
             FROM vsc_app.blocks
             WHERE vsc_app.blocks.id = blk_id-1;
     END IF;
-    SELECT l1_op.op_id INTO _announced_in_tx_id
+    SELECT l1_op.op_id INTO _proposed_in_tx_id
         FROM vsc_app.l1_operations l1_op
-        WHERE l1_op.id = _announced_in_op;
-    SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(_announced_in_tx_id);
+        WHERE l1_op.id = _proposed_in_op;
+    SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(_proposed_in_tx_id);
     SELECT name INTO _proposer FROM hive.vsc_app_accounts WHERE id=_proposer_id;
     
     RETURN jsonb_build_object(
@@ -174,7 +174,7 @@ LANGUAGE plpgsql STABLE;
 DROP TYPE IF EXISTS vsc_api.block_type CASCADE;
 CREATE TYPE vsc_api.block_type AS (
     id INTEGER,
-    announced_in_op BIGINT,
+    proposed_in_op BIGINT,
     block_hash VARCHAR,
     proposer INTEGER,
     sig VARCHAR,
@@ -189,7 +189,7 @@ DECLARE
     b vsc_api.block_type;
     _block_details vsc_api.block_type[];
     _blocks jsonb[] DEFAULT '{}';
-    _announced_in_tx_id BIGINT;
+    _proposed_in_tx_id BIGINT;
     _l1_tx vsc_api.l1_tx_type;
     _proposer TEXT;
 BEGIN
@@ -205,10 +205,10 @@ BEGIN
     ) INTO _block_details;
     FOREACH b IN ARRAY _block_details
     LOOP
-        SELECT l1_op.op_id INTO _announced_in_tx_id
+        SELECT l1_op.op_id INTO _proposed_in_tx_id
             FROM vsc_app.l1_operations l1_op
-            WHERE l1_op.id = b.announced_in_op;
-        SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(_announced_in_tx_id);
+            WHERE l1_op.id = b.proposed_in_op;
+        SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(_proposed_in_tx_id);
         SELECT name INTO _proposer FROM hive.vsc_app_accounts WHERE id=b.proposer;
         SELECT ARRAY_APPEND(_blocks, jsonb_build_object(
             'id', b.id,

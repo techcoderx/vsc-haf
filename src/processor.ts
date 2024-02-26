@@ -50,7 +50,7 @@ const processor = {
                     case 2:
                         // propose block
                         if (payload.net_id !== NETWORK_ID ||
-                            payload.experiment_id !== 2 ||
+                            payload.replay_id !== 2 ||
                             typeof payload.signed_block !== 'object' ||
                             !isCID(payload.signed_block.block) ||
                             CID.parse(payload.signed_block.block).code !== 0x71 ||

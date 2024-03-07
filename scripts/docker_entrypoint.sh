@@ -4,7 +4,7 @@ cd /app
 
 if [ "$1" = "install_app" ]; then
   shift
-  exec su - haf_admin -c "/app/scripts/install_app.sh --postgres-host=\"${POSTGRES_HOST:-haf}\" \"$@\""
+  exec su - haf_admin -c "/app/scripts/install_app.sh --host=\"${POSTGRES_HOST:-haf}\" \"$@\""
 elif [ "$1" = "process_blocks" ]; then
   shift
   exec su - vsc_owner -c "pnpm start \"$@\""

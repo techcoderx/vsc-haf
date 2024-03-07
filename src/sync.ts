@@ -16,8 +16,7 @@ const sync = {
         await op_type_map.retrieveMap()
 
         // attach context
-        let head = (await db.client.query(`SELECT last_processed_block FROM ${SCHEMA_NAME}.state;`)).rows[0].last_processed_block
-        await context.attach(head)
+        await context.attach()
         sync.begin()
     },
     begin: async (): Promise<void> => {
@@ -60,20 +59,21 @@ const sync = {
                 count++
         }
         await db.client.query(`UPDATE ${SCHEMA_NAME}.state SET last_processed_block=$1;`,[lastBlock])
+        await db.client.query(`SELECT hive.app_set_current_block_num($1,$2);`,[APP_CONTEXT,lastBlock])
         await db.client.query('COMMIT;')
         let timeTaken = (new Date().getTime()-start)/1000
         logger.info('Massive Sync - Block #'+firstBlock+' to #'+lastBlock+' / '+targetBlock+' - '+count+' ops - '+((lastBlock-firstBlock)/timeTaken).toFixed(3)+'b/s, '+(count/timeTaken).toFixed(3)+'op/s')
         if (lastBlock >= targetBlock)
-            sync.postMassive(targetBlock)
+            sync.postMassive()
         else
             sync.massive(lastBlock+1,Math.min(lastBlock+MASSIVE_SYNC_BATCH,targetBlock),targetBlock)
     },
-    postMassive: async (lastBlock: number): Promise<void> => {
+    postMassive: async (): Promise<void> => {
         logger.info('Begin post-massive sync')
         await schema.indexCreate()
         await schema.fkCreate()
         logger.info('Post-masstive sync complete, entering live sync')
-        await context.attach(lastBlock)
+        await context.attach()
         sync.begin()
     },
     live: async (nextBlock?: number): Promise<void> => {

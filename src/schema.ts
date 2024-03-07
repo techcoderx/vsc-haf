@@ -128,7 +128,11 @@ const schema = {
 
         // start block
         let startBlock = Math.max(START_BLOCK-1,0)
-        logger.info('Set start block to #'+(startBlock+1))
+        await db.client.query('START TRANSACTION;')
+        await db.client.query(`UPDATE ${SCHEMA_NAME}.state SET last_processed_block=$1;`,[startBlock])
+        await db.client.query(`SELECT hive.app_set_current_block_num($1,$2);`,[APP_CONTEXT,startBlock])
+        await db.client.query('COMMIT;')
+        logger.info('Set last processed block to #'+(startBlock))
         if (startBlock > 0) {
             logger.info('Updating state providers to starting block...')
             let start = new Date().getTime()

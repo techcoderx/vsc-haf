@@ -17,3 +17,9 @@ SELECT hive.app_state_provider_drop_all('vsc_app');
 SELECT hive.app_remove_context('vsc_app');
 DROP SCHEMA IF EXISTS vsc_app CASCADE;
 DROP SCHEMA IF EXISTS vsc_api CASCADE;
+
+-- Delete users
+DROP OWNED BY vsc_owner CASCADE;
+DROP ROLE vsc_owner;
+DROP OWNED BY vsc_user CASCADE;
+DROP ROLE vsc_user;

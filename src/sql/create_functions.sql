@@ -1,3 +1,5 @@
+SET ROLE vsc_owner;
+
 DROP TYPE IF EXISTS vsc_app.op_type CASCADE;
 CREATE TYPE vsc_app.op_type AS (
     id BIGINT,

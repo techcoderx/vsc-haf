@@ -1,4 +1,5 @@
 SET ROLE vsc_owner;
+CREATE SCHEMA IF NOT EXISTS vsc_app;
 
 CREATE TABLE IF NOT EXISTS vsc_app.l1_operation_types(
     id SERIAL PRIMARY KEY,

@@ -31,10 +31,11 @@ services:
     profiles:
       - apps
       - vsc-haf
+    environment:
+      POSTGRES_URL: postgresql://vsc_owner@haf/haf_block_log
+      VSC_HAF_LOG_LEVEL: ${VSC_HAF_LOG_LEVEL:-info}
     command:
       - process_blocks
-      - --postgres-url=postgresql://vsc_owner@haf/haf_block_log
-      - --log-level=${VSC_HAF_LOG_LEVEL:-info}
     networks:
       haf-network:
     depends_on:

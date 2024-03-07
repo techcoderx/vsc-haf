@@ -11,7 +11,10 @@ elif [ "$1" = "process_blocks" ]; then
 elif [ "$1" = "uninstall_app" ]; then
   shift
   exec su - haf_admin -c "/app/scripts/uninstall_app.sh --host=\"${POSTGRES_HOST:-haf}\" --user=\"${POSTGRES_USER:-haf_admin}\""
+elif [ "$1" = "github_fetch_head" ]; then
+    shift
+    exec su - vsc_owner -c "/app/scripts/github_fetch_head.sh --postgres-url=\"${POSTGRES_URL:-postgres://vsc_owner@haf/haf_block_log}\" --api-key=\"${VSC_HAF_GITHUB_API_KEY}\""
 else
-  echo "usage: $0 install_app|process_blocks|uninstall_app"
+  echo "usage: $0 install_app|process_blocks|uninstall_app|github_fetch_head"
   exit 1
 fi

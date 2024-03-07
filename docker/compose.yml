@@ -43,6 +43,23 @@ services:
         condition: service_completed_successfully
       haf:
         condition: service_healthy
+  vsc-haf-github-fetch-head:
+    image: vsc-haf:${VSC_HAF_VERSION:-${HIVE_API_NODE_VERSION}}
+    profiles:
+      - apps
+      - vsc-haf
+    environment:
+      POSTGRES_URL: postgresql://vsc_owner@haf/haf_block_log
+      VSC_HAF_GITHUB_API_KEY: ${VSC_HAF_GITHUB_API_KEY}
+    command:
+      - github_fetch_head
+    networks:
+      haf-network:
+    depends_on:
+      vsc-haf-install:
+        condition: service_completed_successfully
+      haf:
+        condition: service_healthy
   vsc-haf-postgrest:
     image: ${POSTGREST_REGISTRY:-registry.gitlab.syncad.com/hive/haf_api_node/postgrest}:${POSTGREST_VERSION:-latest}
     profiles:

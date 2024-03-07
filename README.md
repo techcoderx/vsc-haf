@@ -51,5 +51,5 @@ npm start
 
 ## Periodically fetch latest [vsc-node](https://github.com/vsc-eco/vsc-node) commit in crontab
 ```cron
-*/5 * * * * /path/to/this/repo/scripts/github_fetch_head.sh <psql_url> <github_api_key>
+*/5 * * * * /path/to/this/repo/scripts/github_fetch_head.sh --postgres-url=<psql_url> --api-key=<github_api_key> --run-once
 ```

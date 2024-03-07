@@ -8,7 +8,7 @@ print_help () {
     cat <<EOF
 Usage: $0 [OPTION[=VALUE]]...
 
-Installs VSC-HAF app.
+Installs VSC-HAF app built in roles.
 OPTIONS:
     --host=VALUE             Allows to specify a PostgreSQL host location (defaults to localhost)
     --port=NUMBER            Allows to specify a PostgreSQL operating port (defaults to 5432)
@@ -59,7 +59,7 @@ done
 
 POSTGRES_ACCESS_ADMIN=${POSTGRES_URL:-"postgresql://$POSTGRES_USER@$POSTGRES_HOST:$POSTGRES_PORT/haf_block_log"}
 
-echo "Installing VSC-HAF app..."
+echo "Installing VSC-HAF app built in roles..."
 echo "Connection URL: ${POSTGRES_ACCESS_ADMIN}"
 
 psql "$POSTGRES_ACCESS_ADMIN" -v "ON_ERROR_STOP=ON" -f "$SCRIPTPATH/../src/sql/builtin_roles.sql"

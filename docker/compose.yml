@@ -44,7 +44,7 @@ services:
       haf:
         condition: service_healthy
   vsc-haf-github-fetch-head:
-    image: vsc-haf:${VSC_HAF_VERSION:-${HIVE_API_NODE_VERSION}}
+    image: vsc-haf/gh-fh:${VSC_HAF_VERSION:-${HIVE_API_NODE_VERSION}}
     profiles:
       - apps
       - vsc-haf

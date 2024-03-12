@@ -40,14 +40,6 @@ const processor = {
                 }
                 switch (cjidx) {
                     case 0:
-                        // enable witness
-                        if (typeof payload.did !== 'string')
-                            return { valid: false }
-                        details.payload = {
-                            did: payload.did
-                        }
-                        break
-                    case 2:
                         // propose block
                         if (payload.net_id !== NETWORK_ID ||
                             payload.replay_id !== 2 ||
@@ -66,7 +58,7 @@ const processor = {
                             }
                         }
                         break
-                    case 3:
+                    case 1:
                         // create contract
                         if (payload.net_id !== NETWORK_ID ||
                             typeof payload.name !== 'string' ||
@@ -82,19 +74,14 @@ const processor = {
                             code: payload.code
                         }
                         break
-                    case 4:
-                    case 5:
-                        // join/leave contract
-                        if (payload.net_id !== NETWORK_ID ||
-                            typeof payload.contract_id !== 'string' ||
-                            typeof payload.node_identity !== 'string')
-                            return { valid: false }
-                        details.payload = {
-                            contract_id: payload.contract_id,
-                            node_identity: payload.node_identity
-                        }
+                    case 2:
+                    case 3:
+                        // l1 contract calls
                         break
-                    case 6:
+                    case 4:
+                        // election result
+                        break
+                    case 5:
                         // multisig_txref
                         if (details.user !== MULTISIG_ACCOUNT ||
                             typeof payload.ref_id !== 'string' ||
@@ -105,7 +92,7 @@ const processor = {
                             ref_id: payload.ref_id
                         }
                         break
-                    case 8:
+                    case 6:
                         // withdrawal request
                         if (payload.net_id !== NETWORK_ID || isNaN(parseFloat(payload.amount)))
                             return { valid: false }
@@ -197,14 +184,6 @@ const processor = {
                     pl = result.payload as NodeAnnouncePayload
                     await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4,$5);`,[result.user,pl.did,pl.witnessEnabled,new_vsc_op.rows[0].process_operation,pl.git_commit])
                     break
-                case op_type_map.map.enable_witness:
-                    pl = result.payload as DIDPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4,$5);`,[result.user,pl.did,true,new_vsc_op.rows[0].process_operation,null])
-                    break
-                case op_type_map.map.disable_witness:
-                    pl = result.payload as DIDPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4,$5);`,[result.user,null,false,new_vsc_op.rows[0].process_operation,null])
-                    break
                 case op_type_map.map.propose_block:
                     pl = result.payload as BlockPayload
                     await db.client.query(`SELECT ${SCHEMA_NAME}.insert_block($1,$2,$3,$4,$5);`,[new_vsc_op.rows[0].process_operation,pl.block_hash,result.user,pl.signature.sig,pl.signature.bv])
@@ -213,20 +192,15 @@ const processor = {
                     pl = result.payload as NewContractPayload
                     await db.client.query(`SELECT ${SCHEMA_NAME}.insert_contract($1,$2,$3,$4);`,[new_vsc_op.rows[0].process_operation,pl.name,pl.manifest_id,pl.code])
                     break
-                case op_type_map.map.join_contract:
-                    pl = result.payload as ContractCommitmentPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_contract_commitment($1,$2,$3);`,[pl.contract_id,pl.node_identity,true])
+                case op_type_map.map.tx:
+                    // TODO process op
                     break
-                case op_type_map.map.leave_contract:
-                    pl = result.payload as ContractCommitmentPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_contract_commitment($1,$2,$3);`,[pl.contract_id,pl.node_identity,false])
+                case op_type_map.map.election_result:
+                    // TODO process op
                     break
                 case op_type_map.map.multisig_txref:
                     pl = result.payload as MultisigTxRefPayload
                     await db.client.query(`SELECT ${SCHEMA_NAME}.insert_multisig_txref($1,$2);`,[new_vsc_op.rows[0].process_operation,pl.ref_id])
-                    break
-                case op_type_map.map.custom_json:
-                    // TODO what should be done here?
                     break
                 case op_type_map.map.deposit:
                     pl = result.payload as DepositPayload

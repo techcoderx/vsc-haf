@@ -26,9 +26,12 @@ const op_type_map: OpTypeMod = {
     translate: (tx_type: TxTypes, idx: number = -1): number => {
         if (tx_type === TxTypes.AccountUpdate)
             return op_type_map.map.announce_node
-        else if (tx_type === TxTypes.CustomJSON)
-            return op_type_map.map[CUSTOM_JSON_IDS[idx].split('.')[1]]
-        else if (tx_type === TxTypes.Transfer)
+        else if (tx_type === TxTypes.CustomJSON) {
+            let cjtype = CUSTOM_JSON_IDS[idx].split('.')[1]
+            if (cjtype === 'announce_tx')
+                cjtype = 'tx'
+            return op_type_map.map[cjtype]
+        } else if (tx_type === TxTypes.Transfer)
             return op_type_map.map[XFER_ACTIONS[idx]]
         else
             return -1

@@ -5,7 +5,7 @@ CREATE TYPE vsc_app.op_type AS (
     id BIGINT,
     block_num INT,
     trx_in_block SMALLINT,
-    op_pos SMALLINT,
+    op_pos INT,
     timestamp TIMESTAMP,
     body TEXT
 );

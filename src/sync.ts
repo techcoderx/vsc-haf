@@ -13,6 +13,9 @@ const LIVE_SYNC_CONNECTION_CYCLE_BLKS = 1000
 const sync = {
     terminating: false,
     prebegin: async () => {
+        // update functions
+        await schema.createFx()
+
         await op_type_map.retrieveMap()
 
         // attach context

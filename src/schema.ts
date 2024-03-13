@@ -157,7 +157,7 @@ const schema = {
     createFx: async () => {
         await db.client.query(fs.readFileSync(__dirname+'/sql/create_functions.sql','utf-8'))
         await db.client.query(fs.readFileSync(__dirname+'/sql/create_apis.sql','utf-8'))
-        logger.info('Created relevant PL/pgSQL functions and types')
+        logger.info('Created/Updated relevant PL/pgSQL functions and types')
     },
     fkExists: async (fk: string) => {
         let constraint = await db.client.query('SELECT * FROM information_schema.constraint_column_usage WHERE constraint_name=$1',[fk])

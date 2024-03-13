@@ -34,8 +34,8 @@ CREATE TABLE IF NOT EXISTS vsc_app.blocks(
 CREATE TABLE IF NOT EXISTS vsc_app.contracts(
     contract_id VARCHAR(68) PRIMARY KEY,
     created_in_op BIGINT NOT NULL,
-    name VARCHAR NOT NULL,
-    description VARCHAR NOT NULL,
+    name VARCHAR,
+    description VARCHAR,
     code VARCHAR(59) NOT NULL
 );
 

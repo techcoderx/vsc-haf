@@ -1,5 +1,7 @@
 import { cid as isCID } from 'is-ipfs'
 import { CID } from 'multiformats/cid'
+import { encodePayload } from 'dag-jose-utils'
+import { bech32 } from "bech32"
 import randomDID from './did.js'
 import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS } from './constants.js'
 import db from './db.js'
@@ -62,18 +64,23 @@ const processor = {
                     case 1:
                         // create contract
                         if (payload.net_id !== NETWORK_ID ||
-                            typeof payload.name !== 'string' ||
-                            typeof payload.manifest_id !== 'string' ||
-                            !isCID(payload.manifest_id) ||
-                            CID.parse(payload.manifest_id).code !== 0x70 ||
                             !isCID(payload.code) ||
-                            CID.parse(payload.code).code !== 0x70)
+                            CID.parse(payload.code).code !== 0x55)
                             return { valid: false }
+                        const trx_hash = await db.client.query(`SELECT vsc_app.helper_get_tx_by_op_id($1);`,[details.id])
+                        const contractIdHash = (await encodePayload({
+                            ref_id: trx_hash.rows[0].trx_hash,
+                            index: details.op_pos!.toString()
+                        })).cid
+                        const bech32Addr = bech32.encode('vs4', bech32.toWords(contractIdHash.bytes))
                         details.payload = {
-                            manifest_id: payload.manifest_id,
-                            name: payload.name,
+                            contract_id: bech32Addr,
                             code: payload.code
                         }
+                        if (typeof payload.name === 'string')
+                            details.payload.name = payload.name
+                        if (typeof payload.description === 'string')
+                            details.payload.description = payload.description
                         break
                     case 2:
                     case 3:
@@ -191,7 +198,7 @@ const processor = {
                     break
                 case op_type_map.map.create_contract:
                     pl = result.payload as NewContractPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_contract($1,$2,$3,$4);`,[new_vsc_op.rows[0].process_operation,pl.name,pl.manifest_id,pl.code])
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_contract($1,$2,$3,$4,$5);`,[new_vsc_op.rows[0].process_operation,pl.contract_id,pl.name,pl.description,pl.code])
                     break
                 case op_type_map.map.tx:
                     // TODO process op

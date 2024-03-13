@@ -27,6 +27,8 @@
   },
   "homepage": "https://github.com/techcoderx/vsc-haf#readme",
   "dependencies": {
+    "bech32": "^2.0.0",
+    "dag-jose-utils": "^4.0.0",
     "dids": "^4.0.4",
     "dotenv": "^16.3.1",
     "is-ipfs": "^8.0.1",

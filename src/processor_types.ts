@@ -39,8 +39,9 @@ export type BlockPayload = {
 }
 
 export type NewContractPayload = {
-    manifest_id: string
-    name: string // pla: obsolete as its already contained in the manifest, correct?
+    contract_id: string
+    name?: string
+    description?: string
     code: string
 }
 

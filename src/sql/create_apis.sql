@@ -680,10 +680,10 @@ LANGUAGE plpgsql STABLE;
 
 DROP TYPE IF EXISTS vsc_api.contract_type CASCADE;
 CREATE TYPE vsc_api.contract_type AS (
-    id INTEGER,
+    contract_id VARCHAR,
     created_in_op BIGINT,
     name VARCHAR,
-    manifest_id VARCHAR,
+    description VARCHAR,
     code VARCHAR,
     op_id BIGINT
 );

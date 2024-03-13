@@ -41,39 +41,6 @@ END
 $function$
 LANGUAGE plpgsql STABLE;
 
-DROP TYPE IF EXISTS vsc_api.l1_tx_type CASCADE;
-CREATE TYPE vsc_api.l1_tx_type AS (
-    trx_hash TEXT,
-    block_num INTEGER,
-    created_at TIMESTAMP
-);
-
-CREATE OR REPLACE FUNCTION vsc_api.helper_get_tx_by_op_id(_op_id BIGINT)
-RETURNS vsc_api.l1_tx_type
-AS
-$function$
-DECLARE
-    result vsc_api.l1_tx_type;
-BEGIN
-    -- Seperate queries for tx id and timestamp are faster than joining 3 tables in single query
-    SELECT encode(htx.trx_hash::bytea, 'hex'), htx.block_num
-        INTO result
-        FROM hive.transactions_view htx
-        JOIN hive.operations_view ho ON
-            ho.block_num = htx.block_num AND
-            ho.trx_in_block = htx.trx_in_block
-        WHERE ho.id = _op_id;
-
-    SELECT hb.created_at
-        INTO result.created_at
-        FROM hive.blocks_view hb
-        WHERE hb.num = result.block_num;
-
-    RETURN result;
-END
-$function$
-LANGUAGE plpgsql STABLE;
-
 CREATE OR REPLACE FUNCTION vsc_api.get_block_by_hash(blk_hash VARCHAR)
 RETURNS jsonb
 AS
@@ -83,7 +50,7 @@ DECLARE
     _prev_block_hash VARCHAR = NULL;
     _block_id INTEGER;
     _proposed_in_tx_id BIGINT;
-    _l1_tx vsc_api.l1_tx_type;
+    _l1_tx vsc_app.l1_tx_type;
     _proposer_id INTEGER;
     _proposer TEXT;
     _sig VARCHAR;
@@ -104,7 +71,7 @@ BEGIN
     SELECT l1_op.op_id INTO _proposed_in_tx_id
         FROM vsc_app.l1_operations l1_op
         WHERE l1_op.id = _proposed_in_op;
-    SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(_proposed_in_tx_id);
+    SELECT * INTO _l1_tx FROM vsc_app.helper_get_tx_by_op_id(_proposed_in_tx_id);
     SELECT name INTO _proposer FROM hive.vsc_app_accounts WHERE id=_proposer_id;
     
     RETURN jsonb_build_object(
@@ -133,7 +100,7 @@ DECLARE
     _prev_block_hash VARCHAR = NULL;
     _block_hash VARCHAR;
     _proposed_in_tx_id BIGINT;
-    _l1_tx vsc_api.l1_tx_type;
+    _l1_tx vsc_app.l1_tx_type;
     _proposer_id INTEGER;
     _proposer TEXT;
     _sig VARCHAR;
@@ -153,7 +120,7 @@ BEGIN
     SELECT l1_op.op_id INTO _proposed_in_tx_id
         FROM vsc_app.l1_operations l1_op
         WHERE l1_op.id = _proposed_in_op;
-    SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(_proposed_in_tx_id);
+    SELECT * INTO _l1_tx FROM vsc_app.helper_get_tx_by_op_id(_proposed_in_tx_id);
     SELECT name INTO _proposer FROM hive.vsc_app_accounts WHERE id=_proposer_id;
     
     RETURN jsonb_build_object(
@@ -192,7 +159,7 @@ DECLARE
     _block_details vsc_api.block_type[];
     _blocks jsonb[] DEFAULT '{}';
     _proposed_in_tx_id BIGINT;
-    _l1_tx vsc_api.l1_tx_type;
+    _l1_tx vsc_app.l1_tx_type;
     _proposer TEXT;
 BEGIN
     IF blk_count > 1000 OR blk_count <= 0 THEN
@@ -210,7 +177,7 @@ BEGIN
         SELECT l1_op.op_id INTO _proposed_in_tx_id
             FROM vsc_app.l1_operations l1_op
             WHERE l1_op.id = b.proposed_in_op;
-        SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(_proposed_in_tx_id);
+        SELECT * INTO _l1_tx FROM vsc_app.helper_get_tx_by_op_id(_proposed_in_tx_id);
         SELECT name INTO _proposer FROM hive.vsc_app_accounts WHERE id=b.proposer;
         SELECT ARRAY_APPEND(_blocks, jsonb_build_object(
             'id', b.id,
@@ -284,7 +251,7 @@ BEGIN
             'nonce', op.nonce,
             'type', op.op_name,
             'l1_block', op.block_num,
-            'l1_tx', (SELECT trx_hash FROM vsc_api.helper_get_tx_by_op_id(op.op_id)),
+            'l1_tx', (SELECT trx_hash FROM vsc_app.helper_get_tx_by_op_id(op.op_id)),
             'ts', op.ts,
             'payload', op_payload
         )) INTO ops_arr;
@@ -352,8 +319,8 @@ BEGIN
         LEFT JOIN vsc_app.l1_operations l1_d ON
             l1_d.id = w.disabled_at
         WHERE hive.vsc_app_accounts.name = username;
-    SELECT trx_hash INTO _enabled_at_txhash FROM vsc_api.helper_get_tx_by_op_id(result.enabled_at);
-    SELECT trx_hash INTO _disabled_at_txhash FROM vsc_api.helper_get_tx_by_op_id(result.disabled_at);
+    SELECT trx_hash INTO _enabled_at_txhash FROM vsc_app.helper_get_tx_by_op_id(result.enabled_at);
+    SELECT trx_hash INTO _disabled_at_txhash FROM vsc_app.helper_get_tx_by_op_id(result.disabled_at);
     SELECT git_commit INTO _latest_git_commit FROM vsc_app.vsc_node_git WHERE id=1;
     
     RETURN jsonb_build_object(
@@ -409,8 +376,8 @@ BEGIN
             'username', result.name,
             'did', result.did,
             'enabled', result.enabled,
-            'enabled_at', (SELECT trx_hash FROM vsc_api.helper_get_tx_by_op_id(result.enabled_at)),
-            'disabled_at', (SELECT trx_hash FROM vsc_api.helper_get_tx_by_op_id(result.disabled_at)),
+            'enabled_at', (SELECT trx_hash FROM vsc_app.helper_get_tx_by_op_id(result.enabled_at)),
+            'disabled_at', (SELECT trx_hash FROM vsc_app.helper_get_tx_by_op_id(result.disabled_at)),
             'git_commit', result.git_commit,
             'is_up_to_date', (result.git_commit = _latest_git_commit),
             'last_block', result.last_block,
@@ -436,10 +403,10 @@ AS
 $function$
 DECLARE
     result vsc_api.txref_type;
-    l1_tx vsc_api.l1_tx_type;
+    l1_tx vsc_app.l1_tx_type;
 BEGIN
     SELECT * INTO result FROM vsc_app.multisig_txrefs WHERE id=_id;
-    SELECT * INTO l1_tx FROM vsc_api.helper_get_tx_by_op_id(
+    SELECT * INTO l1_tx FROM vsc_app.helper_get_tx_by_op_id(
         (SELECT op_id FROM vsc_app.l1_operations WHERE id=result.in_op)
     );
     RETURN jsonb_build_object(
@@ -461,7 +428,7 @@ DECLARE
     r vsc_api.txref_type;
     results vsc_api.txref_type[];
     results_arr jsonb[] DEFAULT '{}';
-    l1_tx vsc_api.l1_tx_type;
+    l1_tx vsc_app.l1_tx_type;
 BEGIN
     IF count > 1000 OR count <= 0 THEN
         RETURN jsonb_build_object(
@@ -480,7 +447,7 @@ BEGIN
 
     FOREACH r IN ARRAY results
     LOOP
-        SELECT * INTO l1_tx FROM vsc_api.helper_get_tx_by_op_id(
+        SELECT * INTO l1_tx FROM vsc_app.helper_get_tx_by_op_id(
             (SELECT op_id FROM vsc_app.l1_operations WHERE id=r.in_op)
         );
         SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
@@ -514,7 +481,7 @@ DECLARE
     result vsc_api.op_history_type;
     results vsc_api.op_history_type[];
     results_arr jsonb[] DEFAULT '{}';
-    _l1_tx vsc_api.l1_tx_type;
+    _l1_tx vsc_app.l1_tx_type;
 BEGIN
     IF last_nonce IS NOT NULL AND last_nonce < 0 THEN
         RETURN jsonb_build_object(
@@ -558,7 +525,7 @@ BEGIN
 
     FOREACH result IN ARRAY results
     LOOP
-        SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(result.op_id);
+        SELECT * INTO _l1_tx FROM vsc_app.helper_get_tx_by_op_id(result.op_id);
         SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
             'id', result.id,
             'username', result.username,
@@ -642,7 +609,7 @@ DECLARE
     result vsc_api.op_history_type;
     results vsc_api.op_history_type[];
     results_arr jsonb[] DEFAULT '{}';
-    _l1_tx vsc_api.l1_tx_type;
+    _l1_tx vsc_app.l1_tx_type;
 BEGIN
     IF count <= 0 OR count > 100 THEN
         RETURN jsonb_build_object(
@@ -681,7 +648,7 @@ BEGIN
 
     FOREACH result IN ARRAY results
     LOOP
-        SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(result.op_id);
+        SELECT * INTO _l1_tx FROM vsc_app.helper_get_tx_by_op_id(result.op_id);
         IF with_payload IS TRUE THEN
             SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
                 'id', result.id,
@@ -729,7 +696,7 @@ DECLARE
     result vsc_api.contract_type;
     results vsc_api.contract_type[];
     results_arr jsonb[] DEFAULT '{}';
-    _l1_tx vsc_api.l1_tx_type;
+    _l1_tx vsc_app.l1_tx_type;
 BEGIN
     IF count <= 0 OR count > 100 THEN
         RETURN jsonb_build_object(
@@ -747,7 +714,7 @@ BEGIN
 
     FOREACH result IN ARRAY results
     LOOP
-        SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(result.op_id);
+        SELECT * INTO _l1_tx FROM vsc_app.helper_get_tx_by_op_id(result.op_id);
         SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
             'id', result.id,
             'created_in_op', _l1_tx.trx_hash,
@@ -783,7 +750,7 @@ DECLARE
     result vsc_api.deposit_type;
     results vsc_api.deposit_type[];
     results_arr jsonb[] DEFAULT '{}';
-    _l1_tx vsc_api.l1_tx_type;
+    _l1_tx vsc_app.l1_tx_type;
 BEGIN
     IF count <= 0 OR count > 100 THEN
         RETURN jsonb_build_object(
@@ -803,7 +770,7 @@ BEGIN
 
     FOREACH result IN ARRAY results
     LOOP
-        SELECT * INTO _l1_tx FROM vsc_api.helper_get_tx_by_op_id(result.op_id);
+        SELECT * INTO _l1_tx FROM vsc_app.helper_get_tx_by_op_id(result.op_id);
         SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
             'id', result.id,
             'ts', _l1_tx.created_at,

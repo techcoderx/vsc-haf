@@ -4,7 +4,9 @@ DROP TYPE IF EXISTS vsc_app.op_type CASCADE;
 CREATE TYPE vsc_app.op_type AS (
     id BIGINT,
     block_num INT,
+    trx_in_block SMALLINT,
     op_pos SMALLINT,
+    timestamp TIMESTAMP,
     body TEXT
 );
 
@@ -18,35 +20,14 @@ BEGIN
         SELECT
             id,
             block_num,
+            trx_in_block,
             op_pos,
+            timestamp,
             body::TEXT
         FROM hive.vsc_app_operations_view
         WHERE block_num >= _first_block AND block_num <= _last_block AND
             (op_type_id=2 OR op_type_id=18 OR op_type_id=10)
         ORDER BY block_num, id;
-END
-$function$
-LANGUAGE plpgsql STABLE;
-
-DROP TYPE IF EXISTS vsc_app.block_type CASCADE;
-CREATE TYPE vsc_app.block_type AS (
-    num INTEGER,
-    created_at TIMESTAMP
-);
-
-CREATE OR REPLACE FUNCTION vsc_app.enum_block(IN _first_block INT, IN _last_block INT)
-RETURNS SETOF vsc_app.block_type
-AS
-$function$
-BEGIN
-    -- Fetch block headers
-    RETURN QUERY
-        SELECT
-            num,
-            created_at
-        FROM hive.vsc_app_blocks_view
-        WHERE num >= _first_block AND num <= _last_block
-        ORDER BY num;
 END
 $function$
 LANGUAGE plpgsql STABLE;

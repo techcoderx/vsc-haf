@@ -4,11 +4,11 @@ import randomDID from './did.js'
 import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS } from './constants.js'
 import db from './db.js'
 import logger from './logger.js'
-import { BlockPayload, ContractCommitmentPayload, DIDPayload, DepositPayload, MultisigTxRefPayload, NewContractPayload, NodeAnnouncePayload, Op, ParsedOp, TxTypes } from './processor_types.js'
+import { BlockPayload, DepositPayload, MultisigTxRefPayload, NewContractPayload, NodeAnnouncePayload, Op, ParsedOp, TxTypes } from './processor_types.js'
 import op_type_map from './operations.js'
 
 const processor = {
-    validateAndParse: async (op: Op, ts: Date): Promise<ParsedOp> => {
+    validateAndParse: async (op: Op): Promise<ParsedOp> => {
         try {
             let parsed = JSON.parse(op.body)
             if (!parsed.value)
@@ -32,9 +32,10 @@ const processor = {
                 let details: ParsedOp = {
                     valid: true,
                     id: op.id,
-                    ts: ts,
+                    ts: op.timestamp,
                     user: requiresActiveAuth ? parsed.value.required_auths[0] : parsed.value.required_posting_auths[0],
                     block_num: op.block_num,
+                    op_pos: op.op_pos,
                     tx_type: TxTypes.CustomJSON,
                     op_type: cjidx
                 }
@@ -111,7 +112,7 @@ const processor = {
                 let details: ParsedOp = {
                     valid: true,
                     id: op.id,
-                    ts: ts,
+                    ts: op.timestamp,
                     user: parsed.value.account,
                     block_num: op.block_num,
                     tx_type: TxTypes.AccountUpdate
@@ -135,7 +136,7 @@ const processor = {
                 let details: ParsedOp = {
                     valid: true,
                     id: op.id,
-                    ts: ts,
+                    ts: op.timestamp,
                     block_num: op.block_num,
                     tx_type: TxTypes.Transfer
                 }
@@ -173,8 +174,8 @@ const processor = {
             return { valid: false }
         }
     },
-    process: async (op: any, ts: Date): Promise<boolean> => {
-        let result = await processor.validateAndParse(op, ts)
+    process: async (op: any): Promise<boolean> => {
+        let result = await processor.validateAndParse(op)
         if (result.valid) {
             logger.trace('Processing op',result)
             let pl, op_number = op_type_map.translate(result.tx_type!, result.op_type!)

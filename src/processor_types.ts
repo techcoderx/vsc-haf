@@ -1,6 +1,9 @@
 export type Op = {
     id: string
     block_num: number
+    trx_in_block: number
+    op_pos: number
+    timestamp: Date
     body: string
 }
 
@@ -10,6 +13,8 @@ export type ParsedOp = {
     ts?: Date
     user?: string
     block_num?: number
+    trx_in_block?: number
+    op_pos?: number
     tx_type?: TxTypes
     op_type?: number
     payload?: DIDPayload | BlockPayload | NewContractPayload | ContractCommitmentPayload | NodeAnnouncePayload | MultisigTxRefPayload | DepositPayload

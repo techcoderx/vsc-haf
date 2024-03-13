@@ -17,7 +17,7 @@ const HAF_FKS: FKS_TYPE = {
     l1_op_user_id_fk: {
         table: SCHEMA_NAME+'.l1_operations',
         fk: 'user_id',
-        ref: 'hive.vsc_app_accounts(id)'
+        ref: `hive.${APP_CONTEXT}_accounts(id)`
     },
     l1_op_type_fk: {
         table: SCHEMA_NAME+'.l1_operations',
@@ -27,7 +27,7 @@ const HAF_FKS: FKS_TYPE = {
     l1_users_fk: {
         table: SCHEMA_NAME+'.l1_users',
         fk: 'id',
-        ref: 'hive.vsc_app_accounts(id)'
+        ref: `hive.${APP_CONTEXT}_accounts(id)`
     },
     block_proposed_in_op_fk: {
         table: SCHEMA_NAME+'.blocks',
@@ -37,7 +37,7 @@ const HAF_FKS: FKS_TYPE = {
     block_proposer_fk: {
         table: SCHEMA_NAME+'.blocks',
         fk: 'proposer',
-        ref: 'hive.vsc_app_accounts(id)'
+        ref: `hive.${APP_CONTEXT}_accounts(id)`
     },
     contract_created_in_op_fk: {
         table: SCHEMA_NAME+'.contracts',
@@ -47,7 +47,7 @@ const HAF_FKS: FKS_TYPE = {
     witness_account_fk: {
         table: SCHEMA_NAME+'.witnesses',
         fk: 'id',
-        ref: 'hive.vsc_app_accounts(id)'
+        ref: `hive.${APP_CONTEXT}_accounts(id)`
     },
     witness_enabled_at_fk: {
         table: SCHEMA_NAME+'.witnesses',

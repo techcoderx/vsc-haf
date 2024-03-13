@@ -1,7 +1,7 @@
 import db from './db.js'
 import logger from './logger.js'
 import { TxTypes } from './processor_types.js'
-import { CUSTOM_JSON_IDS, XFER_ACTIONS } from './constants.js'
+import { CUSTOM_JSON_IDS, SCHEMA_NAME, XFER_ACTIONS } from './constants.js'
 
 type OpTypeIDMap = {
     [key: string]: number
@@ -17,7 +17,7 @@ type OpTypeMod = {
 const op_type_map: OpTypeMod = {
     map: {},
     retrieveMap: async (): Promise<void> => {
-        let op_types = await db.client.query('SELECT * FROM vsc_app.l1_operation_types;')
+        let op_types = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.l1_operation_types;`)
         for (let i in op_types.rows)
             op_type_map.map[op_types.rows[i].op_name] = op_types.rows[i].id
         logger.debug('Loaded op_type -> id mapping, count: '+op_types.rowCount)

@@ -716,17 +716,50 @@ BEGIN
     LOOP
         SELECT * INTO _l1_tx FROM vsc_app.helper_get_tx_by_op_id(result.op_id);
         SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
-            'id', result.id,
+            'contract_id', result.contract_id,
             'created_in_op', _l1_tx.trx_hash,
             'created_in_l1_block', _l1_tx.block_num,
             'created_at', _l1_tx.created_at,
             'name', result.name,
-            'manifest_id', result.manifest_id,
+            'description', result.description,
             'code', result.code
         )) INTO results_arr;
     END LOOP;
 
     RETURN array_to_json(results_arr)::jsonb;
+END
+$function$
+LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION vsc_api.get_contract_by_id(id VARCHAR)
+RETURNS jsonb
+AS
+$function$
+DECLARE
+    result vsc_api.contract_type = NULL;
+    _l1_tx vsc_app.l1_tx_type;
+BEGIN
+    SELECT c.*, o.op_id
+        INTO result
+        FROM vsc_app.contracts c
+        JOIN vsc_app.l1_operations o ON
+            o.id=c.created_in_op
+        WHERE c.contract_id = id;
+    IF result = NULL THEN
+        RETURN jsonb_build_object(
+            'error', 'contract not found'
+        );
+    END IF;
+    SELECT * INTO _l1_tx FROM vsc_app.helper_get_tx_by_op_id(result.op_id);
+    RETURN jsonb_build_object(
+        'contract_id', result.contract_id,
+        'created_in_op', _l1_tx.trx_hash,
+        'created_in_l1_block', _l1_tx.block_num,
+        'created_at', _l1_tx.created_at,
+        'name', result.name,
+        'description', result.description,
+        'code', result.code
+    );
 END
 $function$
 LANGUAGE plpgsql STABLE;

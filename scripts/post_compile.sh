@@ -67,6 +67,7 @@ fi
 # Rename app context
 if [[ "$APP_CONTEXT_NAME" != "$DEFAULT_APP_CONTEXT_NAME" ]]; then
     ${SED_COMMAND} -i "s/${DEFAULT_APP_CONTEXT_NAME}_/${APP_CONTEXT_NAME}_/g" $DESTINATION_PATH/sql/*.sql
+    ${SED_COMMAND} -i "s/'${DEFAULT_APP_CONTEXT_NAME}'/'${APP_CONTEXT_NAME}'/g" $DESTINATION_PATH/sql/drop_db.sql
     ${SED_COMMAND} -i "s/const APP_CONTEXT = '${DEFAULT_APP_CONTEXT_NAME}/const APP_CONTEXT = '${APP_CONTEXT_NAME}/g" $DESTINATION_PATH/constants.js
 fi
 

@@ -31,6 +31,8 @@ const processor = {
                     parsed.value.required_posting_auths.length === 0))
                     return { valid: false }
                 let payload = JSON.parse(parsed.value.json)
+                if (payload.net_id !== NETWORK_ID)
+                    return { valid: false }
                 let details: ParsedOp = {
                     valid: true,
                     id: op.id,
@@ -45,8 +47,7 @@ const processor = {
                 switch (cjidx) {
                     case 0:
                         // propose block
-                        if (payload.net_id !== NETWORK_ID ||
-                            payload.replay_id !== 2 ||
+                        if (payload.replay_id !== 2 ||
                             typeof payload.signed_block !== 'object' ||
                             !isCID(payload.signed_block.block) ||
                             CID.parse(payload.signed_block.block).code !== 0x71 ||
@@ -64,8 +65,7 @@ const processor = {
                         break
                     case 1:
                         // create contract
-                        if (payload.net_id !== NETWORK_ID ||
-                            !isCID(payload.code) ||
+                        if (!isCID(payload.code) ||
                             CID.parse(payload.code).code !== 0x55)
                             return { valid: false }
                         const trx_hash = await db.client.query(`SELECT ${SCHEMA_NAME}.get_tx_hash_by_op($1,$2::SMALLINT);`,[details.block_num,details.trx_in_block])
@@ -103,7 +103,7 @@ const processor = {
                         break
                     case 6:
                         // withdrawal request
-                        if (payload.net_id !== NETWORK_ID || isNaN(parseFloat(payload.amount)))
+                        if (isNaN(parseFloat(payload.amount)))
                             return { valid: false }
                         details.payload = {
                             amount: parseFloat(payload.amount),

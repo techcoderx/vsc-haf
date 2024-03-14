@@ -176,8 +176,9 @@ const processor = {
                 }
             }
             return { valid: false }
-        } catch {
+        } catch (e) {
             logger.trace('Failed to parse operation, id:',op.id,'block:',op.block_num)
+            logger.trace(e)
             return { valid: false }
         }
     },

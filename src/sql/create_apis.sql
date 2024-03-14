@@ -708,7 +708,7 @@ BEGIN
         FROM vsc_app.contracts c
         JOIN vsc_app.l1_operations o ON
             o.id=c.created_in_op
-        ORDER BY c.id DESC
+        ORDER BY c.contract_id DESC
         LIMIT count
     ) INTO results;
 
@@ -736,6 +736,7 @@ RETURNS jsonb
 AS
 $function$
 DECLARE
+	ct_id ALIAS FOR id;
     result vsc_api.contract_type = NULL;
     _l1_tx vsc_app.l1_tx_type;
 BEGIN
@@ -744,7 +745,7 @@ BEGIN
         FROM vsc_app.contracts c
         JOIN vsc_app.l1_operations o ON
             o.id=c.created_in_op
-        WHERE c.contract_id = id;
+        WHERE c.contract_id = ct_id;
     IF result = NULL THEN
         RETURN jsonb_build_object(
             'error', 'contract not found'

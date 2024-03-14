@@ -1,0 +1,72 @@
+services:
+  vsc-test-install:
+    image: vsc-haf:${VSC_TEST_VERSION:-dev}
+    profiles:
+      - apps
+      - vsc-test
+    environment:
+      POSTGRES_HOST: haf
+    command:
+      - install_app
+    networks:
+      haf-network:
+    depends_on:
+      haf:
+        condition: service_healthy
+  vsc-test-uninstall:
+    image: vsc-haf:${VSC_TEST_VERSION:-dev}
+    profiles:
+      - vsc-test-uninstall
+    environment:
+      POSTGRES_HOST: haf
+    command:
+      - uninstall_app
+    networks:
+      haf-network:
+    depends_on:
+      haf:
+        condition: service_healthy
+  vsc-test-block-processing:
+    image: vsc-haf:${VSC_TEST_VERSION:-dev}
+    profiles:
+      - apps
+      - vsc-test
+    environment:
+      POSTGRES_URL: postgresql://vsc_owner@haf/haf_block_log
+      VSC_TEST_LOG_LEVEL: ${VSC_TEST_LOG_LEVEL:-trace}
+    command:
+      - process_blocks
+    networks:
+      haf-network:
+    depends_on:
+      vsc-test-install:
+        condition: service_completed_successfully
+      haf:
+        condition: service_healthy
+  vsc-test-postgrest:
+    image: ${POSTGREST_REGISTRY:-registry.gitlab.syncad.com/hive/haf_api_node/postgrest}:${POSTGREST_VERSION:-latest}
+    profiles:
+      - apps
+      - vsc-test
+    environment:
+      PGRST_ADMIN_SERVER_PORT: 3001
+      PGRST_DB_URI: postgresql://vsc_user@haf/haf_block_log
+      PGRST_DB_SCHEMA: vsc_tapi
+      PGRST_DB_ANON_ROLE: vsc_user
+      PGRST_DB_ROOT_SPEC: home
+      PGRST_DB_POOL: 20
+      PGRST_DB_POOL_ACQUISITION_TIMEOUT: 10
+      PGRST_OPENAPI_SERVER_PROXY_URI: http://${PUBLIC_HOSTNAME}/vsc_tapi/
+    networks:
+      haf-network:
+    healthcheck:
+      test: ["CMD-SHELL", "wget --timeout=2 -nv -t1 --spider http://localhost:3000/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 1m
+    depends_on:
+      vsc-test-install:
+        condition: service_completed_successfully
+      haf:
+        condition: service_healthy

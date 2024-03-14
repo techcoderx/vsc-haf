@@ -33,7 +33,7 @@ services:
       - vsc-test
     environment:
       POSTGRES_URL: postgresql://vsc_owner@haf/haf_block_log
-      VSC_TEST_LOG_LEVEL: ${VSC_TEST_LOG_LEVEL:-trace}
+      VSC_HAF_LOG_LEVEL: ${VSC_TEST_LOG_LEVEL:-trace}
     command:
       - process_blocks
     networks:

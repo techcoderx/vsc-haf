@@ -7,7 +7,9 @@ export type Op = {
     body: string
 }
 
-export type ParsedOp = {
+export type PayloadTypes = BlockPayload | NewContractPayload | NodeAnnouncePayload | MultisigTxRefPayload | DepositPayload
+
+export interface ParsedOp<T> {
     valid: boolean
     id?: string // pg library returns strings for bigint type
     ts?: Date
@@ -17,7 +19,7 @@ export type ParsedOp = {
     op_pos?: number
     tx_type?: TxTypes
     op_type?: number
-    payload?: DIDPayload | BlockPayload | NewContractPayload | ContractCommitmentPayload | NodeAnnouncePayload | MultisigTxRefPayload | DepositPayload
+    payload?: T
 }
 
 export enum TxTypes {
@@ -26,16 +28,15 @@ export enum TxTypes {
     Transfer
 }
 
-export type DIDPayload = {
-    did: string
-}
-
 export type BlockPayload = {
     block_hash: string
-    signature: {
-        sig: string,
-        bv: string
-    }
+    signature: BLSAggSign
+}
+
+export type ElectionPayload = {
+    data: string
+    epoch: number
+    signature: BLSAggSign
 }
 
 export type NewContractPayload = {
@@ -52,6 +53,7 @@ export type ContractCommitmentPayload = {
 
 export type NodeAnnouncePayload = {
     did: string
+    consensusDid: string
     witnessEnabled: boolean
     git_commit: string
 }
@@ -64,4 +66,9 @@ export type DepositPayload = {
     amount: number
     asset: number
     contract_id?: string
+}
+
+export type BLSAggSign = {
+    sig: string,
+    bv: string
 }

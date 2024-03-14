@@ -6,11 +6,11 @@ import randomDID from './did.js'
 import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS } from './constants.js'
 import db from './db.js'
 import logger from './logger.js'
-import { BlockPayload, DepositPayload, MultisigTxRefPayload, NewContractPayload, NodeAnnouncePayload, Op, ParsedOp, TxTypes } from './processor_types.js'
+import { BlockPayload, DepositPayload, MultisigTxRefPayload, NewContractPayload, NodeAnnouncePayload, Op, ParsedOp, PayloadTypes, TxTypes } from './processor_types.js'
 import op_type_map from './operations.js'
 
 const processor = {
-    validateAndParse: async (op: Op): Promise<ParsedOp> => {
+    validateAndParse: async (op: Op): Promise<ParsedOp<PayloadTypes>> => {
         try {
             let parsed = JSON.parse(op.body)
             if (!parsed.value)
@@ -33,7 +33,7 @@ const processor = {
                 let payload = JSON.parse(parsed.value.json)
                 if (payload.net_id !== NETWORK_ID)
                     return { valid: false }
-                let details: ParsedOp = {
+                let details: ParsedOp<PayloadTypes> = {
                     valid: true,
                     id: op.id,
                     ts: op.timestamp,
@@ -117,7 +117,7 @@ const processor = {
             } else if (parsed.type === 'account_update_operation') {
                 if (!parsed.value.json_metadata) return { valid: false }
                 let payload = JSON.parse(parsed.value.json_metadata)
-                let details: ParsedOp = {
+                let details: ParsedOp<NodeAnnouncePayload> = {
                     valid: true,
                     id: op.id,
                     ts: op.timestamp,
@@ -135,13 +135,13 @@ const processor = {
                     did: did,
                     witnessEnabled: proof && proof.witness && proof.witness.enabled,
                     git_commit: (proof && typeof proof.git_commit === 'string') ? (proof.git_commit as string).trim().slice(0,40) : ''
-                }
+                } as NodeAnnouncePayload
                 return details
             } else if (parsed.type === 'transfer_operation') {
                 if ((parsed.value.from !== MULTISIG_ACCOUNT && parsed.value.to !== MULTISIG_ACCOUNT)|| !parsed.value.memo)
                     return { valid: false }
                 let payload = JSON.parse(parsed.value.memo)
-                let details: ParsedOp = {
+                let details: ParsedOp<DepositPayload> = {
                     valid: true,
                     id: op.id,
                     ts: op.timestamp,

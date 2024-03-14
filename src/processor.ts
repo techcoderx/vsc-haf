@@ -37,6 +37,7 @@ const processor = {
                     ts: op.timestamp,
                     user: requiresActiveAuth ? parsed.value.required_auths[0] : parsed.value.required_posting_auths[0],
                     block_num: op.block_num,
+                    trx_in_block: op.trx_in_block,
                     op_pos: op.op_pos,
                     tx_type: TxTypes.CustomJSON,
                     op_type: cjidx

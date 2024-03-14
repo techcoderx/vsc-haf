@@ -56,7 +56,7 @@ done
 
 echo Building the images with tag $TAG...
 
-if [[ -n "$BUILD_ARGS" ]]; then
+if [ -n "$BUILD_ARGS" ]; then
     echo Build args: $BUILD_ARGS
 fi
 

@@ -12,7 +12,7 @@
   "type": "module",
   "scripts": {
     "start": "node dist/index.js",
-    "compile": "tsc; cp -r src/sql dist",
+    "compile": "tsc; ./scripts/post_compile.sh",
     "dev": "node --loader ts-node/esm src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

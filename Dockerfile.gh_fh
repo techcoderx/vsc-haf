@@ -16,9 +16,10 @@ RUN chmod +x /github_fetch_head.sh && chown vsc_owner:vsc_owner /github_fetch_he
 # Set the environment variables
 ENV POSTGRES_URL your_postgres_url
 ENV VSC_HAF_GITHUB_API_KEY your_api_key
+ENV SCHEMA_NAME=vsc_app
 
 # Set 'vsc_owner' as the current user
 USER vsc_owner
 
 # Set the entrypoint to your script
-ENTRYPOINT /github_fetch_head.sh --postgres-url=$POSTGRES_URL --api-key=$VSC_HAF_GITHUB_API_KEY
+ENTRYPOINT /github_fetch_head.sh --postgres-url=$POSTGRES_URL --api-key=$VSC_HAF_GITHUB_API_KEY --schema=$SCHEMA_NAME

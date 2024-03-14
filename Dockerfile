@@ -12,7 +12,11 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-l
 
 FROM base AS build
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
-RUN pnpm run compile
+
+ARG API_SCHEMA_NAME=vsc_api
+ARG SCHEMA_NAME=vsc_app
+ARG APP_CONTEXT=vsc_app
+RUN pnpm run compile --schema=${SCHEMA_NAME} --api-schema=${API_SCHEMA_NAME} --app-context=${APP_CONTEXT}
 
 FROM base
 

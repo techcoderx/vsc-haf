@@ -66,6 +66,20 @@ END
 $function$
 LANGUAGE plpgsql STABLE;
 
+CREATE OR REPLACE FUNCTION vsc_app.get_tx_hash_by_op(_block_num INTEGER, _trx_in_block SMALLINT)
+RETURNS TEXT
+AS
+$function$
+BEGIN
+    RETURN (
+        SELECT encode(htx.trx_hash::bytea, 'hex')
+        FROM hive.transactions_view htx
+        WHERE htx.block_num = _block_num AND htx.trx_in_block = _trx_in_block
+    );
+END
+$function$
+LANGUAGE plpgsql STABLE;
+
 -- SMALLINT to ASSET string mapping
 CREATE OR REPLACE FUNCTION vsc_app.asset_by_id(id SMALLINT = -1)
 RETURNS VARCHAR

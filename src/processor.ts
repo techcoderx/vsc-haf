@@ -67,9 +67,9 @@ const processor = {
                             !isCID(payload.code) ||
                             CID.parse(payload.code).code !== 0x55)
                             return { valid: false }
-                        const trx_hash = await db.client.query(`SELECT ${SCHEMA_NAME}.helper_get_tx_by_op_id($1);`,[details.id])
+                        const trx_hash = await db.client.query(`SELECT ${SCHEMA_NAME}.get_tx_hash_by_op($1,$2::SMALLINT);`,[details.block_num,details.trx_in_block])
                         const contractIdHash = (await encodePayload({
-                            ref_id: trx_hash.rows[0].trx_hash,
+                            ref_id: trx_hash.rows[0].get_tx_hash_by_op,
                             index: details.op_pos!.toString()
                         })).cid
                         const bech32Addr = bech32.encode('vs4', bech32.toWords(contractIdHash.bytes))

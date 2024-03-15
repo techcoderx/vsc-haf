@@ -7,7 +7,7 @@ export type Op = {
     body: string
 }
 
-export type PayloadTypes = BlockPayload | NewContractPayload | NodeAnnouncePayload | MultisigTxRefPayload | DepositPayload
+export type PayloadTypes = BlockPayload | NewContractPayload | NodeAnnouncePayload | ElectionPayload | MultisigTxRefPayload | DepositPayload
 
 export interface ParsedOp<T> {
     valid: boolean

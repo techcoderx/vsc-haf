@@ -52,16 +52,20 @@ CREATE TABLE IF NOT EXISTS vsc_app.witnesses(
     produced INTEGER DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS vsc_app.election_results(
+    id SERIAL PRIMARY KEY,
+    epoch INTEGER NOT NULL,
+    proposed_in_op BIGINT NOT NULL,
+    proposer INTEGER NOT NULL,
+    data_cid VARCHAR(59) NOT NULL,
+    sig VARCHAR NOT NULL,
+    bv VARCHAR NOT NULL,
+    is_valid BOOLEAN
+);
+
 CREATE TABLE IF NOT EXISTS vsc_app.vsc_node_git(
     id INTEGER PRIMARY KEY,
     git_commit VARCHAR(40)
-);
-
-CREATE TABLE IF NOT EXISTS vsc_app.contract_commitments(
-    contract_id VARCHAR NOT NULL,
-    node_identity VARCHAR NOT NULL,
-    is_active BOOLEAN DEFAULT FALSE,
-    PRIMARY KEY (contract_id, node_identity)
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.trusted_dids(
@@ -72,6 +76,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.trusted_dids(
 CREATE TABLE IF NOT EXISTS vsc_app.state(
     id SERIAL PRIMARY KEY,
     last_processed_block INTEGER NOT NULL DEFAULT 0,
+    next_epoch_block INTEGER NOT NULL DEFAULT 0,
     db_version INTEGER NOT NULL DEFAULT 1
 );
 

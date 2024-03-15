@@ -179,6 +179,20 @@ END
 $function$
 LANGUAGE plpgsql VOLATILE;
 
+CREATE OR REPLACE FUNCTION vsc_app.process_election_result(_proposed_in_op BIGINT, _proposer VARCHAR, _epoch INTEGER, _data_cid VARCHAR, _sig VARCHAR, _bv VARCHAR)
+RETURNS void
+AS
+$function$
+DECLARE
+    _acc_id INTEGER;
+BEGIN
+    SELECT id INTO _acc_id FROM hive.vsc_app_accounts WHERE name=_proposer;
+    INSERT INTO vsc_app.election_results(epoch, proposed_in_op, proposer, data_cid, sig, bv)
+        VALUES(_epoch, _proposed_in_op, _proposer, _data_cid, _sig, _bv);
+END
+$function$
+LANGUAGE plpgsql VOLATILE;
+
 CREATE OR REPLACE FUNCTION vsc_app.insert_block(_proposed_in_op BIGINT, _block_hash VARCHAR, _proposer VARCHAR, _sig VARCHAR, _bv VARCHAR)
 RETURNS void
 AS
@@ -214,23 +228,6 @@ $function$
 BEGIN
     INSERT INTO vsc_app.contracts(contract_id, created_in_op, name, description, code)
         VALUES(_contract_id, _created_in_op, _contract_name, _contract_description, _code_hash);
-END
-$function$
-LANGUAGE plpgsql VOLATILE;
-
-CREATE OR REPLACE FUNCTION vsc_app.update_contract_commitment(
-    _contract_id VARCHAR,
-    _node_identity VARCHAR,
-    _is_active BOOLEAN
-)
-RETURNS void
-AS
-$function$
-BEGIN
-    INSERT INTO vsc_app.contract_commitments(contract_id, node_identity, is_active)
-        VALUES(_contract_id, _node_identity, _is_active)
-        ON CONFLICT (contract_id, node_identity) DO UPDATE
-        SET is_active=_is_active;
 END
 $function$
 LANGUAGE plpgsql VOLATILE;

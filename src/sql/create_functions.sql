@@ -188,7 +188,7 @@ DECLARE
 BEGIN
     SELECT id INTO _acc_id FROM hive.vsc_app_accounts WHERE name=_proposer;
     INSERT INTO vsc_app.election_results(epoch, proposed_in_op, proposer, data_cid, sig, bv)
-        VALUES(_epoch, _proposed_in_op, _proposer, _data_cid, _sig, _bv);
+        VALUES(_epoch, _proposed_in_op, _acc_id, _data_cid, _sig, _bv);
 END
 $function$
 LANGUAGE plpgsql VOLATILE;

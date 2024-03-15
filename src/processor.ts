@@ -98,6 +98,11 @@ const processor = {
                             typeof payload.signature.sig !== 'string' ||
                             typeof payload.signature.bv !== 'string')
                             return { valid: false }
+                        details.payload = {
+                            epoch: payload.epoch,
+                            data: payload.data,
+                            signature: payload.signature
+                        }
                         break
                     case 5:
                         // multisig_txref

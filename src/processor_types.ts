@@ -53,7 +53,7 @@ export type ContractCommitmentPayload = {
 
 export type NodeAnnouncePayload = {
     did: string
-    consensusDid: string
+    consensus_did: string
     witnessEnabled: boolean
     git_commit: string
 }

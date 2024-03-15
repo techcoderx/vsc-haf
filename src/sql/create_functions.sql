@@ -72,9 +72,9 @@ AS
 $function$
 BEGIN
     RETURN (
-        SELECT encode(htx.trx_hash::bytea, 'hex')
-        FROM hive.transactions_view htx
-        WHERE htx.block_num = _block_num AND htx.trx_in_block = _trx_in_block
+        SELECT encode(t.trx_hash::bytea, 'hex')
+        FROM hive.vsc_app_transactions_view t
+        WHERE t.block_num = _block_num AND t.trx_in_block = _trx_in_block
     );
 END
 $function$
@@ -132,7 +132,7 @@ END
 $function$
 LANGUAGE plpgsql VOLATILE;
 
-CREATE OR REPLACE FUNCTION vsc_app.update_witness(_username VARCHAR, _did VARCHAR, _enabled BOOLEAN, _op_id BIGINT, _git_commit VARCHAR = NULL)
+CREATE OR REPLACE FUNCTION vsc_app.update_witness(_username VARCHAR, _did VARCHAR, _consensus_did VARCHAR, _enabled BOOLEAN, _op_id BIGINT, _git_commit VARCHAR = NULL)
 RETURNS void
 AS
 $function$
@@ -151,8 +151,8 @@ BEGIN
 
     IF _current_git_commit IS NULL THEN
         IF _enabled IS TRUE THEN
-            INSERT INTO vsc_app.witnesses(id, did, enabled, enabled_at, git_commit)
-                VALUES (_hive_user_id, _did, TRUE, _op_id, COALESCE(_git_commit, _current_git_commit));
+            INSERT INTO vsc_app.witnesses(id, did, consensus_did, enabled, enabled_at, git_commit)
+                VALUES (_hive_user_id, _did, _consensus_did, TRUE, _op_id, COALESCE(_git_commit, _current_git_commit));
         ELSE
             RETURN;
         END IF;
@@ -161,6 +161,7 @@ BEGIN
             UPDATE vsc_app.witnesses SET
                 enabled = FALSE,
                 did = _did,
+                consensus_did = _consensus_did,
                 disabled_at = _op_id,
                 git_commit = COALESCE(_git_commit, _current_git_commit)
             WHERE id = _hive_user_id;
@@ -168,6 +169,7 @@ BEGIN
             UPDATE vsc_app.witnesses SET
                 enabled = TRUE,
                 did = _did,
+                consensus_did = _consensus_did,
                 enabled_at = _op_id,
                 git_commit = COALESCE(_git_commit, _current_git_commit)
             WHERE id = _hive_user_id;

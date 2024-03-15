@@ -136,6 +136,12 @@ const processor = {
                     witnessEnabled: proof && proof.witness && proof.witness.enabled,
                     git_commit: (proof && typeof proof.git_commit === 'string') ? (proof.git_commit as string).trim().slice(0,40) : ''
                 } as NodeAnnouncePayload
+                if (Array.isArray(payload.did_keys))
+                    for (let i in payload.did_keys)
+                        if (typeof payload.did_keys[i] === 'object' && payload.did_keys[i].t === 'consensus' && payload.did_keys[i].ct === 'DID-BLS' && typeof payload.did_keys[i].key === 'string') {
+                            details.payload.consensus_did = payload.did_keys[i].key
+                            break // use first consensus bls-did key
+                        }
                 return details
             } else if (parsed.type === 'transfer_operation') {
                 if ((parsed.value.from !== MULTISIG_ACCOUNT && parsed.value.to !== MULTISIG_ACCOUNT)|| !parsed.value.memo)
@@ -192,7 +198,7 @@ const processor = {
             switch (op_number) {
                 case op_type_map.map.announce_node:
                     pl = result.payload as NodeAnnouncePayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4,$5);`,[result.user,pl.did,pl.witnessEnabled,new_vsc_op.rows[0].process_operation,pl.git_commit])
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4,$5,$6);`,[result.user,pl.did,pl.consensus_did,pl.witnessEnabled,new_vsc_op.rows[0].process_operation,pl.git_commit])
                     break
                 case op_type_map.map.propose_block:
                     pl = result.payload as BlockPayload

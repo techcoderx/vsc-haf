@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.witnesses(
     id INTEGER PRIMARY KEY, -- hive user id
     witness_id SERIAL, -- vsc witness id
     did VARCHAR NOT NULL,
+    consensus_did VARCHAR,
     enabled BOOLEAN DEFAULT FALSE,
     enabled_at BIGINT,
     disabled_at BIGINT,

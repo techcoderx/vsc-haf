@@ -17,7 +17,7 @@ const processor = {
                 return { valid: false }
             if (parsed.type === 'custom_json_operation') {
                 let cjidx = CUSTOM_JSON_IDS.indexOf(parsed.value.id)
-                let requiresActiveAuth = cjidx === 0 || cjidx === 1
+                let requiresActiveAuth = cjidx === 0 || cjidx === 1 || cjidx === 4
                 if (cjidx === -1 || !parsed.value.json)
                     return { valid: false }
 
@@ -89,6 +89,15 @@ const processor = {
                         break
                     case 4:
                         // election result
+                        if (typeof payload.data !== 'string' ||
+                            !isCID(payload.data) ||
+                            CID.parse(payload.data).code !== 0x71 ||
+                            !Number.isInteger(payload.epoch) ||
+                            payload.epoch < 0 ||
+                            typeof payload.signature !== 'object' ||
+                            typeof payload.signature.sig !== 'string' ||
+                            typeof payload.signature.bv !== 'string')
+                            return { valid: false }
                         break
                     case 5:
                         // multisig_txref

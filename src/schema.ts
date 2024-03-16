@@ -80,6 +80,10 @@ const INDEXES: INDEXES_TYPE = {
         table_name: SCHEMA_NAME+'.l1_operations',
         columns: [{ col_name: 'user_id', order: Ordering.ASC }, { col_name: 'nonce', order: Ordering.DESC }]
     },
+    l1_operation_user_txtype_idx: {
+        table_name: SCHEMA_NAME+'.l1_operations',
+        columns: [{ col_name: 'user_id', order: Ordering.ASC }, { col_name: 'op_type', order: Ordering.ASC }]
+    },
     block_hash_idx: {
         table_name: SCHEMA_NAME+'.blocks',
         columns: [{ col_name: 'block_hash', order: Ordering.ASC }]
@@ -91,10 +95,6 @@ const INDEXES: INDEXES_TYPE = {
     witness_did_idx: {
         table_name: SCHEMA_NAME+'.witnesses',
         columns: [{ col_name: 'did', order: Ordering.ASC }]
-    },
-    witness_sk_owner_idx: {
-        table_name: SCHEMA_NAME+'.witnesses',
-        columns: [{ col_name: 'sk_owner', order: Ordering.ASC }]
     },
     txref_in_op_idx: {
         table_name: SCHEMA_NAME+'.multisig_txrefs',

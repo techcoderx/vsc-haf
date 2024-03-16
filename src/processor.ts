@@ -231,9 +231,6 @@ const processor = {
                     pl = result.payload as NodeAnnouncePayload
                     await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4,$5,$6,$7,$8,$9);`,[result.user,pl.did,pl.consensus_did,pl.sk_posting,pl.sk_active,pl.sk_owner,pl.witnessEnabled,new_vsc_op.rows[0].process_operation,pl.git_commit])
                     break
-                case op_type_map.map.rotate_multisig:
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_multisig_rotation($1);`,[new_vsc_op.rows[0].process_operation])
-                    break
                 case op_type_map.map.propose_block:
                     pl = result.payload as BlockPayload
                     await db.client.query(`SELECT ${SCHEMA_NAME}.insert_block($1,$2,$3,$4,$5);`,[new_vsc_op.rows[0].process_operation,pl.block_hash,result.user,pl.signature.sig,pl.signature.bv])

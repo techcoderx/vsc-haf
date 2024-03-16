@@ -194,41 +194,6 @@ END
 $function$
 LANGUAGE plpgsql VOLATILE;
 
-CREATE OR REPLACE FUNCTION vsc_app.insert_multisig_rotation(_in_op BIGINT)
-RETURNS void
-AS
-$function$
-DECLARE
-    _payload jsonb;
-    _k jsonb;
-    _pub_keys_str TEXT[] DEFAULT '{}';
-    _members TEXT[] DEFAULT '{}';
-    _epoch INTEGER = NULL;
-BEGIN
-    SELECT ho.body->'value'
-        INTO _payload
-        FROM hive.operations_view ho
-        WHERE ho.id = (SELECT o.op_id FROM vsc_app.l1_operations o WHERE o.id=_in_op);
-    FOR _k IN SELECT jsonb_array_elements((_payload->'owner')->'key_auths')
-    LOOP
-        SELECT ARRAY_APPEND(_pub_keys_str, _k->>0) INTO _pub_keys_str;
-    END LOOP;
-    SELECT ARRAY(
-		SELECT a.name
-			FROM vsc_test.witnesses w
-			JOIN hive.vsc_app_accounts a ON
-				a.id = w.id
-			WHERE sk_owner = ANY(_pub_keys_str)
-	) INTO _members;
-    IF (SELECT jsonb_typeof((_payload->>'json_metadata')::jsonb->'epoch')) = 'number' THEN
-        _epoch := ((_payload->>'json_metadata')::jsonb->'epoch')::INTEGER;
-    END IF;
-    INSERT INTO vsc_app.multisig_history(rotated_at, epoch, members)
-        VALUES(_in_op, _epoch, _members);
-END
-$function$
-LANGUAGE plpgsql VOLATILE;
-
 CREATE OR REPLACE FUNCTION vsc_app.process_election_result(_proposed_in_op BIGINT, _proposer VARCHAR, _epoch INTEGER, _data_cid VARCHAR, _sig VARCHAR, _bv VARCHAR)
 RETURNS void
 AS
@@ -360,6 +325,8 @@ BEGIN
         IF _payload2 ? 'did_keys' IS TRUE THEN
             _payload := jsonb_set(_payload::jsonb, '{did_keys}', _payload2->'did_keys');
         END IF;
+    ELSIF _op_name = 'rotate_multisig' THEN
+        _payload := _op_body::jsonb;
     ELSIF _op_name = 'deposit' OR _op_name = 'withdrawal' THEN
         _payload := _op_body::jsonb;
         _payload := jsonb_set(_payload::jsonb, '{memo}', (_op_body::jsonb->>'memo')::jsonb);

@@ -78,12 +78,6 @@ CREATE TABLE IF NOT EXISTS vsc_app.state(
     db_version INTEGER NOT NULL DEFAULT 1
 );
 
-CREATE TABLE IF NOT EXISTS vsc_app.multisig_history(
-    rotated_at BIGINT PRIMARY KEY,
-    epoch INTEGER,
-    members TEXT[]
-);
-
 CREATE TABLE IF NOT EXISTS vsc_app.multisig_txrefs(
     id SERIAL PRIMARY KEY,
     in_op BIGINT NOT NULL,

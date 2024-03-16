@@ -130,6 +130,15 @@ const processor = {
                 }
                 return details
             } else if (parsed.type === 'account_update_operation') {
+                if (parsed.value.account === MULTISIG_ACCOUNT)
+                    return {
+                        valid: true,
+                        id: op.id,
+                        ts: op.timestamp,
+                        user: parsed.value.account,
+                        block_num: op.block_num,
+                        tx_type: TxTypes.AccountUpdate
+                    }
                 if (!parsed.value.json_metadata) return { valid: false }
                 let payload = JSON.parse(parsed.value.json_metadata)
                 let details: ParsedOp<NodeAnnouncePayload> = {
@@ -215,12 +224,15 @@ const processor = {
         let result = await processor.validateAndParse(op)
         if (result.valid) {
             logger.trace('Processing op',result)
-            let pl, op_number = op_type_map.translate(result.tx_type!, result.op_type!)
+            let pl, op_number = op_type_map.translate(result.tx_type!, result.op_type!, result.user === MULTISIG_ACCOUNT)
             let new_vsc_op = await db.client.query(`SELECT ${SCHEMA_NAME}.process_operation($1,$2,$3,$4);`,[result.user, result.id, op_number, result.ts])
             switch (op_number) {
                 case op_type_map.map.announce_node:
                     pl = result.payload as NodeAnnouncePayload
                     await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4,$5,$6,$7,$8,$9);`,[result.user,pl.did,pl.consensus_did,pl.sk_posting,pl.sk_active,pl.sk_owner,pl.witnessEnabled,new_vsc_op.rows[0].process_operation,pl.git_commit])
+                    break
+                case op_type_map.map.rotate_multisig:
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_multisig_rotation($1);`,[new_vsc_op.rows[0].process_operation])
                     break
                 case op_type_map.map.propose_block:
                     pl = result.payload as BlockPayload

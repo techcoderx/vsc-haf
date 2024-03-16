@@ -71,16 +71,17 @@ CREATE TABLE IF NOT EXISTS vsc_app.vsc_node_git(
     git_commit VARCHAR(40)
 );
 
-CREATE TABLE IF NOT EXISTS vsc_app.trusted_dids(
-    did VARCHAR PRIMARY KEY,
-    trusted BOOLEAN DEFAULT FALSE
-);
-
 CREATE TABLE IF NOT EXISTS vsc_app.state(
     id SERIAL PRIMARY KEY,
     last_processed_block INTEGER NOT NULL DEFAULT 0,
     next_epoch_block INTEGER NOT NULL DEFAULT 0,
     db_version INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS vsc_app.multisig_history(
+    rotated_at BIGINT PRIMARY KEY,
+    epoch INTEGER,
+    members TEXT[]
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.multisig_txrefs(

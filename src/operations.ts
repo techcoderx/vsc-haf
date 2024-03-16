@@ -10,7 +10,7 @@ type OpTypeIDMap = {
 type OpTypeMod = {
     map: OpTypeIDMap
     retrieveMap: () => Promise<void>,
-    translate: (tx_type: TxTypes, idx: number) => number
+    translate: (tx_type: TxTypes, idx: number, is_ms_account: boolean) => number
 }
 
 // op_type -> id mapping
@@ -23,9 +23,13 @@ const op_type_map: OpTypeMod = {
         logger.debug('Loaded op_type -> id mapping, count: '+op_types.rowCount)
         logger.trace(op_type_map.map)
     },
-    translate: (tx_type: TxTypes, idx: number = -1): number => {
-        if (tx_type === TxTypes.AccountUpdate)
-            return op_type_map.map.announce_node
+    translate: (tx_type: TxTypes, idx: number = -1, is_ms_account = false): number => {
+        if (tx_type === TxTypes.AccountUpdate) {
+            if (is_ms_account)
+                return op_type_map.map.rotate_multisig
+            else
+                return op_type_map.map.announce_node
+        }
         else if (tx_type === TxTypes.CustomJSON) {
             let cjtype = CUSTOM_JSON_IDS[idx].split('.')[1]
             if (cjtype === 'announce_tx')

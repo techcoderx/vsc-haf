@@ -163,7 +163,7 @@ BEGIN
     END IF;
 
     SELECT git_commit, did, consensus_did, sk_posting, sk_active, sk_owner, enabled
-        INTO _current_git_commit, _current_did, _current_consensus_did, _current_sk_posting, _current_sk_active, _current_sk_owner, _curent_enabled
+        INTO _current_git_commit, _current_did, _current_consensus_did, _current_sk_posting, _current_sk_active, _current_sk_owner, _current_enabled
         FROM vsc_app.witnesses
         WHERE id=_hive_user_id;
 
@@ -173,7 +173,7 @@ BEGIN
                 VALUES (_hive_user_id, _did, _consensus_did, _sk_posting, _sk_active, _sk_owner, TRUE, _op_id, _git_commit);
             INSERT INTO vsc_app.keyauths_archive(user_id, op_id, node_did, consensus_did, sk_posting, sk_active, sk_owner)
                 VALUES (_hive_user_id, _op_id, _did, _consensus_did, _sk_posting, _sk_active, _sk_owner);
-            INSERT INTO vsc_app.witness_toggle_archive(user_id, op_id, enabled)
+            INSERT INTO vsc_app.witness_toggle_archive(witness_id, op_id, enabled)
                 VALUES (_hive_user_id, _op_id, TRUE);
         ELSE
             RETURN;
@@ -211,8 +211,8 @@ BEGIN
                 VALUES (_hive_user_id, _op_id, _did, _consensus_did, _sk_posting, _sk_active, _sk_owner);
         END IF;
         IF _enabled != _current_enabled THEN
-            INSERT INTO vsc_app.witness_toggle_archive(user_id, op_id, enabled)
-                VALUES (_hive_user_id, _op_id, TRUE);
+            INSERT INTO vsc_app.witness_toggle_archive(witness_id, op_id, enabled)
+                VALUES (_hive_user_id, _op_id, _enabled);
         END IF;
     END IF;
 END

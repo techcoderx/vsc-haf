@@ -9,6 +9,10 @@ ALTER TABLE vsc_app.witnesses DROP CONSTRAINT IF EXISTS witness_account_fk;
 ALTER TABLE vsc_app.witnesses DROP CONSTRAINT IF EXISTS witness_enabled_at_fk;
 ALTER TABLE vsc_app.witnesses DROP CONSTRAINT IF EXISTS witness_disabled_at_fk;
 ALTER TABLE vsc_app.multisig_txrefs DROP CONSTRAINT IF EXISTS multisig_txref_in_op_fk;
+ALTER TABLE vsc_app.witness_toggle_archive DROP CONSTRAINT IF EXISTS witness_toggle_wid_fk;
+ALTER TABLE vsc_app.witness_toggle_archive DROP CONSTRAINT IF EXISTS witness_toggle_op_id_fk;
+ALTER TABLE vsc_app.keyauths_archive DROP CONSTRAINT IF EXISTS keyauths_uid_fk;
+ALTER TABLE vsc_app.keyauths_archive DROP CONSTRAINT IF EXISTS keyauths_op_id_fk;
 
 -- Drop all state providers
 SELECT hive.app_state_provider_drop_all('vsc_app');

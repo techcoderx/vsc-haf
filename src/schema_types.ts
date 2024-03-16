@@ -10,7 +10,8 @@ export type FKS_TYPE = {
 
 export type INDEX_TYPE = {
     table_name: string,
-    columns: INDEX_COL_TYPE[]
+    columns: INDEX_COL_TYPE[],
+    condition?: string
 }
 
 export type INDEX_COL_TYPE = {

@@ -59,6 +59,26 @@ const HAF_FKS: FKS_TYPE = {
         fk: 'disabled_at',
         ref: SCHEMA_NAME+'.l1_operations(id)'
     },
+    witness_toggle_wid_fk: {
+        table: SCHEMA_NAME+'.witness_toggle_archive',
+        fk: 'witness_id',
+        ref: `hive.${APP_CONTEXT}_accounts(id)`
+    },
+    witness_toggle_op_id_fk: {
+        table: SCHEMA_NAME+'.witness_toggle_archive',
+        fk: 'op_id',
+        ref: SCHEMA_NAME+'.l1_operations(id)'
+    },
+    keyauths_uid_fk: {
+        table: SCHEMA_NAME+'.keyauths_archive',
+        fk: 'user_id',
+        ref: `hive.${APP_CONTEXT}_accounts(id)`
+    },
+    keyauths_op_id_fk: {
+        table: SCHEMA_NAME+'.keyauths_archive',
+        fk: 'op_id',
+        ref: SCHEMA_NAME+'.l1_operations(id)'
+    },
     multisig_txref_in_op_fk: {
         table: SCHEMA_NAME+'.multisig_txrefs',
         fk: 'in_op',
@@ -90,11 +110,19 @@ const INDEXES: INDEXES_TYPE = {
     },
     contract_created_in_op_idx: {
         table_name: SCHEMA_NAME+'.contracts',
-        columns: [{ col_name: 'created_in_op', order: Ordering.ASC }]
+        columns: [{ col_name: 'created_in_op', order: Ordering.DESC }]
     },
     witness_did_idx: {
         table_name: SCHEMA_NAME+'.witnesses',
         columns: [{ col_name: 'did', order: Ordering.ASC }]
+    },
+    witness_toggle_archive_witness_id_op_id_idx: {
+        table_name: SCHEMA_NAME+'.witness_toggle_archive',
+        columns: [{ col_name: 'witness_id', order: Ordering.ASC }, { col_name: 'op_id', order: Ordering.DESC }]
+    },
+    keyauths_archive_witness_id_op_id_idx: {
+        table_name: SCHEMA_NAME+'.keyauths_archive',
+        columns: [{ col_name: 'user_id', order: Ordering.ASC }, { col_name: 'op_id', order: Ordering.DESC }]
     },
     txref_in_op_idx: {
         table_name: SCHEMA_NAME+'.multisig_txrefs',
@@ -199,7 +227,7 @@ const schema = {
                 continue
             }
             let start = new Date().getTime()
-            await db.client.query(`CREATE INDEX IF NOT EXISTS ${idx} ON ${INDEXES[idx].table_name}(${INDEXES[idx].columns.map(x => x.col_name+' '+Ordering[x.order]).join(',')});`)
+            await db.client.query(`CREATE INDEX IF NOT EXISTS ${idx} ON ${INDEXES[idx].table_name}(${INDEXES[idx].columns.map(x => x.col_name+' '+Ordering[x.order]).join(',')}) ${INDEXES[idx].condition?'WHERE '+INDEXES[idx].condition:''};`)
             logger.info('Index',idx,'created in',(new Date().getTime()-start),'ms')
         }
     },

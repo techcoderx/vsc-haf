@@ -44,6 +44,9 @@ CREATE TABLE IF NOT EXISTS vsc_app.witnesses(
     witness_id SERIAL, -- vsc witness id
     did VARCHAR NOT NULL,
     consensus_did VARCHAR,
+    sk_posting VARCHAR(53),
+    sk_active VARCHAR(53),
+    sk_owner VARCHAR(53),
     enabled BOOLEAN DEFAULT FALSE,
     enabled_at BIGINT,
     disabled_at BIGINT,

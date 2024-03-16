@@ -8,6 +8,7 @@ import db from './db.js'
 import logger from './logger.js'
 import { BlockPayload, DepositPayload, ElectionPayload, MultisigTxRefPayload, NewContractPayload, NodeAnnouncePayload, Op, ParsedOp, PayloadTypes, TxTypes } from './processor_types.js'
 import op_type_map from './operations.js'
+import { isValidL1PubKey } from './utils/crypto.js'
 
 const processor = {
     validateAndParse: async (op: Op): Promise<ParsedOp<PayloadTypes>> => {
@@ -145,9 +146,11 @@ const processor = {
                 const [did] = kid.split('#')
                 if (proof && proof.net_id !== NETWORK_ID)
                     return { valid: false }
+                const hasWitObj = proof && typeof proof.witness === 'object'
+                const hasSKeys = hasWitObj && typeof proof.witness.signing_keys === 'object'
                 details.payload = {
                     did: did,
-                    witnessEnabled: proof && proof.witness && proof.witness.enabled,
+                    witnessEnabled: hasWitObj && proof.witness.enabled,
                     git_commit: (proof && typeof proof.git_commit === 'string') ? (proof.git_commit as string).trim().slice(0,40) : ''
                 } as NodeAnnouncePayload
                 if (Array.isArray(payload.did_keys))
@@ -156,6 +159,11 @@ const processor = {
                             details.payload.consensus_did = payload.did_keys[i].key
                             break // use first consensus bls-did key
                         }
+                if (hasSKeys) {
+                    details.payload.sk_posting = isValidL1PubKey(proof.witness.signing_keys.posting) ? proof.witness.signing_keys.posting : null,
+                    details.payload.sk_active = isValidL1PubKey(proof.witness.signing_keys.active) ? proof.witness.signing_keys.active : null,
+                    details.payload.sk_owner = isValidL1PubKey(proof.witness.signing_keys.owner) ? proof.witness.signing_keys.owner : null
+                }
                 return details
             } else if (parsed.type === 'transfer_operation') {
                 if ((parsed.value.from !== MULTISIG_ACCOUNT && parsed.value.to !== MULTISIG_ACCOUNT)|| !parsed.value.memo)
@@ -212,7 +220,7 @@ const processor = {
             switch (op_number) {
                 case op_type_map.map.announce_node:
                     pl = result.payload as NodeAnnouncePayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4,$5,$6);`,[result.user,pl.did,pl.consensus_did,pl.witnessEnabled,new_vsc_op.rows[0].process_operation,pl.git_commit])
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4,$5,$6,$7,$8,$9);`,[result.user,pl.did,pl.consensus_did,pl.sk_posting,pl.sk_active,pl.sk_owner,pl.witnessEnabled,new_vsc_op.rows[0].process_operation,pl.git_commit])
                     break
                 case op_type_map.map.propose_block:
                     pl = result.payload as BlockPayload

@@ -56,6 +56,9 @@ export type NodeAnnouncePayload = {
     consensus_did: string
     witnessEnabled: boolean
     git_commit: string
+    sk_posting: string
+    sk_active: string
+    sk_owner: string
 }
 
 export type MultisigTxRefPayload = {

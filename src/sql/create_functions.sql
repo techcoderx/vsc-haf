@@ -198,8 +198,8 @@ BEGIN
             OR ((_sk_posting = _current_sk_posting) IS NOT TRUE)
             OR ((_sk_active = _current_sk_active) IS NOT TRUE)
             OR ((_sk_owner = _current_sk_owner) IS NOT TRUE) THEN
-            INSERT INTO vsc_app.keyauths_archive(user_id, op_id, node_did, consensus_did, sk_posting, sk_active, sk_owner)
-                VALUES (_hive_user_id, _op_id, _did, _consensus_did, _sk_posting, _sk_active, _sk_owner)
+            INSERT INTO vsc_app.keyauths_archive(user_id, op_id, last_updated, node_did, consensus_did, sk_posting, sk_active, sk_owner)
+                VALUES (_hive_user_id, _op_id, _op_id, _did, _consensus_did, _sk_posting, _sk_active, _sk_owner)
                 RETURNING id INTO _latest_keyauth_archive;
         ELSE
             UPDATE vsc_app.keyauths_archive SET
@@ -207,8 +207,8 @@ BEGIN
             WHERE id = _latest_keyauth_archive;
         END IF;
         IF _enabled != _current_enabled THEN
-            INSERT INTO vsc_app.witness_toggle_archive(witness_id, op_id, enabled)
-                VALUES (_hive_user_id, _op_id, _enabled)
+            INSERT INTO vsc_app.witness_toggle_archive(witness_id, op_id, last_updated, enabled)
+                VALUES (_hive_user_id, _op_id, _op_id, _enabled)
                 RETURNING id INTO _latest_toggle_archive;
         ELSE
             UPDATE vsc_app.witness_toggle_archive SET

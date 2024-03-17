@@ -5,6 +5,7 @@ SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit 1; pwd -P )"
 
 TAG=latest
 BUILD_ARGS=""
+SKIP_GH_FH="false"
 
 print_help () {
     cat <<EOF
@@ -16,6 +17,7 @@ OPTIONS:
     --schema=SCHEMA                 The schema name to use (default: vsc_app)
     --api-schema=SCHEMA             The API schema name to use (default: vsc_api)
     --app-context=CONTEXT_NAME      HAF app context name to use (default: vsc_app)
+    --skip-gh-fh                    Skips building gh-fh image
     --help,-h,-?                    Displays this help message
 EOF
 }
@@ -33,6 +35,9 @@ while [ $# -gt 0 ]; do
         ;;
     --app-context=*)
         BUILD_ARGS="$BUILD_ARGS --build-arg APP_CONTEXT=${1#*=}"
+        ;;
+    --skip-gh-fh)
+        SKIP_GH_FH="true"
         ;;
     --help|-h|-?)
         print_help
@@ -61,4 +66,7 @@ if [ -n "$BUILD_ARGS" ]; then
 fi
 
 docker build -t vsc-haf:$TAG $BUILD_ARGS -f $SCRIPTPATH/../Dockerfile .
-docker build -t vsc-haf/gh-fh:$TAG -f $SCRIPTPATH/../Dockerfile.gh_fh .
+
+if [[ $SKIP_GH_FH = "false" ]]; then
+    docker build -t vsc-haf/gh-fh:$TAG -f $SCRIPTPATH/../Dockerfile.gh_fh .
+fi

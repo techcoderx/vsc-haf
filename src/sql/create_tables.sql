@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS vsc_app.l1_operations(
     user_id INTEGER NOT NULL,
     nonce INTEGER NOT NULL,
     op_id BIGINT NOT NULL,
+    block_num INTEGER NOT NULL, -- TODO replace op_id reference with these 3 columns
+    trx_in_block SMALLINT NOT NULL,
+    op_pos INTEGER NOT NULL,
     op_type INTEGER NOT NULL,
     ts TIMESTAMP NOT NULL
 );

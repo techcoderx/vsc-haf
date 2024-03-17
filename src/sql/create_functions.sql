@@ -106,6 +106,11 @@ DECLARE
     _hive_user_id INTEGER = NULL;
     _vsc_op_id BIGINT = NULL;
     _nonce INTEGER = NULL;
+
+    -- To replace op_id joins in queries
+    _block_num INTEGER;
+    _trx_in_block SMALLINT;
+    _op_pos INTEGER;
 BEGIN
     SELECT id INTO _hive_user_id FROM hive.vsc_app_accounts WHERE name=_username;
     IF _hive_user_id IS NULL THEN
@@ -123,8 +128,13 @@ BEGIN
             VALUES(_hive_user_id, 1, _ts);
     END IF;
 
-    INSERT INTO vsc_app.l1_operations(user_id, nonce, op_id, op_type, ts)
-        VALUES(_hive_user_id, COALESCE(_nonce, 0), _op_id, _op_type, _ts)
+    SELECT o.block_num, o.trx_in_block, o.op_pos
+        INTO _block_num, _trx_in_block, _op_pos
+        FROM hive.vsc_app_operations_view o
+        WHERE o.id = _op_id;
+
+    INSERT INTO vsc_app.l1_operations(user_id, nonce, op_id, block_num, trx_in_block, op_pos, op_type, ts)
+        VALUES(_hive_user_id, COALESCE(_nonce, 0), _op_id, _block_num, _trx_in_block, _op_pos, _op_type, _ts)
         RETURNING id INTO _vsc_op_id;
 
     RETURN _vsc_op_id;

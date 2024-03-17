@@ -67,6 +67,6 @@ fi
 
 docker build -t vsc-haf:$TAG $BUILD_ARGS -f $SCRIPTPATH/../Dockerfile .
 
-if [[ $SKIP_GH_FH = "false" ]]; then
+if [ $SKIP_GH_FH = "false" ]; then
     docker build -t vsc-haf/gh-fh:$TAG -f $SCRIPTPATH/../Dockerfile.gh_fh .
 fi

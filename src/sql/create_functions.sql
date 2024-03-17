@@ -169,8 +169,8 @@ BEGIN
 
     IF _current_git_commit IS NULL THEN
         IF _enabled IS TRUE THEN
-            INSERT INTO vsc_app.witnesses(id, did, consensus_did, sk_posting, sk_active, sk_owner, enabled, enabled_at, git_commit)
-                VALUES (_hive_user_id, _did, _consensus_did, _sk_posting, _sk_active, _sk_owner, TRUE, _op_id, _git_commit);
+            INSERT INTO vsc_app.witnesses(id, did, consensus_did, sk_posting, sk_active, sk_owner, enabled, enabled_at, first_seen, git_commit)
+                VALUES (_hive_user_id, _did, _consensus_did, _sk_posting, _sk_active, _sk_owner, TRUE, _op_id, _op_id, _git_commit);
             INSERT INTO vsc_app.keyauths_archive(user_id, op_id, node_did, consensus_did, sk_posting, sk_active, sk_owner)
                 VALUES (_hive_user_id, _op_id, _did, _consensus_did, _sk_posting, _sk_active, _sk_owner);
             INSERT INTO vsc_app.witness_toggle_archive(witness_id, op_id, enabled)

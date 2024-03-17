@@ -104,6 +104,10 @@ const INDEXES: INDEXES_TYPE = {
         table_name: SCHEMA_NAME+'.l1_operations',
         columns: [{ col_name: 'user_id', order: Ordering.ASC }, { col_name: 'op_type', order: Ordering.ASC }]
     },
+    l1_operation_block_num_idx: {
+        table_name: SCHEMA_NAME+'.l1_operations',
+        columns: [{ col_name: 'block_num', order: Ordering.DESC }]
+    },
     block_hash_idx: {
         table_name: SCHEMA_NAME+'.blocks',
         columns: [{ col_name: 'block_hash', order: Ordering.ASC }]
@@ -123,10 +127,6 @@ const INDEXES: INDEXES_TYPE = {
     keyauths_archive_witness_id_op_id_idx: {
         table_name: SCHEMA_NAME+'.keyauths_archive',
         columns: [{ col_name: 'user_id', order: Ordering.ASC }, { col_name: 'op_id', order: Ordering.DESC }]
-    },
-    keyauths_archive_op_id_witness_id_idx: {
-        table_name: SCHEMA_NAME+'.keyauths_archive',
-        columns: [{ col_name: 'op_id', order: Ordering.DESC }, { col_name: 'user_id', order: Ordering.ASC }]
     },
     txref_in_op_idx: {
         table_name: SCHEMA_NAME+'.multisig_txrefs',

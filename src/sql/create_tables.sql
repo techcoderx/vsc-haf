@@ -56,13 +56,16 @@ CREATE TABLE IF NOT EXISTS vsc_app.witnesses(
     first_seen BIGINT NOT NULL,
     git_commit VARCHAR(40),
     last_block INTEGER,
-    produced INTEGER DEFAULT 0
+    produced INTEGER DEFAULT 0,
+    last_toggle_archive INTEGER NOT NULL,
+    last_keyauth_archive INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.witness_toggle_archive(
     id SERIAL PRIMARY KEY,
     witness_id INTEGER NOT NULL, -- hive user id, not vsc witness id
     op_id BIGINT NOT NULL,
+    last_updated BIGINT NOT NULL,
     enabled BOOLEAN NOT NULL
 );
 
@@ -70,6 +73,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.keyauths_archive(
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
     op_id BIGINT NOT NULL,
+    last_updated BIGINT NOT NULL,
     node_did VARCHAR,
     consensus_did VARCHAR,
     sk_posting VARCHAR(53),

@@ -124,6 +124,10 @@ const INDEXES: INDEXES_TYPE = {
         table_name: SCHEMA_NAME+'.keyauths_archive',
         columns: [{ col_name: 'user_id', order: Ordering.ASC }, { col_name: 'op_id', order: Ordering.DESC }]
     },
+    keyauths_archive_op_id_witness_id_idx: {
+        table_name: SCHEMA_NAME+'.keyauths_archive',
+        columns: [{ col_name: 'op_id', order: Ordering.DESC }, { col_name: 'user_id', order: Ordering.ASC }]
+    },
     txref_in_op_idx: {
         table_name: SCHEMA_NAME+'.multisig_txrefs',
         columns: [{ col_name: 'in_op', order: Ordering.ASC }]

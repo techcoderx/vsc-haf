@@ -160,6 +160,8 @@ DECLARE
     _current_git_commit VARCHAR = NULL;
 
     -- For state archive
+    _latest_toggle_archive INTEGER = NULL;
+    _latest_keyauth_archive INTEGER = NULL;
     _current_did VARCHAR = NULL;
     _current_consensus_did VARCHAR = NULL;
     _current_sk_posting VARCHAR = NULL;
@@ -172,23 +174,47 @@ BEGIN
         RAISE EXCEPTION 'Could not process non-existent user %', _username;
     END IF;
 
-    SELECT git_commit, did, consensus_did, sk_posting, sk_active, sk_owner, enabled
-        INTO _current_git_commit, _current_did, _current_consensus_did, _current_sk_posting, _current_sk_active, _current_sk_owner, _current_enabled
+    SELECT git_commit, did, consensus_did, sk_posting, sk_active, sk_owner, enabled, last_toggle_archive, last_keyauth_archive
+        INTO _current_git_commit, _current_did, _current_consensus_did, _current_sk_posting, _current_sk_active, _current_sk_owner, _current_enabled, _latest_toggle_archive, _latest_keyauth_archive
         FROM vsc_app.witnesses
         WHERE id=_hive_user_id;
 
     IF _current_git_commit IS NULL THEN
         IF _enabled IS TRUE THEN
-            INSERT INTO vsc_app.witnesses(id, did, consensus_did, sk_posting, sk_active, sk_owner, enabled, enabled_at, first_seen, git_commit)
-                VALUES (_hive_user_id, _did, _consensus_did, _sk_posting, _sk_active, _sk_owner, TRUE, _op_id, _op_id, _git_commit);
-            INSERT INTO vsc_app.keyauths_archive(user_id, op_id, node_did, consensus_did, sk_posting, sk_active, sk_owner)
-                VALUES (_hive_user_id, _op_id, _did, _consensus_did, _sk_posting, _sk_active, _sk_owner);
-            INSERT INTO vsc_app.witness_toggle_archive(witness_id, op_id, enabled)
-                VALUES (_hive_user_id, _op_id, TRUE);
+            INSERT INTO vsc_app.keyauths_archive(user_id, op_id, last_updated, node_did, consensus_did, sk_posting, sk_active, sk_owner)
+                VALUES (_hive_user_id, _op_id, _op_id, _did, _consensus_did, _sk_posting, _sk_active, _sk_owner)
+                RETURNING id INTO _latest_keyauth_archive;
+            INSERT INTO vsc_app.witness_toggle_archive(witness_id, op_id, last_updated, enabled)
+                VALUES (_hive_user_id, _op_id, _op_id, TRUE)
+                RETURNING id INTO _latest_toggle_archive;
+            INSERT INTO vsc_app.witnesses(id, did, consensus_did, sk_posting, sk_active, sk_owner, enabled, enabled_at, first_seen, git_commit, last_toggle_archive, last_keyauth_archive)
+                VALUES (_hive_user_id, _did, _consensus_did, _sk_posting, _sk_active, _sk_owner, TRUE, _op_id, _op_id, _git_commit, _latest_toggle_archive, _latest_keyauth_archive);
         ELSE
             RETURN;
         END IF;
     ELSE
+        IF ((_did = _current_did) IS NOT TRUE)
+            OR ((_consensus_did = _current_consensus_did) IS NOT TRUE)
+            OR ((_sk_posting = _current_sk_posting) IS NOT TRUE)
+            OR ((_sk_active = _current_sk_active) IS NOT TRUE)
+            OR ((_sk_owner = _current_sk_owner) IS NOT TRUE) THEN
+            INSERT INTO vsc_app.keyauths_archive(user_id, op_id, node_did, consensus_did, sk_posting, sk_active, sk_owner)
+                VALUES (_hive_user_id, _op_id, _did, _consensus_did, _sk_posting, _sk_active, _sk_owner)
+                RETURNING id INTO _latest_keyauth_archive;
+        ELSE
+            UPDATE vsc_app.keyauths_archive SET
+                last_updated = _op_id
+            WHERE id = _latest_keyauth_archive;
+        END IF;
+        IF _enabled != _current_enabled THEN
+            INSERT INTO vsc_app.witness_toggle_archive(witness_id, op_id, enabled)
+                VALUES (_hive_user_id, _op_id, _enabled)
+                RETURNING id INTO _latest_toggle_archive;
+        ELSE
+            UPDATE vsc_app.witness_toggle_archive SET
+                last_updated = _op_id
+            WHERE id = _latest_toggle_archive;
+        END IF;
         IF _enabled IS FALSE THEN
             UPDATE vsc_app.witnesses SET
                 enabled = FALSE,
@@ -198,7 +224,9 @@ BEGIN
                 sk_active = _sk_active,
                 sk_owner = _sk_owner,
                 disabled_at = _op_id,
-                git_commit = COALESCE(_git_commit, _current_git_commit)
+                git_commit = COALESCE(_git_commit, _current_git_commit),
+                last_toggle_archive = _latest_toggle_archive,
+                last_keyauth_archive = _latest_keyauth_archive
             WHERE id = _hive_user_id;
         ELSE
             UPDATE vsc_app.witnesses SET
@@ -209,20 +237,10 @@ BEGIN
                 sk_active = _sk_active,
                 sk_owner = _sk_owner,
                 enabled_at = _op_id,
-                git_commit = COALESCE(_git_commit, _current_git_commit)
+                git_commit = COALESCE(_git_commit, _current_git_commit),
+                last_toggle_archive = _latest_toggle_archive,
+                last_keyauth_archive = _latest_keyauth_archive
             WHERE id = _hive_user_id;
-        END IF;
-        IF ((_did = _current_did) IS NOT TRUE)
-            OR ((_consensus_did = _current_consensus_did) IS NOT TRUE)
-            OR ((_sk_posting = _current_sk_posting) IS NOT TRUE)
-            OR ((_sk_active = _current_sk_active) IS NOT TRUE)
-            OR ((_sk_owner = _current_sk_owner) IS NOT TRUE) THEN
-            INSERT INTO vsc_app.keyauths_archive(user_id, op_id, node_did, consensus_did, sk_posting, sk_active, sk_owner)
-                VALUES (_hive_user_id, _op_id, _did, _consensus_did, _sk_posting, _sk_active, _sk_owner);
-        END IF;
-        IF _enabled != _current_enabled THEN
-            INSERT INTO vsc_app.witness_toggle_archive(witness_id, op_id, enabled)
-                VALUES (_hive_user_id, _op_id, _enabled);
         END IF;
     END IF;
 END

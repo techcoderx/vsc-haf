@@ -203,6 +203,7 @@ CREATE TYPE vsc_api.l1_op_type AS (
     op_type INTEGER,
     op_name VARCHAR,
     block_num INTEGER,
+    trx_in_block SMALLINT,
     ts TIMESTAMP,
     body TEXT
 );
@@ -227,7 +228,7 @@ BEGIN
         );
     END IF;
     SELECT ARRAY(
-        SELECT ROW(o.id, hive.vsc_app_accounts.name, o.nonce, o.op_id, o.op_type, ot.op_name, ho.block_num, o.ts, ho.body::TEXT)::vsc_api.l1_op_type
+        SELECT ROW(o.id, hive.vsc_app_accounts.name, o.nonce, o.op_id, o.op_type, ot.op_name, ho.block_num, ho.trx_in_block, o.ts, ho.body::TEXT)::vsc_api.l1_op_type
             FROM vsc_app.l1_operations o
             JOIN vsc_app.l1_operation_types ot ON
                 ot.id = o.op_type
@@ -243,7 +244,7 @@ BEGIN
         IF full_tx_body IS TRUE THEN
             op_payload := (op.body::jsonb->'value')::jsonb;
         ELSE
-            op_payload := (SELECT vsc_app.parse_l1_payload(op.op_name, op.body));
+            op_payload := (SELECT vsc_app.parse_l1_payload(op.op_name, op.body::jsonb->>'value'));
         END IF;
         SELECT ARRAY_APPEND(ops_arr, jsonb_build_object(
             'id', op.id,
@@ -251,7 +252,7 @@ BEGIN
             'nonce', op.nonce,
             'type', op.op_name,
             'l1_block', op.block_num,
-            'l1_tx', (SELECT trx_hash FROM vsc_app.helper_get_tx_by_op_id(op.op_id)),
+            'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(op.block_num, op.trx_in_block)),
             'ts', op.ts,
             'payload', op_payload
         )) INTO ops_arr;
@@ -406,17 +407,18 @@ AS
 $function$
 DECLARE
     result vsc_api.txref_type;
-    l1_tx vsc_app.l1_tx_type;
+    _bn INTEGER;
+    _tb SMALLINT;
+    _ts TIMESTAMP;
+    _th TEXT;
 BEGIN
     SELECT * INTO result FROM vsc_app.multisig_txrefs WHERE id=_id;
-    SELECT * INTO l1_tx FROM vsc_app.helper_get_tx_by_op_id(
-        (SELECT op_id FROM vsc_app.l1_operations WHERE id=result.in_op)
-    );
+    SELECT block_num, trx_in_block, ts INTO _bn, _tb, _ts FROM vsc_app.l1_operations WHERE id=result.in_op;
     RETURN jsonb_build_object(
         'id', _id,
-        'ts', l1_tx.created_at,
-        'l1_tx', l1_tx.trx_hash,
-        'l1_block', l1_tx.block_num,
+        'ts', _ts,
+        'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(_bn, _tb)),
+        'l1_block', _bn,
         'ref_id', result.ref_id
     );
 END
@@ -431,7 +433,10 @@ DECLARE
     r vsc_api.txref_type;
     results vsc_api.txref_type[];
     results_arr jsonb[] DEFAULT '{}';
-    l1_tx vsc_app.l1_tx_type;
+    _bn INTEGER;
+    _tb SMALLINT;
+    _ts TIMESTAMP;
+    _th TEXT;
 BEGIN
     IF count > 1000 OR count <= 0 THEN
         RETURN jsonb_build_object(
@@ -450,14 +455,12 @@ BEGIN
 
     FOREACH r IN ARRAY results
     LOOP
-        SELECT * INTO l1_tx FROM vsc_app.helper_get_tx_by_op_id(
-            (SELECT op_id FROM vsc_app.l1_operations WHERE id=r.in_op)
-        );
+        SELECT block_num, trx_in_block, ts INTO _bn, _tb, _ts FROM vsc_app.l1_operations WHERE id=result.in_op;
         SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
             'id', r.id,
-            'ts', l1_tx.created_at,
-            'l1_tx', l1_tx.trx_hash,
-            'l1_block', l1_tx.block_num,
+            'ts', _ts,
+            'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(_bn, _tb)),
+            'l1_block', _bn,
             'ref_id', r.ref_id
         )) INTO results_arr;
     END LOOP;
@@ -550,6 +553,7 @@ DROP TYPE IF EXISTS vsc_api.l1_op_blk_trx CASCADE;
 CREATE TYPE vsc_api.l1_op_blk_trx AS (
     id BIGINT,
     block_num INTEGER,
+    trx_in_block SMALLINT,
     timestamp TIMESTAMP,
     body TEXT
 );
@@ -564,7 +568,7 @@ DECLARE
     results_arr jsonb[] DEFAULT '{}';
 BEGIN
     SELECT ARRAY(
-        SELECT ROW(ho.id, ho.block_num, ho.timestamp, ho.body::TEXT)
+        SELECT ROW(ho.id, ho.block_num, ho.trx_in_block, ho.timestamp, ho.body::TEXT)
             FROM hive.transactions_view ht
             JOIN hive.operations_view ho ON
                 ho.block_num = ht.block_num AND ho.trx_in_block = ht.trx_in_block
@@ -577,7 +581,7 @@ BEGIN
 
     FOREACH _trx IN ARRAY _trxs
     LOOP
-        SELECT vo.id, va.name, vo.nonce, vo.op_id, vo.op_type, vt.op_name, _trx.block_num, vo.ts, _trx.body::jsonb->>'value'
+        SELECT vo.id, va.name, vo.nonce, vo.op_id, vo.op_type, vt.op_name, _trx.block_num, _trx.trx_in_block, vo.ts, _trx.body::jsonb->>'value'
             INTO _op
             FROM vsc_app.l1_operations vo
             JOIN vsc_app.l1_operation_types vt ON
@@ -688,7 +692,9 @@ CREATE TYPE vsc_api.contract_type AS (
     name VARCHAR,
     description VARCHAR,
     code VARCHAR,
-    op_id BIGINT
+    block_num INTEGER,
+    trx_in_block SMALLINT,
+    ts TIMESTAMP
 );
 
 CREATE OR REPLACE FUNCTION vsc_api.list_latest_contracts(count INTEGER = 100)
@@ -699,7 +705,6 @@ DECLARE
     result vsc_api.contract_type;
     results vsc_api.contract_type[];
     results_arr jsonb[] DEFAULT '{}';
-    _l1_tx vsc_app.l1_tx_type;
 BEGIN
     IF count <= 0 OR count > 100 THEN
         RETURN jsonb_build_object(
@@ -707,7 +712,7 @@ BEGIN
         );
     END IF;
     SELECT ARRAY(
-        SELECT ROW(c.*, o.op_id)
+        SELECT ROW(c.*, o.block_num, o.trx_in_block, o.ts)
         FROM vsc_app.contracts c
         JOIN vsc_app.l1_operations o ON
             o.id=c.created_in_op
@@ -717,12 +722,11 @@ BEGIN
 
     FOREACH result IN ARRAY results
     LOOP
-        SELECT * INTO _l1_tx FROM vsc_app.helper_get_tx_by_op_id(result.op_id);
         SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
             'contract_id', result.contract_id,
-            'created_in_op', _l1_tx.trx_hash,
-            'created_in_l1_block', _l1_tx.block_num,
-            'created_at', _l1_tx.created_at,
+            'created_in_op', (SELECT vsc_app.get_tx_hash_by_op(result.block_num, result.trx_in_block)),
+            'created_in_l1_block', result.block_num,
+            'created_at', result.ts,
             'name', result.name,
             'description', result.description,
             'code', result.code
@@ -741,9 +745,8 @@ $function$
 DECLARE
 	ct_id ALIAS FOR id;
     result vsc_api.contract_type = NULL;
-    _l1_tx vsc_app.l1_tx_type;
 BEGIN
-    SELECT c.*, o.op_id
+    SELECT c.*, o.block_num, o.trx_in_block, o.ts
         INTO result
         FROM vsc_app.contracts c
         JOIN vsc_app.l1_operations o ON
@@ -754,12 +757,11 @@ BEGIN
             'error', 'contract not found'
         );
     END IF;
-    SELECT * INTO _l1_tx FROM vsc_app.helper_get_tx_by_op_id(result.op_id);
     RETURN jsonb_build_object(
         'contract_id', result.contract_id,
-        'created_in_op', _l1_tx.trx_hash,
-        'created_in_l1_block', _l1_tx.block_num,
-        'created_at', _l1_tx.created_at,
+        'created_in_op', (SELECT vsc_app.get_tx_hash_by_op(result.block_num, result.trx_in_block)),
+        'created_in_l1_block', result.block_num,
+        'created_at', result.ts,
         'name', result.name,
         'description', result.description,
         'code', result.code

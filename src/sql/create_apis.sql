@@ -770,6 +770,42 @@ END
 $function$
 LANGUAGE plpgsql STABLE;
 
+CREATE OR REPLACE FUNCTION vsc_api.get_l1_accounts_by_pubkeys(pubkeys VARCHAR[], key_type VARCHAR = 'sk_owner')
+RETURNS jsonb 
+AS
+$function$
+DECLARE
+    _pubkey VARCHAR;
+    _results VARCHAR[] DEFAULT '{}';
+    _u VARCHAR;
+BEGIN
+    -- Do we need querying by other key types?
+    IF key_type != 'sk_owner' THEN
+        RETURN jsonb_build_object(
+            'error', 'key_type must be sk_owner'
+        );
+    END IF;
+
+    IF key_type = 'sk_owner' THEN
+        FOREACH _pubkey IN ARRAY pubkeys
+        LOOP
+            SELECT a.name
+                INTO _u
+                FROM vsc_app.witnesses w
+                JOIN hive.vsc_app_accounts a ON
+                    a.id = w.id
+                WHERE w.sk_owner = _pubkey
+                LIMIT 1;
+            IF _u IS NOT NULL THEN
+                SELECT ARRAY_APPEND(_results, _u) INTO _results;
+            END IF;
+        END LOOP;
+    END IF;
+    RETURN array_to_json(_results)::jsonb;
+END
+$function$
+LANGUAGE plpgsql STABLE;
+
 DROP TYPE IF EXISTS vsc_api.deposit_type CASCADE;
 CREATE TYPE vsc_api.deposit_type AS (
     id INTEGER,

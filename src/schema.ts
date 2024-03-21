@@ -120,6 +120,10 @@ const INDEXES: INDEXES_TYPE = {
         table_name: SCHEMA_NAME+'.witnesses',
         columns: [{ col_name: 'did', order: Ordering.ASC }]
     },
+    witness_sk_owner_idx: {
+        table_name: SCHEMA_NAME+'.witnesses',
+        columns: [{ col_name: 'sk_owner', order: Ordering.ASC }]
+    },
     witness_toggle_archive_witness_id_op_id_idx: {
         table_name: SCHEMA_NAME+'.witness_toggle_archive',
         columns: [{ col_name: 'witness_id', order: Ordering.ASC }, { col_name: 'op_id', order: Ordering.DESC }]

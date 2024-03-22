@@ -138,7 +138,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.withdrawal_request(
 
 CREATE TABLE IF NOT EXISTS vsc_app.withdrawal_status(
     id SERIAL PRIMARY KEY,
-    name(10) VARCHAR
+    name VARCHAR(10)
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.withdrawals(

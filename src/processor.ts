@@ -32,8 +32,6 @@ const processor = {
                     parsed.value.required_posting_auths.length === 0))
                     return { valid: false }
                 let payload = JSON.parse(parsed.value.json)
-                if (payload.net_id !== NETWORK_ID)
-                    return { valid: false }
                 let details: ParsedOp<PayloadTypes> = {
                     valid: true,
                     id: op.id,
@@ -45,6 +43,8 @@ const processor = {
                     tx_type: TxTypes.CustomJSON,
                     op_type: cjidx
                 }
+                if (details.user !== MULTISIG_ACCOUNT && payload.net_id !== NETWORK_ID)
+                    return { valid: false }
                 switch (cjidx) {
                     case 0:
                         // propose block
@@ -107,6 +107,17 @@ const processor = {
                         break
                     case 5:
                         // multisig_txref
+                        if (details.user !== MULTISIG_ACCOUNT ||
+                            typeof payload.ref_id !== 'string' ||
+                            !isCID(payload.ref_id) ||
+                            CID.parse(payload.ref_id).code !== 0x71)
+                            return { valid: false }
+                        details.payload = {
+                            ref_id: payload.ref_id
+                        }
+                        break
+                    case 6:
+                        // bridge_ref
                         if (details.user !== MULTISIG_ACCOUNT ||
                             typeof payload.ref_id !== 'string' ||
                             !isCID(payload.ref_id) ||

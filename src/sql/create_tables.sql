@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.deposits_to_did(
     dest_did INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISIS vsc_app.withdrawal_request(
+CREATE TABLE IF NOT EXISTS vsc_app.withdrawal_request(
     id SERIAL PRIMARY KEY,
     in_op BIGINT NOT NULL,
     amount INTEGER NOT NULL,
@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.withdrawals(
     dest_acc INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISIS vsc_app.dids(
+CREATE TABLE IF NOT EXISTS vsc_app.dids(
     id SERIAL PRIMARY KEY,
     did VARCHAR(78) NOT NULL,
     UNIQUE(did)

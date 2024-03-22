@@ -83,6 +83,51 @@ const HAF_FKS: FKS_TYPE = {
         table: SCHEMA_NAME+'.multisig_txrefs',
         fk: 'in_op',
         ref: SCHEMA_NAME+'.l1_operations(id)'
+    },
+    deposits_to_hive_in_op_fk: {
+        table: SCHEMA_NAME+'.deposits_to_hive',
+        fk: 'in_op',
+        ref: SCHEMA_NAME+'.l1_operations(id)'
+    },
+    deposits_to_hive_dest_acc_fk: {
+        table: SCHEMA_NAME+'.deposits_to_hive',
+        fk: 'dest_acc',
+        ref: `hive.${APP_CONTEXT}_accounts(id)`
+    },
+    deposits_to_did_in_op_fk: {
+        table: SCHEMA_NAME+'.deposits_to_did',
+        fk: 'in_op',
+        ref: SCHEMA_NAME+'.l1_operations(id)'
+    },
+    deposits_to_did_dest_did_fk: {
+        table: SCHEMA_NAME+'.deposits_to_did',
+        fk: 'dest_did',
+        ref: SCHEMA_NAME+'.dids(id)'
+    },
+    withdrawal_request_in_op_fk: {
+        table: SCHEMA_NAME+'.withdrawal_request',
+        fk: 'in_op',
+        ref: SCHEMA_NAME+'.l1_operations(id)'
+    },
+    withdrawal_request_dest_acc_fk: {
+        table: SCHEMA_NAME+'.withdrawal_request',
+        fk: 'dest_acc',
+        ref: `hive.${APP_CONTEXT}_accounts(id)`
+    },
+    withdrawal_request_status_fk: {
+        table: SCHEMA_NAME+'.withdrawal_request',
+        fk: 'status',
+        ref: SCHEMA_NAME+'.withdrawal_status(id)'
+    },
+    withdrawals_in_op_fk: {
+        table: SCHEMA_NAME+'.withdrawals',
+        fk: 'in_op',
+        ref: SCHEMA_NAME+'.l1_operations(id)'
+    },
+    withdrawals_dest_acc_fk: {
+        table: SCHEMA_NAME+'.withdrawals',
+        fk: 'dest_acc',
+        ref: `hive.${APP_CONTEXT}_accounts(id)`
     }
 }
 

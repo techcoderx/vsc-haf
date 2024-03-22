@@ -428,9 +428,8 @@ BEGIN
         END IF;
     ELSIF _op_name = 'rotate_multisig' THEN
         _payload := _op_body::jsonb;
-    ELSIF _op_name = 'deposit' OR _op_name = 'withdrawal' THEN
+    ELSIF _op_name = 'deposit' OR _op_name = 'withdrawal' OR _op_name = 'withdrawal_request' THEN
         _payload := _op_body::jsonb;
-        _payload := jsonb_set(_payload::jsonb, '{memo}', (_op_body::jsonb->>'memo')::jsonb);
     ELSE
         _payload := _op_body::jsonb->>'json';
     END IF;

@@ -18,7 +18,7 @@ const processor = {
                 return { valid: false }
             if (parsed.type === 'custom_json_operation') {
                 let cjidx = CUSTOM_JSON_IDS.indexOf(parsed.value.id)
-                let requiresActiveAuth = cjidx === 0 || cjidx === 1 || cjidx === 4
+                let requiresActiveAuth = [0,1,4,6].includes(cjidx)
                 if (cjidx === -1 || !parsed.value.json)
                     return { valid: false }
 

@@ -116,15 +116,6 @@ const processor = {
                             ref_id: payload.ref_id
                         }
                         break
-                    case 6:
-                        // withdrawal request
-                        if (isNaN(parseFloat(payload.amount)))
-                            return { valid: false }
-                        details.payload = {
-                            amount: parseFloat(payload.amount),
-                            asset: 0 // not sure
-                        }
-                        break
                     default:
                         break
                 }
@@ -175,9 +166,8 @@ const processor = {
                 }
                 return details
             } else if (parsed.type === 'transfer_operation') {
-                if ((parsed.value.from !== MULTISIG_ACCOUNT && parsed.value.to !== MULTISIG_ACCOUNT)|| !parsed.value.memo)
+                if ((parsed.value.from !== MULTISIG_ACCOUNT && parsed.value.to !== MULTISIG_ACCOUNT))
                     return { valid: false }
-                let payload = JSON.parse(parsed.value.memo)
                 let details: ParsedOp<DepositPayload> = {
                     valid: true,
                     id: op.id,
@@ -186,17 +176,47 @@ const processor = {
                     tx_type: TxTypes.Transfer
                 }
                 if (parsed.value.to === MULTISIG_ACCOUNT) {
-                    // deposit
-                    details.op_type = 0
-                    details.user = parsed.value.from
-                    if (payload.net_id !== NETWORK_ID || payload.action !== 'deposit')
-                        return { valid: false }
-                    details.payload = {
-                        amount: parseInt(parsed.value.amount.amount),
-                        asset: L1_ASSETS.indexOf(parsed.value.amount.nai)
+                    let payload: any = {}
+                    try {
+                        payload = JSON.parse(parsed.value.memo)
+                    } catch {
+                        const queryString = new URLSearchParams(parsed.value.memo)
+                        for(let [key, value] of queryString.entries())
+                            payload[key] = value
                     }
-                    if (payload.contract_id && typeof payload.contract_id === 'string')
-                        details.payload.contract_id = payload.contract_id
+                    details.user = parsed.value.from
+                    if (typeof payload.action === 'string' && payload.action === 'withdraw') {
+                        let amountToWithdraw = parseFloat(payload.amount)
+                        if (isNaN(amountToWithdraw) || amountToWithdraw <= 0)
+                            return { valid: false }
+                        // withdrawal request
+                        details.op_type = 2
+                        details.payload = {
+                            amount: Math.round(parseFloat(amountToWithdraw.toFixed(3))*1000),
+                            amount2: parseInt(parsed.value.amount.amount),
+                            asset: L1_ASSETS.indexOf(parsed.value.amount.nai),
+                            owner: details.user
+                        }
+                    } else {
+                        if(typeof payload.to === 'string') {
+                            if (payload.to.startsWith('did:') && payload.to.length <= 78)
+                                payload.owner = payload.to
+                            else if (payload.to.startsWith('@') && payload.to.length <= 17 &&
+                                (await db.client.query(`SELECT * FROM hive.vsc_app_accounts WHERE name=$1;`,[payload.to.replace('@','')])).rowCount! > 0)
+                                payload.owner = payload.to.replace('@','')
+                            else
+                                payload.owner = parsed.value.from
+                        } else {
+                            payload.owner = parsed.value.from
+                        }
+                        // deposit
+                        details.op_type = 0
+                        details.payload = {
+                            amount: parseInt(parsed.value.amount.amount),
+                            asset: L1_ASSETS.indexOf(parsed.value.amount.nai),
+                            owner: payload.owner
+                        }
+                    }
                     if (details.payload.asset === -1)
                         return { valid: false } // this should not happen
                     return details
@@ -206,7 +226,8 @@ const processor = {
                     details.user = parsed.value.to
                     details.payload = {
                         amount: parseInt(parsed.value.amount.amount),
-                        asset: L1_ASSETS.indexOf(parsed.value.amount.nai)
+                        asset: L1_ASSETS.indexOf(parsed.value.amount.nai),
+                        owner: details.user
                     }
                     if (details.payload.asset === -1)
                         return { valid: false } // again, this should not happen
@@ -252,11 +273,15 @@ const processor = {
                     break
                 case op_type_map.map.deposit:
                     pl = result.payload as DepositPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_deposit($1,$2,$3,$4);`,[new_vsc_op.rows[0].process_operation,pl.amount,pl.asset,pl.contract_id])
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_deposit($1,$2,$3,$4,$5);`,[new_vsc_op.rows[0].process_operation,pl.amount,pl.asset,pl.owner,pl.owner!.startsWith('did:') ? 'did' : 'hive'])
                     break
                 case op_type_map.map.withdrawal:
                     pl = result.payload as DepositPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_withdrawal($1,$2,$3,$4);`,[new_vsc_op.rows[0].process_operation,pl.amount,pl.asset,pl.contract_id])
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_withdrawal($1,$2,$3,$4);`,[new_vsc_op.rows[0].process_operation,pl.amount,pl.asset,result.user])
+                    break
+                case op_type_map.map.withdrawal_request:
+                    pl = result.payload as DepositPayload
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_withdrawal_request($1,$2,$3,$4,$5);`,[new_vsc_op.rows[0].process_operation,pl.amount,pl.amount2,pl.asset,result.user])
                     break
                 default:
                     break

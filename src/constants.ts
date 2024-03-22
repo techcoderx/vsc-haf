@@ -8,15 +8,15 @@ export const CUSTOM_JSON_IDS = [
     'vsc.tx',
     'vsc.election_result',
     'vsc.multisig_txref',
-    // 'vsc.withdraw_request',
-    // 'vsc.withdraw_finalization'
+    'vsc.bridge_ref'
 ]
 export const CUSTOM_JSON_ALIAS: { [alias: string]: string } = {
     'vsc.announce_tx': 'vsc.tx'
 }
 export const XFER_ACTIONS = [
     'deposit',
-    'withdrawal'
+    'withdrawal',
+    'withdrawal_request'
 ]
 export const L1_ASSETS = [
     '@@000000021', // HIVE

@@ -67,8 +67,9 @@ export type MultisigTxRefPayload = {
 
 export type DepositPayload = {
     amount: number
+    amount2?: number
     asset: number
-    contract_id?: string
+    owner?: string
 }
 
 export type BLSAggSign = {

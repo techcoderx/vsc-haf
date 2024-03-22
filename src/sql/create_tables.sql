@@ -110,12 +110,35 @@ CREATE TABLE IF NOT EXISTS vsc_app.multisig_txrefs(
     ref_id VARCHAR(59) NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS vsc_app.deposits(
+CREATE TABLE IF NOT EXISTS vsc_app.deposits_to_hive(
     id SERIAL PRIMARY KEY,
     in_op BIGINT NOT NULL,
     amount INTEGER NOT NULL,
     asset SMALLINT NOT NULL,
-    contract_id VARCHAR(40)
+    dest_acc INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS vsc_app.deposits_to_did(
+    id SERIAL PRIMARY KEY,
+    in_op BIGINT NOT NULL,
+    amount INTEGER NOT NULL,
+    asset SMALLINT NOT NULL,
+    dest_did INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISIS vsc_app.withdrawal_request(
+    id SERIAL PRIMARY KEY,
+    in_op BIGINT NOT NULL,
+    amount INTEGER NOT NULL,
+    amount2 INTEGER NOT NULL,
+    asset SMALLINT NOT NULL,
+    dest_acc INTEGER NOT NULL,
+    status SMALLINT DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS vsc_app.withdrawal_status(
+    id SERIAL PRIMARY KEY,
+    name(10) VARCHAR
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.withdrawals(
@@ -123,5 +146,11 @@ CREATE TABLE IF NOT EXISTS vsc_app.withdrawals(
     in_op BIGINT NOT NULL,
     amount INTEGER NOT NULL,
     asset SMALLINT NOT NULL,
-    contract_id VARCHAR(40)
+    dest_acc INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISIS vsc_app.dids(
+    id SERIAL PRIMARY KEY,
+    did VARCHAR(78) NOT NULL,
+    UNIQUE(did)
 );

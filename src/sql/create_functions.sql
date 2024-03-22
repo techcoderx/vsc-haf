@@ -318,14 +318,56 @@ CREATE OR REPLACE FUNCTION vsc_app.insert_deposit(
     _in_op BIGINT,
     _amount INTEGER,
     _asset SMALLINT,
-    _contract_id VARCHAR
+    _dest VARCHAR,
+    _dest_type VARCHAR
 )
 RETURNS void
 AS
 $function$
+DECLARE
+    _dest_id INTEGER = NULL;
 BEGIN
-    INSERT INTO vsc_app.deposits(in_op, amount, asset, contract_id)
-        VALUES(_in_op, _amount, _asset, _contract_id);
+    IF _dest_type = 'did' THEN
+        SELECT id INTO _dest_id FROM vsc_app.dids WHERE did=_dest;
+        IF _dest_id IS NULL THEN
+            INSERT INTO vsc_app.dids(did) VALUES(_dest) RETURNING id INTO _dest_id;
+        END IF;
+        INSERT INTO vsc_app.deposits_to_did(in_op, amount, asset, dest_did)
+            VALUES(_in_op, _amount, _asset, _dest_id);
+    ELSIF _dest_type = 'hive' THEN
+        SELECT id INTO _dest_id FROM hive.vsc_app_accounts WHERE name=_dest;
+        IF _dest_id IS NULL THEN
+            RAISE EXCEPTION 'hive username does not exist';
+        END IF;
+        INSERT INTO vsc_app.deposits_to_hive(in_op, amount, asset, dest_acc)
+            VALUES(_in_op, _amount, _asset, _dest_id);
+    ELSE
+        RAISE EXCEPTION '_dest_type must be did or hive';
+    END IF;
+END
+$function$
+LANGUAGE plpgsql VOLATILE;
+
+CREATE OR REPLACE FUNCTION vsc_app.insert_withdrawal_request(
+    _in_op BIGINT,
+    _amount INTEGER,
+    _amount2 INTEGER,
+    _asset SMALLINT,
+    _dest VARCHAR
+)
+RETURNS void
+AS
+$function$
+DECLARE
+    _dest_id INTEGER = NULL;
+BEGIN
+    SELECT id INTO _dest_id FROM hive.vsc_app_accounts WHERE name=_dest;
+    IF _dest_id IS NULL THEN
+        RAISE EXCEPTION 'hive username does not exist';
+    END IF;
+
+    INSERT INTO vsc_app.withdrawal_request(in_op, amount, amount2, asset, dest_acc)
+        VALUES(_in_op, _amount, _amount2, _asset, _dest_id);
 END
 $function$
 LANGUAGE plpgsql VOLATILE;
@@ -334,14 +376,20 @@ CREATE OR REPLACE FUNCTION vsc_app.insert_withdrawal(
     _in_op BIGINT,
     _amount INTEGER,
     _asset SMALLINT,
-    _contract_id VARCHAR
+    _dest VARCHAR
 )
 RETURNS void
 AS
 $function$
+DECLARE
+    _dest_id INTEGER = NULL;
 BEGIN
-    INSERT INTO vsc_app.withdrawals(in_op, amount, asset, contract_id)
-        VALUES(_in_op, _amount, _asset, _contract_id);
+    SELECT id INTO _dest_id FROM hive.vsc_app_accounts WHERE name=_dest;
+    IF _dest_id IS NULL THEN
+        RAISE EXCEPTION 'hive username does not exist';
+    END IF;
+    INSERT INTO vsc_app.withdrawals(in_op, amount, asset, dest_acc)
+        VALUES(_in_op, _amount, _asset, _dest_id);
 END
 $function$
 LANGUAGE plpgsql VOLATILE;

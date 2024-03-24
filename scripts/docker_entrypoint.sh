@@ -7,6 +7,7 @@ if [ "$1" = "install_app" ]; then
   exec su - haf_admin -c "/app/scripts/install_app.sh --host=\"${POSTGRES_HOST:-haf}\""
 elif [ "$1" = "process_blocks" ]; then
   shift
+  date --utc --iso-8601=seconds > /tmp/block_processing_startup_time.txt
   exec su - vsc_owner -c "cd /app; pnpm start --log-level=\"${VSC_HAF_LOG_LEVEL:-info}\" --postgres-url=\"${POSTGRES_URL:-postgres://vsc_owner@haf/haf_block_log}\""
 elif [ "$1" = "uninstall_app" ]; then
   shift

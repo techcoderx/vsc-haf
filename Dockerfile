@@ -16,7 +16,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 ARG API_SCHEMA_NAME=vsc_api
 ARG SCHEMA_NAME=vsc_app
 ARG APP_CONTEXT=vsc_app
-RUN pnpm run compile --schema=${SCHEMA_NAME} --api-schema=${API_SCHEMA_NAME} --app-context=${APP_CONTEXT}
+RUN pnpm run compile --schema=${SCHEMA_NAME} --api-schema=${API_SCHEMA_NAME} --app-context=${APP_CONTEXT} --docker
 
 FROM base
 

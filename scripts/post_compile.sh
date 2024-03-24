@@ -10,6 +10,7 @@ DEFAULT_APP_CONTEXT_NAME=vsc_app
 API_SCHEMA_NAME=$DEFAULT_API_SCHEMA_NAME
 SCHEMA_NAME=$DEFAULT_SCHEMA_NAME
 APP_CONTEXT_NAME=$DEFAULT_APP_CONTEXT_NAME
+IS_DOCKER=false
 
 print_help () {
     cat <<EOF
@@ -34,6 +35,9 @@ while [ $# -gt 0 ]; do
         ;;
     --app-context=*)
         APP_CONTEXT_NAME="${1#*=}"
+        ;;
+    --docker)
+        IS_DOCKER=true
         ;;
     --help|-h|-?)
         print_help
@@ -69,6 +73,9 @@ if [[ "$APP_CONTEXT_NAME" != "$DEFAULT_APP_CONTEXT_NAME" ]]; then
     ${SED_COMMAND} -i "s/${DEFAULT_APP_CONTEXT_NAME}_/${APP_CONTEXT_NAME}_/g" $DESTINATION_PATH/sql/*.sql
     ${SED_COMMAND} -i "s/'${DEFAULT_APP_CONTEXT_NAME}'/'${APP_CONTEXT_NAME}'/g" $DESTINATION_PATH/sql/drop_db.sql
     ${SED_COMMAND} -i "s/const APP_CONTEXT = '${DEFAULT_APP_CONTEXT_NAME}/const APP_CONTEXT = '${APP_CONTEXT_NAME}/g" $DESTINATION_PATH/constants.js
+    if [[ $IS_DOCKER = true ]]; then
+        ${SED_COMMAND} -i "s/vsc_app/${APP_CONTEXT_NAME}/g" $DESTINATION_PATH/../scripts/block_processing_healthcheck.sh
+    fi
 fi
 
 # Rename schema

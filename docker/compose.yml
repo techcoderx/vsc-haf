@@ -36,6 +36,12 @@ services:
       VSC_HAF_LOG_LEVEL: ${VSC_HAF_LOG_LEVEL:-info}
     command:
       - process_blocks
+    healthcheck:
+      test: ["CMD-SHELL","/app/scripts/block-processing-healthcheck.sh || exit 1"]
+      interval: 10s
+      timeout: 2s
+      retries: 10
+      start_period: 15m
     networks:
       haf-network:
     depends_on:
@@ -58,6 +64,8 @@ services:
     depends_on:
       vsc-haf-install:
         condition: service_completed_successfully
+      vsc-haf-block-processing:
+        condition: service_healthy
       haf:
         condition: service_healthy
   vsc-haf-postgrest:
@@ -84,5 +92,7 @@ services:
     depends_on:
       vsc-haf-install:
         condition: service_completed_successfully
+      vsc-haf-block-processing:
+        condition: service_healthy
       haf:
         condition: service_healthy

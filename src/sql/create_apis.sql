@@ -56,7 +56,7 @@ DECLARE
     _sig BYTEA;
     _bv BYTEA;
 BEGIN
-    SELECT id, proposed_in_op, proposer, sig, bv INTO _block_id, _proposed_in_op, _proposer_id, _sig::bytea, _bv::bytea
+    SELECT id, proposed_in_op, proposer, sig, bv INTO _block_id, _proposed_in_op, _proposer_id, _sig, _bv
         FROM vsc_app.blocks
         WHERE vsc_app.blocks.block_hash = blk_hash
         LIMIT 1;
@@ -106,7 +106,7 @@ DECLARE
     _sig BYTEA;
     _bv BYTEA;
 BEGIN
-    SELECT block_hash, proposed_in_op, proposer, sig, bv INTO _block_hash, _proposed_in_op, _proposer_id, _sig::bytea, _bv::bytea
+    SELECT block_hash, proposed_in_op, proposer, sig, bv INTO _block_hash, _proposed_in_op, _proposer_id, _sig, _bv
         FROM vsc_app.blocks
         WHERE vsc_app.blocks.id = blk_id;
     IF _block_hash IS NULL THEN

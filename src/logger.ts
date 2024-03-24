@@ -1,3 +1,4 @@
+import 'source-map-support/register.js'
 import log4js, {LoggingEvent} from 'log4js'
 import config from './config.js'
 

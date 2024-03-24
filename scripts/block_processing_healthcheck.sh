@@ -19,7 +19,7 @@ POSTGRES_ACCESS=${HEALTHCHECK_POSTGRES_URL:-"postgresql://$postgres_user@$postgr
 #
 # This check needs to know when the block processing started, so the docker entrypoint
 # must write this to a file like:
-#   date --utc --iso-8601=seconds > /tmp/block_processing_startup_time.txt
+#   date --utc -I'seconds' > /tmp/block_processing_startup_time.txt
 
 if [ ! -f "/tmp/block_processing_startup_time.txt" ]; then
   echo "file /tmp/block_processing_startup_time.txt does not exist, which means block"

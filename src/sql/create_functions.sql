@@ -247,7 +247,7 @@ END
 $function$
 LANGUAGE plpgsql VOLATILE;
 
-CREATE OR REPLACE FUNCTION vsc_app.process_election_result(_proposed_in_op BIGINT, _proposer VARCHAR, _epoch INTEGER, _data_cid VARCHAR, _sig VARCHAR, _bv VARCHAR)
+CREATE OR REPLACE FUNCTION vsc_app.process_election_result(_proposed_in_op BIGINT, _proposer VARCHAR, _epoch INTEGER, _data_cid VARCHAR, _sig BYTEA, _bv BYTEA)
 RETURNS void
 AS
 $function$
@@ -261,7 +261,7 @@ END
 $function$
 LANGUAGE plpgsql VOLATILE;
 
-CREATE OR REPLACE FUNCTION vsc_app.insert_block(_proposed_in_op BIGINT, _block_hash VARCHAR, _proposer VARCHAR, _sig VARCHAR, _bv VARCHAR)
+CREATE OR REPLACE FUNCTION vsc_app.insert_block(_proposed_in_op BIGINT, _block_hash VARCHAR, _proposer VARCHAR, _sig BYTEA, _bv BYTEA)
 RETURNS void
 AS
 $function$

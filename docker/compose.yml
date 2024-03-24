@@ -37,7 +37,7 @@ services:
     command:
       - process_blocks
     healthcheck:
-      test: ["CMD-SHELL","/app/scripts/block-processing-healthcheck.sh || exit 1"]
+      test: ["CMD-SHELL","/app/scripts/block_processing_healthcheck.sh || exit 1"]
       interval: 10s
       timeout: 2s
       retries: 10

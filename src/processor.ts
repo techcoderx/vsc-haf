@@ -45,6 +45,7 @@ const processor = {
                 }
                 if (details.user !== MULTISIG_ACCOUNT && payload.net_id !== NETWORK_ID)
                     return { valid: false }
+                let sig: Buffer, bv: Buffer
                 switch (cjidx) {
                     case 0:
                         // propose block
@@ -56,11 +57,15 @@ const processor = {
                             typeof payload.signed_block.signature.sig !== 'string' ||
                             typeof payload.signed_block.signature.bv !== 'string')
                             return { valid: false }
+                        sig = Buffer.from(payload.signed_block.signature.sig, 'base64url')
+                        bv = Buffer.from(payload.signed_block.signature.bv, 'base64url')
+                        if (sig.length !== 96)
+                            return { valid: false }
                         details.payload = {
                             block_hash: payload.signed_block.block,
                             signature: {
-                                sig: payload.signed_block.signature.sig,
-                                bv: payload.signed_block.signature.bv
+                                sig: sig,
+                                bv: bv
                             }
                         }
                         break
@@ -99,10 +104,14 @@ const processor = {
                             typeof payload.signature.sig !== 'string' ||
                             typeof payload.signature.bv !== 'string')
                             return { valid: false }
+                        sig = Buffer.from(payload.signature.sig, 'base64url')
+                        bv = Buffer.from(payload.signature.bv, 'base64url')
+                        if (sig.length !== 96)
+                            return { valid: false }
                         details.payload = {
                             epoch: payload.epoch,
                             data: payload.data,
-                            signature: payload.signature
+                            signature: { sig, bv }
                         }
                         break
                     case 5:

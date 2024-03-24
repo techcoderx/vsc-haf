@@ -30,8 +30,8 @@ CREATE TABLE IF NOT EXISTS vsc_app.blocks(
     proposed_in_op BIGINT NOT NULL,
     block_hash VARCHAR(59) NOT NULL,
     proposer INTEGER NOT NULL,
-    sig VARCHAR NOT NULL,
-    bv VARCHAR NOT NULL
+    sig BYTEA NOT NULL,
+    bv BYTEA NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.contracts(
@@ -87,8 +87,8 @@ CREATE TABLE IF NOT EXISTS vsc_app.election_results(
     proposed_in_op BIGINT NOT NULL,
     proposer INTEGER NOT NULL,
     data_cid VARCHAR(59) NOT NULL,
-    sig VARCHAR NOT NULL,
-    bv VARCHAR NOT NULL,
+    sig BYTEA NOT NULL,
+    bv BYTEA NOT NULL,
     is_valid BOOLEAN
 );
 

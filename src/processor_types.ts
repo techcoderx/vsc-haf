@@ -73,6 +73,6 @@ export type DepositPayload = {
 }
 
 export type BLSAggSign = {
-    sig: string,
-    bv: string
+    sig: Buffer,
+    bv: Buffer
 }

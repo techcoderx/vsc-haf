@@ -53,10 +53,10 @@ DECLARE
     _l1_tx vsc_app.l1_tx_type;
     _proposer_id INTEGER;
     _proposer TEXT;
-    _sig VARCHAR;
-    _bv VARCHAR;
+    _sig BYTEA;
+    _bv BYTEA;
 BEGIN
-    SELECT id, proposed_in_op, proposer, sig, bv INTO _block_id, _proposed_in_op, _proposer_id, _sig, _bv
+    SELECT id, proposed_in_op, proposer, sig, bv INTO _block_id, _proposed_in_op, _proposer_id, _sig::bytea, _bv::bytea
         FROM vsc_app.blocks
         WHERE vsc_app.blocks.block_hash = blk_hash
         LIMIT 1;
@@ -83,8 +83,8 @@ BEGIN
         'l1_tx', _l1_tx.trx_hash,
         'l1_block', _l1_tx.block_num,
         'signature', (jsonb_build_object(
-            'sig', _sig,
-            'bv', _bv
+            'sig', encode(_sig, 'hex'),
+            'bv', encode(_bv, 'hex')
         ))
     );
 END
@@ -103,10 +103,10 @@ DECLARE
     _l1_tx vsc_app.l1_tx_type;
     _proposer_id INTEGER;
     _proposer TEXT;
-    _sig VARCHAR;
-    _bv VARCHAR;
+    _sig BYTEA;
+    _bv BYTEA;
 BEGIN
-    SELECT block_hash, proposed_in_op, proposer, sig, bv INTO _block_hash, _proposed_in_op, _proposer_id, _sig, _bv
+    SELECT block_hash, proposed_in_op, proposer, sig, bv INTO _block_hash, _proposed_in_op, _proposer_id, _sig::bytea, _bv::bytea
         FROM vsc_app.blocks
         WHERE vsc_app.blocks.id = blk_id;
     IF _block_hash IS NULL THEN
@@ -132,8 +132,8 @@ BEGIN
         'l1_tx', _l1_tx.trx_hash,
         'l1_block', _l1_tx.block_num,
         'signature', (jsonb_build_object(
-            'sig', _sig,
-            'bv', _bv
+            'sig', encode(_sig, 'hex'),
+            'bv', encode(_bv, 'hex')
         ))
     );
 END

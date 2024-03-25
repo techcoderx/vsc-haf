@@ -17,6 +17,7 @@ OPTIONS:
     --schema=SCHEMA                 The schema name to use (default: vsc_app)
     --api-schema=SCHEMA             The API schema name to use (default: vsc_api)
     --app-context=CONTEXT_NAME      HAF app context name to use (default: vsc_app)
+    --plain-output                  Uses --progress=plain arg in Docker build command
     --skip-gh-fh                    Skips building gh-fh image
     --help,-h,-?                    Displays this help message
 EOF
@@ -35,6 +36,9 @@ while [ $# -gt 0 ]; do
         ;;
     --app-context=*)
         BUILD_ARGS="$BUILD_ARGS --build-arg APP_CONTEXT=${1#*=}"
+        ;;
+    --plain-output)
+        BUILD_ARGS="$BUILD_ARGS --progress=plain"
         ;;
     --skip-gh-fh)
         SKIP_GH_FH="true"

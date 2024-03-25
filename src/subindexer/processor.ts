@@ -65,6 +65,7 @@ const processor = {
     process: async (op: VscOp): Promise<boolean> => {
         let result = await processor.validateAndParse(op)
         if (result.valid) {
+            logger.trace('Processing op',op.id,result)
             switch (op.op_type) {
                 case op_type_map.map.propose_block:
                     break
@@ -72,7 +73,7 @@ const processor = {
                     break
                 case op_type_map.map.bridge_ref:
                     result.payload = result.payload as BridgeRefResult
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.vsc_app.update_withdrawal_statuses($1,$2,$3);`,['{'+result.payload.join(',')+'}','completed',result.block_num])
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_withdrawal_statuses($1,$2,$3);`,['{'+result.payload.join(',')+'}','completed',result.block_num])
                     break
                 default:
                     break

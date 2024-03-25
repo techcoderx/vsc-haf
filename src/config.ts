@@ -16,6 +16,10 @@ const config = yargs(process.argv)
         logFile: {
             type: 'string',
             default: './logs/output.log'
+        },
+        ipfsApiUrl: {
+            type: 'string',
+            default: 'http://localhost:5001'
         }
     })
     .parseSync()

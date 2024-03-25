@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS vsc_app.l1_operations(
     trx_in_block SMALLINT NOT NULL,
     op_pos INTEGER NOT NULL,
     op_type INTEGER NOT NULL,
-    ts TIMESTAMP NOT NULL
+    ts TIMESTAMP NOT NULL,
+    UNIQUE(block_num, trx_in_block, op_pos)
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.l1_users(
@@ -82,14 +83,20 @@ CREATE TABLE IF NOT EXISTS vsc_app.keyauths_archive(
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.election_results(
-    id SERIAL PRIMARY KEY,
-    epoch INTEGER NOT NULL,
+    epoch INTEGER PRIMARY KEY,
     proposed_in_op BIGINT NOT NULL,
     proposer INTEGER NOT NULL,
     data_cid VARCHAR(59) NOT NULL,
     sig BYTEA NOT NULL,
-    bv BYTEA NOT NULL,
-    is_valid BOOLEAN
+    bv BYTEA NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS vsc_app.election_result_members(
+    id SERIAL PRIMARY KEY,
+    epoch INTEGER NOT NULL,
+    witness_id INTEGER NOT NULL, -- hive user id, not vsc witness id
+    consensus_did VARCHAR(78) NOT NULL,
+    UNIQUE(epoch, witness_id)
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.vsc_node_git(
@@ -100,8 +107,12 @@ CREATE TABLE IF NOT EXISTS vsc_app.vsc_node_git(
 CREATE TABLE IF NOT EXISTS vsc_app.state(
     id SERIAL PRIMARY KEY,
     last_processed_block INTEGER NOT NULL DEFAULT 0,
-    next_epoch_block INTEGER NOT NULL DEFAULT 0,
     db_version INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS vsc_app.subindexer_state(
+    id SERIAL PRIMARY KEY,
+    last_processed_op BIGINT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.multisig_txrefs(
@@ -133,7 +144,8 @@ CREATE TABLE IF NOT EXISTS vsc_app.withdrawal_request(
     amount2 INTEGER NOT NULL,
     asset SMALLINT NOT NULL,
     dest_acc INTEGER NOT NULL,
-    status SMALLINT DEFAULT 1
+    status SMALLINT DEFAULT 1,
+    UNIQUE(in_op)
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.withdrawal_status(
@@ -153,4 +165,10 @@ CREATE TABLE IF NOT EXISTS vsc_app.dids(
     id SERIAL PRIMARY KEY,
     did VARCHAR(78) NOT NULL,
     UNIQUE(did)
+);
+
+CREATE TABLE IF NOT EXISTS vsc_app.bls_dids(
+    id SERIAL PRIMARY KEY,
+    bls_did VARCHAR(78) NOT NULL,
+    UNIQUE(bls_did)
 );

@@ -36,10 +36,36 @@ services:
       VSC_HAF_LOG_LEVEL: ${VSC_TEST_LOG_LEVEL:-trace}
     command:
       - process_blocks
+    healthcheck:
+      test: ["CMD-SHELL","/app/scripts/block_processing_healthcheck.sh || exit 1"]
+      interval: 10s
+      timeout: 2s
+      retries: 10
+      start_period: 15m
     networks:
       haf-network:
     depends_on:
       vsc-test-install:
         condition: service_completed_successfully
+      haf:
+        condition: service_healthy
+  vsc-test-subindexer:
+    image: vsc-haf:${VSC_HAF_VERSION:-${HIVE_API_NODE_VERSION}}
+    profiles:
+      - apps
+      - vsc-haf
+    environment:
+      POSTGRES_URL: postgresql://vsc_owner@haf/haf_block_log
+      VSC_HAF_LOG_LEVEL: ${VSC_TEST_LOG_LEVEL:-info}
+      VSC_HAF_IPFS_API_URL: ${VSC_TEST_IPFS_API_URL:-http://172.17.0.1:5001}
+    command:
+      - subindexer
+    networks:
+      haf-network:
+    depends_on:
+      vsc-test-install:
+        condition: service_completed_successfully
+      vsc-test-block-processing:
+        condition: service_healthy
       haf:
         condition: service_healthy

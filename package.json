@@ -12,8 +12,10 @@
   "type": "module",
   "scripts": {
     "start": "node dist/index.js",
+    "subindexer": "node dist/subindexer/index.js",
     "compile": "tsc; ./scripts/post_compile.sh",
     "dev": "node --loader ts-node/esm src/index.ts",
+    "dev-subindexer": "node --loader ts-node/esm src/subindexer/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -27,20 +29,28 @@
   },
   "homepage": "https://github.com/techcoderx/vsc-haf#readme",
   "dependencies": {
+    "@chainsafe/bls": "^7.1.3",
+    "@chainsafe/blst": "^0.2.10",
+    "@didtools/codecs": "^3.0.0",
     "bech32": "^2.0.0",
+    "bitset": "^5.1.1",
     "bs58": "^5.0.0",
+    "codeco": "^1.2.1",
     "dag-jose-utils": "^4.0.0",
+    "did-resolver": "^4.1.0",
     "dids": "^4.0.4",
     "dotenv": "^16.3.1",
     "is-ipfs": "^8.0.1",
     "key-did-provider-ed25519": "^3.0.2",
     "key-did-resolver": "^3.0.0",
+    "kubo-rpc-client": "^3.0.4",
     "log4js": "^6.9.1",
     "multiformats": "^12.0.1",
     "pg": "^8.11.1",
     "randombytes": "^2.1.0",
     "secp256k1": "^5.0.0",
     "source-map-support": "^0.5.21",
+    "uint8arrays": "^5.0.3",
     "yargs": "^17.7.2"
   },
   "devDependencies": {

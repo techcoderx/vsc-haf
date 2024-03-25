@@ -49,6 +49,26 @@ services:
         condition: service_completed_successfully
       haf:
         condition: service_healthy
+  vsc-haf-subindexer:
+    image: vsc-haf:${VSC_HAF_VERSION:-${HIVE_API_NODE_VERSION}}
+    profiles:
+      - apps
+      - vsc-haf
+    environment:
+      POSTGRES_URL: postgresql://vsc_owner@haf/haf_block_log
+      VSC_HAF_LOG_LEVEL: ${VSC_HAF_LOG_LEVEL:-info}
+      VSC_HAF_IPFS_API_URL: ${VSC_HAF_IPFS_API_URL:-http://172.17.0.1:5001}
+    command:
+      - subindexer
+    networks:
+      haf-network:
+    depends_on:
+      vsc-haf-install:
+        condition: service_completed_successfully
+      vsc-haf-block-processing:
+        condition: service_healthy
+      haf:
+        condition: service_healthy
   vsc-haf-github-fetch-head:
     image: vsc-haf/gh-fh:${VSC_HAF_VERSION:-${HIVE_API_NODE_VERSION}}
     profiles:

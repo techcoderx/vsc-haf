@@ -1,10 +1,15 @@
-export type Op = {
+export interface Op {
     id: string
     block_num: number
     trx_in_block: number
     op_pos: number
     timestamp: Date
     body: string
+}
+
+export interface OpBody {
+    type: 'custom_json_operation' | 'account_update_operation' | 'transfer_operation',
+    value: any
 }
 
 export type PayloadTypes = BlockPayload | NewContractPayload | NodeAnnouncePayload | ElectionPayload | MultisigTxRefPayload | DepositPayload
@@ -46,11 +51,6 @@ export type NewContractPayload = {
     code: string
 }
 
-export type ContractCommitmentPayload = {
-    contract_id: string
-    node_identity: string
-}
-
 export type NodeAnnouncePayload = {
     did: string
     consensus_did: string
@@ -61,6 +61,7 @@ export type NodeAnnouncePayload = {
     sk_owner: string
 }
 
+export type BridgeRefPayload = MultisigTxRefPayload
 export type MultisigTxRefPayload = {
     ref_id: string
 }
@@ -75,4 +76,25 @@ export type DepositPayload = {
 export type BLSAggSign = {
     sig: Buffer,
     bv: Buffer
+}
+
+/* Mainly subindexer types below this point */
+export interface VscOp extends Op {
+    op_type: number
+}
+
+export type CustomJsonPayloads = BlockOp | ElectionPayload | BridgeRefPayload
+export type BridgeRefResult = bigint[]
+export type L2PayloadTypes = BridgeRefResult
+export interface BlockOp {
+    net_id: string
+    replay_id: number
+    signed_block: {
+        block: string
+        headers: {
+            br: [number, number],
+            prevb: string
+        },
+        signature: BLSAggSign
+    }
 }

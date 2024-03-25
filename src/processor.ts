@@ -6,14 +6,14 @@ import randomDID from './did.js'
 import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS } from './constants.js'
 import db from './db.js'
 import logger from './logger.js'
-import { BlockPayload, DepositPayload, ElectionPayload, MultisigTxRefPayload, NewContractPayload, NodeAnnouncePayload, Op, ParsedOp, PayloadTypes, TxTypes } from './processor_types.js'
+import { BlockPayload, DepositPayload, MultisigTxRefPayload, NewContractPayload, NodeAnnouncePayload, Op, OpBody, ParsedOp, PayloadTypes, TxTypes } from './processor_types.js'
 import op_type_map from './operations.js'
 import { isValidL1PubKey } from './utils/crypto.js'
 
 const processor = {
     validateAndParse: async (op: Op): Promise<ParsedOp<PayloadTypes>> => {
         try {
-            let parsed = JSON.parse(op.body)
+            let parsed: OpBody = JSON.parse(op.body)
             if (!parsed.value)
                 return { valid: false }
             if (parsed.type === 'custom_json_operation') {
@@ -282,10 +282,6 @@ const processor = {
                     break
                 case op_type_map.map.tx:
                     // TODO process op
-                    break
-                case op_type_map.map.election_result:
-                    pl = result.payload as ElectionPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.process_election_result($1,$2,$3,$4,$5,$6);`,[new_vsc_op.rows[0].process_operation,result.user,pl.epoch,pl.data,pl.signature.sig,pl.signature.bv])
                     break
                 case op_type_map.map.multisig_txref:
                     pl = result.payload as MultisigTxRefPayload

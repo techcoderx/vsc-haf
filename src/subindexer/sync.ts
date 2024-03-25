@@ -33,6 +33,7 @@ const sync = {
         let next_ops = await db.client.query(`SELECT ${SCHEMA_NAME}.subindexer_next_ops(true);`)
         let first_op = next_ops.rows[0].first_op
         let last_op = next_ops.rows[0].last_op
+        logger.debug('Next ops: ['+first_op+','+last_op+']')
         if (first_op === null) {
             await db.client.query('COMMIT;')
             if (isMassive)

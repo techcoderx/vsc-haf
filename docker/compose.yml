@@ -56,7 +56,7 @@ services:
       - vsc-haf
     environment:
       POSTGRES_URL: postgresql://vsc_owner@haf/haf_block_log
-      VSC_HAF_LOG_LEVEL: ${VSC_HAF_LOG_LEVEL:-info}
+      VSC_HAF_LOG_LEVEL: ${VSC_HAF_SUBINDEXER_LOG_LEVEL:-${VSC_HAF_LOG_LEVEL:-info}}
       VSC_HAF_IPFS_API_URL: ${VSC_HAF_IPFS_API_URL:-http://172.17.0.1:5001}
     command:
       - subindexer

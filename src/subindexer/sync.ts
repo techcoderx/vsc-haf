@@ -20,9 +20,10 @@ const sync = {
             return sync.close()
 
         let shouldMassiveSync = await db.client.query(`SELECT ${SCHEMA_NAME}.subindexer_should_massive_sync();`)
-        if (shouldMassiveSync.rows[0].subindexer_should_massive_sync)
+        if (shouldMassiveSync.rows[0].subindexer_should_massive_sync) {
+            logger.debug('Start massive sync')
             sync.sync(true)
-        else
+        } else
             sync.postMassive()
     },
     sync: async (isMassive = false): Promise<void> => {
@@ -30,11 +31,11 @@ const sync = {
             return sync.close()
 
         await db.client.query('START TRANSACTION;')
-        let next_ops = await db.client.query(`SELECT ${SCHEMA_NAME}.subindexer_next_ops(true);`)
+        let next_ops = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.subindexer_next_ops(true);`)
         let first_op = next_ops.rows[0].first_op
         let last_op = next_ops.rows[0].last_op
         logger.debug('Next ops: ['+first_op+','+last_op+']')
-        if (first_op === null) {
+        if (!first_op) {
             await db.client.query('COMMIT;')
             if (isMassive)
                 sync.postMassive()

@@ -20,7 +20,7 @@ log4js.configure({
         },
         file: {
             type: 'file',
-            filename: './logs/output.log',
+            filename: config.logFile,
             maxLogSize: 10485760,
             backups: 3,
             compress: true

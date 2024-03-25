@@ -12,6 +12,10 @@ const config = yargs(process.argv)
         logLevel: {
             type: 'string',
             default: 'info'
+        },
+        logFile: {
+            type: 'string',
+            default: './logs/output.log'
         }
     })
     .parseSync()

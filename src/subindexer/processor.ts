@@ -46,9 +46,9 @@ const processor = {
                         const opPos = parseInt(parts[1])
                         if (isNaN(opPos) || opPos < 0)
                             continue
-                        let vscOpId = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.get_vsc_op_by_tx_hash($1,$2);`,[parts[0].toLowerCase(),opPos])
+                        const vscOpId = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.get_vsc_op_by_tx_hash($1,$2);`,[parts[0].toLowerCase(),opPos])
                         if (vscOpId.rowCount === 0 || vscOpId.rows[0].op_type !== 11)
-                            return { valid: false }
+                            continue
                         result.push(vscOpId.rows[0].id)
                     }
                     details.payload = result

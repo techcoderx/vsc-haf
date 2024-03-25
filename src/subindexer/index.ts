@@ -22,4 +22,4 @@ const handleExit = async () => {
 process.on('SIGINT', handleExit)
 process.on('SIGTERM', handleExit)
 
-sync.prebegin()
+sync.begin()

@@ -22,9 +22,6 @@ const schema = {
 
         logger.info('Setting up subindexer db...')
         await db.client.query(`INSERT INTO ${SCHEMA_NAME}.subindexer_state(last_processed_op) VALUES($1);`,[0])
-
-        // create relevant functions
-        await schema.createFx()
     },
     loaded: async () => {
         let schemaTbls = await db.client.query('SELECT 1 FROM pg_catalog.pg_tables WHERE schemaname=$1 AND tablename=$2;',[SCHEMA_NAME, 'l1_operations'])

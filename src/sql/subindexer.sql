@@ -205,7 +205,7 @@ BEGIN
     WHERE in_op = ANY(_in_op_ids);
 
     SELECT id INTO _status_id_failed FROM vsc_app.withdrawal_status WHERE name='failed';
-    SELECT id INTO _status_id_failed FROM vsc_app.withdrawal_status WHERE name='completed';
+    SELECT id INTO _status_id_completed FROM vsc_app.withdrawal_status WHERE name='completed';
     UPDATE vsc_app.withdrawal_request SET
         status=_status_id_failed
     WHERE in_op < (

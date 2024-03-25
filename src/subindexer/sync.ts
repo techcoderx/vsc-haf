@@ -8,16 +8,10 @@ import { SCHEMA_NAME } from '../constants.js'
 
 const sync = {
     terminating: false,
-    prebegin: async () => {
+    begin: async () => {
         // update functions and load operations map
         await schema.createFx()
         await op_type_map.retrieveMap()
-
-        sync.begin()
-    },
-    begin: async (): Promise<void> => {
-        if (sync.terminating)
-            return sync.close()
 
         let shouldMassiveSync = await db.client.query(`SELECT ${SCHEMA_NAME}.subindexer_should_massive_sync();`)
         if (shouldMassiveSync.rows[0].subindexer_should_massive_sync) {
@@ -34,7 +28,7 @@ const sync = {
         let next_ops = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.subindexer_next_ops(true);`)
         let first_op = next_ops.rows[0].first_op
         let last_op = next_ops.rows[0].last_op
-        logger.debug('Next ops: ['+first_op+','+last_op+']')
+        logger.trace('Next ops: ['+first_op+','+last_op+']')
         if (!first_op) {
             await db.client.query('COMMIT;')
             if (isMassive)

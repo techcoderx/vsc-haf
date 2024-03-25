@@ -41,7 +41,7 @@ const processor = {
                         if (typeof bridgeRefContent.withdrawals[w].id !== 'string')
                             continue
                         const parts = bridgeRefContent.withdrawals[w].id.split('-')
-                        if (parts.length !== 2 || /^[0-9a-fA-F]{40}$/i.test(parts[0]))
+                        if (parts.length !== 2 || !/^[0-9a-fA-F]{40}$/i.test(parts[0]))
                             continue
                         const opPos = parseInt(parts[1])
                         if (isNaN(opPos) || opPos < 0)

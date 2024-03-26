@@ -7,6 +7,7 @@ GRANT USAGE ON SCHEMA vsc_app TO vsc_user;
 GRANT SELECT ON ALL TABLES IN SCHEMA vsc_api TO vsc_user;
 GRANT SELECT ON ALL TABLES IN SCHEMA vsc_app TO vsc_user;
 GRANT SELECT ON TABLE hive.vsc_app_accounts TO vsc_user;
+GRANT SELECT ON hive.vsc_app_transactions_view TO vsc_user;
 
 -- GET /
 CREATE OR REPLACE FUNCTION vsc_api.home()

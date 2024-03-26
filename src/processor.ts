@@ -3,7 +3,7 @@ import { CID } from 'multiformats/cid'
 import { encodePayload } from 'dag-jose-utils'
 import { bech32 } from "bech32"
 import randomDID from './did.js'
-import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS } from './constants.js'
+import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS, APP_CONTEXT, REQUIRES_ACTIVE } from './constants.js'
 import db from './db.js'
 import logger from './logger.js'
 import { BlockPayload, DepositPayload, MultisigTxRefPayload, NewContractPayload, NodeAnnouncePayload, Op, OpBody, ParsedOp, PayloadTypes, TxTypes } from './processor_types.js'
@@ -18,7 +18,7 @@ const processor = {
                 return { valid: false }
             if (parsed.type === 'custom_json_operation') {
                 let cjidx = CUSTOM_JSON_IDS.indexOf(parsed.value.id)
-                let requiresActiveAuth = [0,1,4,6].includes(cjidx)
+                let requiresActiveAuth = REQUIRES_ACTIVE.includes(cjidx)
                 if (cjidx === -1 || !parsed.value.json)
                     return { valid: false }
 
@@ -111,6 +111,7 @@ const processor = {
                         details.payload = {
                             epoch: payload.epoch,
                             data: payload.data,
+                            net_id: payload.net_id,
                             signature: { sig, bv }
                         }
                         break
@@ -222,7 +223,7 @@ const processor = {
                             if (payload.to.startsWith('did:') && payload.to.length <= 78)
                                 payload.owner = payload.to
                             else if (payload.to.startsWith('@') && payload.to.length <= 17 &&
-                                (await db.client.query(`SELECT * FROM hive.vsc_app_accounts WHERE name=$1;`,[payload.to.replace('@','')])).rowCount! > 0)
+                                (await db.client.query(`SELECT * FROM hive.${APP_CONTEXT}_accounts WHERE name=$1;`,[payload.to.replace('@','')])).rowCount! > 0)
                                 payload.owner = payload.to.replace('@','')
                             else
                                 payload.owner = parsed.value.from

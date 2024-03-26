@@ -172,16 +172,82 @@ END
 $function$
 LANGUAGE plpgsql STABLE;
 
-CREATE OR REPLACE FUNCTION vsc_app.insert_election_result(_proposed_in_op BIGINT, _proposer VARCHAR, _epoch INTEGER, _data_cid VARCHAR, _sig BYTEA, _bv BYTEA)
+CREATE OR REPLACE FUNCTION vsc_app.get_election_at_epoch(_epoch INTEGER)
+RETURNS SETOF vsc_app.witnesses_at_block
+AS
+$function$
+BEGIN
+    RETURN QUERY
+        SELECT a.name, em.consensus_did
+            FROM vsc_app.election_result_members em
+            JOIN hive.vsc_app_accounts a ON
+                a.id = em.witness_id
+            WHERE epoch = _epoch
+            ORDER BY a.name ASC;
+END
+$function$
+LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION vsc_app.get_epoch_at_block(_block_num INTEGER)
+RETURNS INTEGER
+AS
+$function$
+BEGIN
+    RETURN (
+        SELECT epoch
+            FROM vsc_app.election_results e
+            JOIN vsc_app.l1_operations o ON
+                o.id = e.proposed_in_op
+            WHERE o.block_num <= _block_num
+            ORDER BY epoch DESC
+            LIMIT 1
+    );
+END
+$function$
+LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION vsc_app.get_members_at_block(_block_num INTEGER)
+RETURNS SETOF vsc_app.witnesses_at_block
+AS
+$function$
+DECLARE
+    _epoch INTEGER;
+BEGIN
+    SELECT vsc_app.get_epoch_at_block(_block_num) INTO _epoch;
+    IF _epoch IS NULL THEN
+        RETURN QUERY SELECT * FROM vsc_app.get_active_witnesses_at_block(_block_num);
+        RETURN;
+    ELSE
+        RETURN QUERY SELECT * FROM vsc_app.get_election_at_epoch(_epoch);
+        RETURN
+    END IF;
+END
+$function$
+LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION vsc_app.insert_election_result(_proposed_in_op BIGINT, _proposer VARCHAR, _epoch INTEGER, _data_cid VARCHAR, _sig BYTEA, _bv BYTEA, _elected_members INTEGER[], _elected_keys VARCHAR[])
 RETURNS void
 AS
 $function$
 DECLARE
     _acc_id INTEGER;
+    _em INTEGER;
+    _ek VARCHAR;
+    i INTEGER;
 BEGIN
     SELECT id INTO _acc_id FROM hive.vsc_app_accounts WHERE name=_proposer;
     INSERT INTO vsc_app.election_results(epoch, proposed_in_op, proposer, data_cid, sig, bv)
         VALUES(_epoch, _proposed_in_op, _acc_id, _data_cid, _sig, _bv);
+
+    IF (SELECT ARRAY_LENGTH(_elected_members, 1)) != (SELECT ARRAY_LENGTH(_elected_keys, 1)) THEN
+        RAISE EXCEPTION 'elected members and keys must have the same array length';
+    END IF;
+
+    FOR i IN array_lower(_elected_members, 1) .. array_upper(_elected_members, 1)
+    LOOP
+        INSERT INTO vsc_app.election_result_members(epoch, witness_id, consensus_did)
+            VALUES (_epoch, _elected_members[i], _elected_keys[i]);
+    END LOOP;
 END
 $function$
 LANGUAGE plpgsql VOLATILE;

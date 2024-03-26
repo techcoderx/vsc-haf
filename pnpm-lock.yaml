@@ -14,6 +14,9 @@ dependencies:
   '@didtools/codecs':
     specifier: ^3.0.0
     version: 3.0.0
+  '@ipld/dag-cbor':
+    specifier: ^9.2.0
+    version: 9.2.0
   bech32:
     specifier: ^2.0.0
     version: 2.0.0

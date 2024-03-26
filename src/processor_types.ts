@@ -35,13 +35,18 @@ export enum TxTypes {
 
 export type BlockPayload = {
     block_hash: string
-    signature: BLSAggSign
+    signature: BLSAggSign<Buffer>
 }
 
-export type ElectionPayload = {
+export interface UnsignedElection {
     data: string
     epoch: number
-    signature: BLSAggSign
+    net_id: string
+}
+
+export interface ElectionPayload extends UnsignedElection {
+    signature: BLSAggSign<Buffer>
+    members?: ElectionMember<number>[]
 }
 
 export type NewContractPayload = {
@@ -73,9 +78,9 @@ export type DepositPayload = {
     owner?: string
 }
 
-export type BLSAggSign = {
-    sig: Buffer,
-    bv: Buffer
+export type BLSAggSign<T> = {
+    sig: T,
+    bv: T
 }
 
 /* Mainly subindexer types below this point */
@@ -83,9 +88,9 @@ export interface VscOp extends Op {
     op_type: number
 }
 
-export type CustomJsonPayloads = BlockOp | ElectionPayload | BridgeRefPayload
+export type CustomJsonPayloads = BlockOp | ElectionOp | BridgeRefPayload
 export type BridgeRefResult = bigint[]
-export type L2PayloadTypes = BridgeRefResult
+export type L2PayloadTypes = BridgeRefResult | ElectionPayload
 export interface BlockOp {
     net_id: string
     replay_id: number
@@ -95,6 +100,15 @@ export interface BlockOp {
             br: [number, number],
             prevb: string
         },
-        signature: BLSAggSign
+        signature: BLSAggSign<string>
     }
+}
+
+export interface ElectionOp extends UnsignedElection {
+    signature: BLSAggSign<string>
+}
+
+export interface ElectionMember<T> {
+    account: T
+    key: string
 }

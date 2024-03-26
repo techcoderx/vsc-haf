@@ -39,13 +39,14 @@ const processor = {
                     sig = Buffer.from(payload.signature.sig, 'base64url')
                     bv = Buffer.from(payload.signature.bv, 'base64url')
                     const slotHeight = op.block_num - (op.block_num % EPOCH_LENGTH)
-                    const members = await db.client.query(`SELECT ${SCHEMA_NAME}.get_members_at_block($1);`,[op.block_num])
-                    const membersAtSlotStart = await db.client.query(`SELECT ${SCHEMA_NAME}.get_members_at_block($1);`,[slotHeight])
+                    const members = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.get_members_at_block($1);`,[op.block_num])
+                    const membersAtSlotStart = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.get_members_at_block($1);`,[slotHeight])
                     const d = {
                         data: payload.data,
                         epoch: payload.epoch,
                         net_id: payload.net_id
                     }
+                    logger.trace(membersAtSlotStart.rows)
                     const keyset = membersAtSlotStart.rows.map(m => m.consensus_did)
                     const {circuit, bs} = BlsCircuit.deserializeRaw(d, sig, bv, keyset)
                     const pubKeys = []

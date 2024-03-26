@@ -219,7 +219,7 @@ BEGIN
         RETURN;
     ELSE
         RETURN QUERY SELECT * FROM vsc_app.get_election_at_epoch(_epoch);
-        RETURN
+        RETURN;
     END IF;
 END
 $function$

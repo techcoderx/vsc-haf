@@ -262,7 +262,7 @@ const processor = {
             return { valid: false }
         }
     },
-    process: async (op: any): Promise<boolean> => {
+    process: async (op: Op): Promise<boolean> => {
         let result = await processor.validateAndParse(op)
         if (result.valid) {
             logger.trace('Processing op',result)

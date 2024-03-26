@@ -1,6 +1,7 @@
 import logger from '../logger.js'
 import db from '../db.js'
 import { L2PayloadTypes, ParsedOp, VscOp, BlockOp, OpBody, BridgeRefPayload, CustomJsonPayloads, BridgeRefResult, ElectionOp, ElectionPayload, ElectionMember } from '../processor_types.js'
+import { BlockScheduleParams, WitnessConsensusDid } from '../psql_types.js'
 import ipfs from './ipfs.js'
 import { CID } from 'kubo-rpc-client'
 import { createDag } from './ipfs_dag.js'
@@ -39,8 +40,8 @@ const processor = {
                     sig = Buffer.from(payload.signature.sig, 'base64url')
                     bv = Buffer.from(payload.signature.bv, 'base64url')
                     const slotHeight = op.block_num - (op.block_num % EPOCH_LENGTH)
-                    const members = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.get_members_at_block($1);`,[op.block_num])
-                    const membersAtSlotStart = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.get_members_at_block($1);`,[slotHeight])
+                    const members = await db.client.query<WitnessConsensusDid>(`SELECT * FROM ${SCHEMA_NAME}.get_members_at_block($1);`,[op.block_num])
+                    const membersAtSlotStart = await db.client.query<WitnessConsensusDid>(`SELECT * FROM ${SCHEMA_NAME}.get_members_at_block($1);`,[slotHeight])
                     const d = {
                         data: payload.data,
                         epoch: payload.epoch,

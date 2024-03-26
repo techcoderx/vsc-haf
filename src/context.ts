@@ -1,6 +1,7 @@
 import { APP_CONTEXT } from './constants.js'
 import logger from './logger.js'
 import db from './db.js'
+import { AppNextBlock } from './psql_types.js'
 
 const context = {
     exists: async () => {
@@ -31,8 +32,8 @@ const context = {
         } else
             logger.info('App context already detached, skipping')
     },
-    nextBlocks: async () => {
-        return (await db.client.query('SELECT * FROM hive.app_next_block($1);',[APP_CONTEXT])).rows[0]
+    nextBlocks: async (): Promise<AppNextBlock> => {
+        return (await db.client.query<AppNextBlock>('SELECT * FROM hive.app_next_block($1);',[APP_CONTEXT])).rows[0]
     }
 }
 

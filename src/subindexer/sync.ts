@@ -5,6 +5,8 @@ import parentSchema from '../schema.js'
 import op_type_map from '../operations.js'
 import processor from './processor.js'
 import { SCHEMA_NAME } from '../constants.js'
+import { VscOp } from '../processor_types.js'
+import { SubindexerNextOps } from '../psql_types.js'
 
 const sync = {
     terminating: false,
@@ -25,7 +27,7 @@ const sync = {
             return sync.close()
 
         await db.client.query('START TRANSACTION;')
-        let next_ops = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.subindexer_next_ops(true);`)
+        let next_ops = await db.client.query<SubindexerNextOps>(`SELECT * FROM ${SCHEMA_NAME}.subindexer_next_ops(true);`)
         let first_op = next_ops.rows[0].first_op
         let last_op = next_ops.rows[0].last_op
         logger.trace('Next ops: ['+first_op+','+last_op+']')
@@ -39,7 +41,7 @@ const sync = {
         }
 
         let start = new Date().getTime()
-        let ops = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.enum_vsc_op($1,$2);`,[first_op,last_op])
+        let ops = await db.client.query<VscOp>(`SELECT * FROM ${SCHEMA_NAME}.enum_vsc_op($1,$2);`,[first_op,last_op])
         let count = 0
         for (let op in ops.rows) {
             let processed = await processor.process(ops.rows[op])

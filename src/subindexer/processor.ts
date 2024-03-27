@@ -88,7 +88,8 @@ const processor = {
                             } as BlockPayload
                         } else
                             return { valid: false }
-                    }
+                    } else
+                        return { valid: false }
                     break
                 case op_type_map.map.election_result:
                     // election result

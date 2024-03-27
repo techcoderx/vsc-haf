@@ -67,12 +67,7 @@ const processor = {
                     const blockSlotHeight = op.block_num - (op.block_num % ROUND_LENGTH)
                     let witnessSlot = schedule.shuffled.find(e => e.bn === blockSlotHeight && e.name === details.user)
                     logger.trace('Witness slot at',op.id,witnessSlot)
-                    if (!witnessSlot) {
-                        // 10% of testnet blocks are proposed out of schedule, probably late?
-                        witnessSlot = schedule.shuffled.find(e => e.bn === blockSlotHeight+scheduleParams.rnd_length && e.name === details.user)
-                        if (witnessSlot)
-                            logger.warn(`Accepting late block proposal at op ${op.id}, ${op.block_num-witnessSlot.bn-scheduleParams.rnd_length+1} block(s) out of slot`)
-                    }
+                    logger.trace('Witness in schedule:',schedule.shuffled.filter(e => e.name === details.user))
                     if (witnessSlot) {
                         const unsignedBlock: UnsignedBlock<CID> = {
                             ...payload.signed_block,

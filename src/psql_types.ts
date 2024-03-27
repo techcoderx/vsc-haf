@@ -17,8 +17,8 @@ export type SubindexerNextOps = {
 }
 
 export type BlockScheduleParams = {
-    RND_LENGTH: number
-    TOTAL_RNDS: number
+    rnd_length: number
+    total_rnds: number
     mod_length: number
     mod3: number
     past_rnd_height: number

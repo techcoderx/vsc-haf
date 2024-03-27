@@ -225,6 +225,62 @@ END
 $function$
 LANGUAGE plpgsql STABLE;
 
+DROP TYPE IF EXISTS vsc_app.block_schedule_params CASCADE;
+CREATE TYPE vsc_app.block_schedule_params AS (
+    rnd_length INTEGER,
+    total_rnds INTEGER,
+    mod_length INTEGER,
+    mod3 INTEGER,
+    past_rnd_height INTEGER,
+    next_rnd_height INTEGER,
+    block_id VARCHAR,
+    epoch INTEGER
+);
+CREATE OR REPLACE FUNCTION vsc_app.get_block_schedule_params(_block_num INTEGER)
+RETURNS SETOF vsc_app.block_schedule_params
+AS
+$function$
+DECLARE
+    rnd_length INTEGER = 10;
+    total_rnds INTEGER = 120;
+    mod_length INTEGER = rnd_length * total_rnds;
+    mod3 INTEGER = _block_num % mod_length;
+    past_rnd_height INTEGER = _block_num - mod3;
+    next_rnd_height INTEGER = _block_num + mod_length - mod3;
+    block_id VARCHAR;
+    epoch INTEGER;
+BEGIN
+    SELECT encode(hash, 'hex') INTO block_id FROM hive.vsc_app_blocks_view WHERE num = past_rnd_height-1;
+    SELECT vsc_app.get_epoch_at_block(_block_num) INTO epoch;
+
+    RETURN QUERY SELECT rnd_length, total_rnds, mod_length, mod3, past_rnd_height, next_rnd_height, block_id, epoch;
+END
+$function$
+LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION vsc_app.push_block(_proposed_in_op BIGINT, _block_hash VARCHAR, _proposer VARCHAR, _merkle BYTEA, _sig BYTEA, _bv BYTEA)
+RETURNS void
+AS
+$function$
+DECLARE
+    _acc_id INTEGER;
+    _new_block_id INTEGER;
+BEGIN
+    SELECT id INTO _acc_id FROM hive.vsc_app_accounts WHERE name=_proposer;
+    INSERT INTO vsc_app.blocks(proposed_in_op, block_hash, proposer, merkle_root, sig, bv)
+        VALUES(_proposed_in_op, _block_hash, _acc_id, _merkle, _sig, _bv)
+        RETURNING id INTO _new_block_id;
+    
+    IF EXISTS (SELECT 1 FROM vsc_app.witnesses w WHERE w.id=_acc_id) THEN
+        UPDATE vsc_app.witnesses SET
+            last_block=_new_block_id,
+            produced=produced+1
+        WHERE id=_acc_id;
+    END IF;
+END
+$function$
+LANGUAGE plpgsql VOLATILE;
+
 CREATE OR REPLACE FUNCTION vsc_app.insert_election_result(_proposed_in_op BIGINT, _proposer VARCHAR, _epoch INTEGER, _data_cid VARCHAR, _sig BYTEA, _bv BYTEA, _elected_members INTEGER[], _elected_keys VARCHAR[])
 RETURNS void
 AS

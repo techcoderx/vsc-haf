@@ -1,3 +1,5 @@
+import { WitnessConsensusDid } from './psql_types.js'
+
 export interface Op {
     id: string
     block_num: number
@@ -35,6 +37,7 @@ export enum TxTypes {
 
 export type BlockPayload = {
     block_hash: string
+    merkle_root: Buffer
     signature: BLSAggSign<Buffer>
 }
 
@@ -90,18 +93,25 @@ export interface VscOp extends Op {
 
 export type CustomJsonPayloads = BlockOp | ElectionOp | BridgeRefPayload
 export type BridgeRefResult = bigint[]
-export type L2PayloadTypes = BridgeRefResult | ElectionPayload
+export type L2PayloadTypes = BridgeRefResult | ElectionPayload | BlockPayload
 export interface BlockOp {
     net_id: string
     replay_id: number
-    signed_block: {
-        block: string
-        headers: {
-            br: [number, number],
-            prevb: string
-        },
-        signature: BLSAggSign<string>
-    }
+    signed_block: SignedBlock<string>
+}
+
+export interface UnsignedBlock<BlockCIDType> {
+    block: BlockCIDType
+    headers: {
+        br: [number, number],
+        prevb: string
+    },
+    merkle_root: string
+    signature?: BLSAggSign<string>
+}
+
+export interface SignedBlock<T> extends UnsignedBlock<T> {
+    signature: BLSAggSign<string>
 }
 
 export interface ElectionOp extends UnsignedElection {
@@ -111,4 +121,10 @@ export interface ElectionOp extends UnsignedElection {
 export interface ElectionMember<T> {
     account: T
     key: string
+}
+
+export interface ShuffledSchedule extends WitnessConsensusDid {
+    bn: number
+    bn_works: boolean
+    in_past: boolean
 }

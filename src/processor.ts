@@ -45,7 +45,7 @@ const processor = {
                 }
                 if (details.user !== MULTISIG_ACCOUNT && payload.net_id !== NETWORK_ID)
                     return { valid: false }
-                let sig: Buffer, bv: Buffer
+                let sig: Buffer, bv: Buffer, merkle: Buffer
                 switch (cjidx) {
                     case 0:
                         // propose block
@@ -53,16 +53,19 @@ const processor = {
                             typeof payload.signed_block !== 'object' ||
                             !isCID(payload.signed_block.block) ||
                             CID.parse(payload.signed_block.block).code !== 0x71 ||
+                            typeof payload.signed_block.merkle_root !== 'string' ||
                             typeof payload.signed_block.signature !== 'object' ||
                             typeof payload.signed_block.signature.sig !== 'string' ||
                             typeof payload.signed_block.signature.bv !== 'string')
                             return { valid: false }
                         sig = Buffer.from(payload.signed_block.signature.sig, 'base64url')
                         bv = Buffer.from(payload.signed_block.signature.bv, 'base64url')
-                        if (sig.length !== 96)
+                        merkle = Buffer.from(payload.signed_block.merkle_root, 'base64url')
+                        if (sig.length !== 96 || merkle.length !== 32)
                             return { valid: false }
                         details.payload = {
                             block_hash: payload.signed_block.block,
+                            merkle_root: merkle,
                             signature: {
                                 sig: sig,
                                 bv: bv
@@ -272,10 +275,6 @@ const processor = {
                 case op_type_map.map.announce_node:
                     pl = result.payload as NodeAnnouncePayload
                     await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4,$5,$6,$7,$8,$9);`,[result.user,pl.did,pl.consensus_did,pl.sk_posting,pl.sk_active,pl.sk_owner,pl.witnessEnabled,new_vsc_op.rows[0].process_operation,pl.git_commit])
-                    break
-                case op_type_map.map.propose_block:
-                    pl = result.payload as BlockPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_block($1,$2,$3,$4,$5);`,[new_vsc_op.rows[0].process_operation,pl.block_hash,result.user,pl.signature.sig,pl.signature.bv])
                     break
                 case op_type_map.map.create_contract:
                     pl = result.payload as NewContractPayload

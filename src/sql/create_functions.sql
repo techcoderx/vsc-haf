@@ -247,29 +247,6 @@ END
 $function$
 LANGUAGE plpgsql VOLATILE;
 
-CREATE OR REPLACE FUNCTION vsc_app.insert_block(_proposed_in_op BIGINT, _block_hash VARCHAR, _proposer VARCHAR, _sig BYTEA, _bv BYTEA)
-RETURNS void
-AS
-$function$
-DECLARE
-    _acc_id INTEGER;
-    _new_block_id INTEGER;
-BEGIN
-    SELECT id INTO _acc_id FROM hive.vsc_app_accounts WHERE name=_proposer;
-    INSERT INTO vsc_app.blocks(proposed_in_op, block_hash, proposer, sig, bv)
-        VALUES(_proposed_in_op, _block_hash, _acc_id, _sig, _bv)
-        RETURNING id INTO _new_block_id;
-    
-    IF EXISTS (SELECT 1 FROM vsc_app.witnesses w WHERE w.id=_acc_id) THEN
-        UPDATE vsc_app.witnesses SET
-            last_block=_new_block_id,
-            produced=produced+1
-        WHERE id=_acc_id;
-    END IF;
-END
-$function$
-LANGUAGE plpgsql VOLATILE;
-
 CREATE OR REPLACE FUNCTION vsc_app.insert_contract(
     _created_in_op BIGINT,
     _contract_id VARCHAR,

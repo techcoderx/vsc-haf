@@ -717,7 +717,7 @@ BEGIN
         FROM vsc_app.contracts c
         JOIN vsc_app.l1_operations o ON
             o.id=c.created_in_op
-        ORDER BY c.contract_id DESC
+        ORDER BY o.ts DESC
         LIMIT count
     ) INTO results;
 

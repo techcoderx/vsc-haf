@@ -1,6 +1,6 @@
 import logger from '../logger.js'
 import db from '../db.js'
-import { L2PayloadTypes, ParsedOp, VscOp, BlockOp, OpBody, BridgeRefPayload, CustomJsonPayloads, BridgeRefResult, ElectionOp, ElectionPayload, ElectionMember } from '../processor_types.js'
+import { L2PayloadTypes, ParsedOp, VscOp, BlockOp, OpBody, BridgeRefPayload, CustomJsonPayloads, BridgeRefResult, ElectionOp, ElectionPayload, ElectionMember, ShuffledSchedule, SignedBlock, UnsignedBlock, BlockPayload } from '../processor_types.js'
 import { BlockScheduleParams, WitnessConsensusDid } from '../psql_types.js'
 import ipfs from './ipfs.js'
 import { CID } from 'kubo-rpc-client'
@@ -8,15 +8,23 @@ import { createDag } from './ipfs_dag.js'
 import { BlsCircuit, initBls } from '../utils/bls-did.js'
 import op_type_map from '../operations.js'
 import { BridgeRef } from './ipfs_payload.js'
-import { APP_CONTEXT, CUSTOM_JSON_IDS, EPOCH_LENGTH, REQUIRES_ACTIVE, SCHEMA_NAME, SUPERMAJORITY } from '../constants.js'
+import { APP_CONTEXT, CUSTOM_JSON_IDS, EPOCH_LENGTH, REQUIRES_ACTIVE, ROUND_LENGTH, SCHEMA_NAME, SUPERMAJORITY } from '../constants.js'
+import { shuffle } from '../utils/shuffle-seed.js'
 
 await initBls()
+
+const schedule: {
+    shuffled?: ShuffledSchedule[] | null
+    height?: number
+    epoch?: number
+} = {}
 
 const processor = {
     validateAndParse: async (op: VscOp): Promise<ParsedOp<L2PayloadTypes>> => {
         // we know at this point that the operation looks valid as it has
         // been validated in main HAF app sync, however we perform further
         // validation and parsing on data only accessible in IPFS here.
+        // most of the code for validation here are from vsc-node repo
         // these are all custom jsons, so we parse the json payload right away
         let parsed: OpBody = JSON.parse(op.body)
         let cjidx = CUSTOM_JSON_IDS.indexOf(parsed.value.id)
@@ -28,11 +36,59 @@ const processor = {
         }
         try {
             let payload: CustomJsonPayloads = JSON.parse(parsed.value.json)
-            let sig: Buffer, bv: Buffer
+            let sig: Buffer, bv: Buffer, merkle: Buffer
             switch (op.op_type) {
                 case op_type_map.map.propose_block:
                     // propose block
                     payload = payload as BlockOp
+                    sig = Buffer.from(payload.signed_block.signature.sig, 'base64url')
+                    bv = Buffer.from(payload.signed_block.signature.bv, 'base64url')
+                    merkle = Buffer.from(payload.signed_block.merkle_root, 'base64url')
+                    const witnessSet = await db.client.query<WitnessConsensusDid>(`SELECT * FROM ${SCHEMA_NAME}.get_members_at_block($1);`,[op.block_num])
+                    const witnessKeyset = witnessSet.rows.map(m => m.consensus_did)
+                    const scheduleParams = (await db.client.query<BlockScheduleParams>(`SELECT * FROM ${SCHEMA_NAME}.get_block_schedule_params($1);`,[op.block_num])).rows[0]
+                    if (!schedule.shuffled || schedule.height !== scheduleParams.past_rnd_height || schedule.epoch !== scheduleParams.epoch) {
+                        const outSchedule: WitnessConsensusDid[] = []
+                        for (let x = 0; x < scheduleParams.total_rnds; x++)
+                            if (witnessSet.rows[x % witnessSet.rows.length])
+                                outSchedule.push(witnessSet.rows[x % witnessSet.rows.length])
+                        schedule.shuffled = shuffle(outSchedule, scheduleParams.block_id).map((e, index) => {
+                            const idxRndLen = scheduleParams.past_rnd_height + (index * scheduleParams.rnd_length)
+                            return {
+                                ...e,
+                                bn: idxRndLen,
+                                bn_works: idxRndLen % scheduleParams.rnd_length === 0,
+                                in_past: idxRndLen < op.block_num
+                            }
+                        })
+                        schedule.height = scheduleParams.past_rnd_height
+                        schedule.epoch = scheduleParams.epoch
+                    }
+                    const blockSlotHeight = op.block_num - (op.block_num % ROUND_LENGTH)
+                    const witnessSlot = schedule.shuffled.find(e => e.bn === blockSlotHeight && e.name === details.user)
+                    logger.trace('Witness slot at',op.id,witnessSlot)
+                    if (witnessSlot) {
+                        const unsignedBlock: UnsignedBlock<CID> = {
+                            ...payload.signed_block,
+                            block: CID.parse(payload.signed_block.block)
+                        }
+                        delete unsignedBlock.signature
+                        const {circuit, bs} = BlsCircuit.deserializeRaw(unsignedBlock, sig, bv, witnessKeyset)
+                        const pubKeys = []
+                        for(let pub of circuit.aggPubKeys)
+                            pubKeys.push(pub[0])
+                        circuit.setAgg(pubKeys)
+                        const isValid = await circuit.verify((await createDag(unsignedBlock)).bytes)
+                        logger.debug(`Block ${payload.signed_block.block.substring(0,12)}...${payload.signed_block.block.slice(-6)} by ${witnessSlot.name}: ${bs.toString(2)} ${isValid}`)
+                        if (isValid && pubKeys.length/witnessKeyset.length >= SUPERMAJORITY) {
+                            details.payload = {
+                                block_hash: payload.signed_block.block,
+                                merkle_root: merkle,
+                                signature: { sig, bv }
+                            } as BlockPayload
+                        } else
+                            return { valid: false }
+                    }
                     break
                 case op_type_map.map.election_result:
                     // election result
@@ -120,6 +176,15 @@ const processor = {
             logger.trace('Processing op',op.id,result)
             switch (op.op_type) {
                 case op_type_map.map.propose_block:
+                    result.payload = result.payload as BlockPayload
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.push_block($1,$2,$3,$4,$5,$6);`,[
+                        op.id,
+                        result.payload.block_hash,
+                        result.user,
+                        result.payload.merkle_root,
+                        result.payload.signature.sig,
+                        result.payload.signature.bv
+                    ])
                     break
                 case op_type_map.map.election_result:
                     result.payload = result.payload as ElectionPayload

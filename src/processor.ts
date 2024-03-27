@@ -3,7 +3,7 @@ import { CID } from 'multiformats/cid'
 import { encodePayload } from 'dag-jose-utils'
 import { bech32 } from "bech32"
 import randomDID from './did.js'
-import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS, APP_CONTEXT, REQUIRES_ACTIVE } from './constants.js'
+import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS, APP_CONTEXT, REQUIRES_ACTIVE, START_BLOCK } from './constants.js'
 import db from './db.js'
 import logger from './logger.js'
 import { DepositPayload, MultisigTxRefPayload, NewContractPayload, NodeAnnouncePayload, Op, OpBody, ParsedOp, PayloadTypes, TxTypes } from './processor_types.js'
@@ -53,6 +53,13 @@ const processor = {
                             typeof payload.signed_block !== 'object' ||
                             !isCID(payload.signed_block.block) ||
                             CID.parse(payload.signed_block.block).code !== 0x71 ||
+                            typeof payload.signed_block.headers !== 'object' ||
+                            !Array.isArray(payload.signed_block.headers.br) ||
+                            payload.signed_block.headers.br.length !== 2 ||
+                            !Number.isInteger(payload.signed_block.headers.br[0]) ||
+                            !Number.isInteger(payload.signed_block.headers.br[1]) ||
+                            payload.signed_block.headers.br[0] < START_BLOCK ||
+                            payload.signed_block.headers.br[1] < payload.signed_block.headers.br[0] ||
                             typeof payload.signed_block.merkle_root !== 'string' ||
                             typeof payload.signed_block.signature !== 'object' ||
                             typeof payload.signed_block.signature.sig !== 'string' ||

@@ -67,7 +67,7 @@ const processor = {
                     const blockSlotHeight = op.block_num - (op.block_num % ROUND_LENGTH)
                     let witnessSlot = schedule.shuffled.find(e => e.bn === blockSlotHeight && e.name === details.user)
                     logger.trace('Witness slot at',op.id,witnessSlot)
-                    logger.trace('Witness in schedule:',schedule.shuffled.filter(e => e.name === details.user))
+                    // logger.trace('Witness in schedule:',schedule.shuffled.filter(e => e.name === details.user))
                     if (witnessSlot) {
                         const unsignedBlock: UnsignedBlock<CID> = {
                             ...payload.signed_block,
@@ -88,6 +88,7 @@ const processor = {
                             details.payload = {
                                 block_hash: payload.signed_block.block,
                                 block_header_cid: (await createDag(unsignedBlock)).toString(),
+                                br: payload.signed_block.headers.br,
                                 merkle_root: merkle,
                                 signature: { sig, bv }
                             } as BlockPayload
@@ -183,11 +184,13 @@ const processor = {
             switch (op.op_type) {
                 case op_type_map.map.propose_block:
                     result.payload = result.payload as BlockPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.push_block($1,$2,$3,$4,$5,$6,$7);`,[
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.push_block($1,$2,$3,$4,$5,$6,$7,$8,$9);`,[
                         op.id,
+                        result.user,
                         result.payload.block_hash,
                         result.payload.block_header_cid,
-                        result.user,
+                        result.payload.br[0],
+                        result.payload.br[1],
                         result.payload.merkle_root,
                         result.payload.signature.sig,
                         result.payload.signature.bv

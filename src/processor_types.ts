@@ -97,6 +97,7 @@ export interface BlockOp {
 export type BlockPayload = {
     block_hash: string
     block_header_cid: string
+    br: [number, number]
     merkle_root: Buffer
     signature: BLSAggSign<Buffer>
 }

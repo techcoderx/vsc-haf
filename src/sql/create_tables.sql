@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS vsc_app.blocks(
     block_hash VARCHAR(59) NOT NULL,
     block_header_hash VARCHAR(59) NOT NULL,
     proposer INTEGER NOT NULL,
+    br_start INTEGER NOT NULL,
+    br_end INTEGER NOT NULL,
     merkle_root BYTEA NOT NULL,
     sig BYTEA NOT NULL,
     bv BYTEA NOT NULL

@@ -17,26 +17,18 @@ $function$
 DECLARE
     _last_processed_block INTEGER;
     _db_version INTEGER;
-    _l2_block_height INTEGER;
-    _ops BIGINT;
-    _contracts INTEGER;
-    _witnesses BIGINT;
-    _txrefs INTEGER;
 BEGIN
     SELECT last_processed_block, db_version INTO _last_processed_block, _db_version FROM vsc_app.state;
-    SELECT COUNT(*) INTO _l2_block_height FROM vsc_app.blocks;
-    SELECT COUNT(*) INTO _ops FROM vsc_app.l1_operations;
-    SELECT COUNT(*) INTO _contracts FROM vsc_app.contracts;
-    SELECT COUNT(*) INTO _witnesses FROM vsc_app.witnesses;
-    SELECT COUNT(*) INTO _txrefs FROM vsc_app.multisig_txrefs;
     RETURN jsonb_build_object(
         'last_processed_block', _last_processed_block,
+        'last_processed_subindexer_op', (SELECT last_processed_op FROM vsc_app.subindexer_state),
         'db_version', _db_version,
-        'l2_block_height', _l2_block_height,
-        'operations', _ops,
-        'contracts', _contracts,
-        'witnesses', _witnesses,
-        'txrefs', _txrefs
+        'epoch', (SELECT epoch FROM vsc_app.election_results ORDER BY epoch DESC LIMIT 1),
+        'l2_block_height', (SELECT COUNT(*) FROM vsc_app.blocks),
+        'operations', (SELECT COUNT(*) FROM vsc_app.l1_operations),
+        'contracts', (SELECT COUNT(*) FROM vsc_app.contracts),
+        'witnesses', (SELECT COUNT(*) FROM vsc_app.witnesses),
+        'txrefs', (SELECT COUNT(*) FROM vsc_app.multisig_txrefs)
     );
 END
 $function$
@@ -54,10 +46,11 @@ DECLARE
     _l1_tx vsc_app.l1_tx_type;
     _proposer_id INTEGER;
     _proposer TEXT;
+    _merkle BYTEA;
     _sig BYTEA;
     _bv BYTEA;
 BEGIN
-    SELECT id, proposed_in_op, proposer, sig, bv INTO _block_id, _proposed_in_op, _proposer_id, _sig, _bv
+    SELECT id, proposed_in_op, proposer, merkle_root, sig, bv INTO _block_id, _proposed_in_op, _proposer_id, _merkle, _sig, _bv
         FROM vsc_app.blocks
         WHERE vsc_app.blocks.block_hash = blk_hash
         LIMIT 1;
@@ -83,6 +76,7 @@ BEGIN
         'ts', _l1_tx.created_at,
         'l1_tx', _l1_tx.trx_hash,
         'l1_block', _l1_tx.block_num,
+        'merkle_root', encode(_merkle, 'hex'),
         'signature', (jsonb_build_object(
             'sig', encode(_sig, 'hex'),
             'bv', encode(_bv, 'hex')
@@ -104,10 +98,11 @@ DECLARE
     _l1_tx vsc_app.l1_tx_type;
     _proposer_id INTEGER;
     _proposer TEXT;
+    _merkle BYTEA;
     _sig BYTEA;
     _bv BYTEA;
 BEGIN
-    SELECT block_hash, proposed_in_op, proposer, sig, bv INTO _block_hash, _proposed_in_op, _proposer_id, _sig, _bv
+    SELECT block_hash, proposed_in_op, proposer, merkle_root, sig, bv INTO _block_hash, _proposed_in_op, _proposer_id, _merkle, _sig, _bv
         FROM vsc_app.blocks
         WHERE vsc_app.blocks.id = blk_id;
     IF _block_hash IS NULL THEN
@@ -132,6 +127,7 @@ BEGIN
         'ts', _l1_tx.created_at,
         'l1_tx', _l1_tx.trx_hash,
         'l1_block', _l1_tx.block_num,
+        'merkle_root', encode(_merkle, 'hex'),
         'signature', (jsonb_build_object(
             'sig', encode(_sig, 'hex'),
             'bv', encode(_bv, 'hex')
@@ -146,9 +142,7 @@ CREATE TYPE vsc_api.block_type AS (
     id INTEGER,
     proposed_in_op BIGINT,
     block_hash VARCHAR,
-    proposer INTEGER,
-    sig VARCHAR,
-    bv VARCHAR
+    proposer INTEGER
 );
 
 CREATE OR REPLACE FUNCTION vsc_api.get_block_range(blk_id_start INTEGER, blk_count INTEGER)
@@ -169,9 +163,9 @@ BEGIN
         );
     END IF;
     SELECT ARRAY(
-        SELECT ROW(vsc_app.blocks.*)::vsc_api.block_type
-            FROM vsc_app.blocks
-            WHERE vsc_app.blocks.id >= blk_id_start AND vsc_app.blocks.id < blk_id_start+blk_count
+        SELECT ROW(bk.id, bk.proposed_in_op, bk.block_hash, bk.proposer)::vsc_api.block_type
+            FROM vsc_app.blocks bk
+            WHERE bk.id >= blk_id_start AND bk.id < blk_id_start+blk_count
     ) INTO _block_details;
     FOREACH b IN ARRAY _block_details
     LOOP

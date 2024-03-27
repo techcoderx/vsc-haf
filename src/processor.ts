@@ -6,7 +6,7 @@ import randomDID from './did.js'
 import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS, APP_CONTEXT, REQUIRES_ACTIVE } from './constants.js'
 import db from './db.js'
 import logger from './logger.js'
-import { BlockPayload, DepositPayload, MultisigTxRefPayload, NewContractPayload, NodeAnnouncePayload, Op, OpBody, ParsedOp, PayloadTypes, TxTypes } from './processor_types.js'
+import { DepositPayload, MultisigTxRefPayload, NewContractPayload, NodeAnnouncePayload, Op, OpBody, ParsedOp, PayloadTypes, TxTypes } from './processor_types.js'
 import op_type_map from './operations.js'
 import { isValidL1PubKey } from './utils/crypto.js'
 
@@ -63,14 +63,6 @@ const processor = {
                         merkle = Buffer.from(payload.signed_block.merkle_root, 'base64url')
                         if (sig.length !== 96 || merkle.length !== 32)
                             return { valid: false }
-                        details.payload = {
-                            block_hash: payload.signed_block.block,
-                            merkle_root: merkle,
-                            signature: {
-                                sig: sig,
-                                bv: bv
-                            }
-                        }
                         break
                     case 1:
                         // create contract

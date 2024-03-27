@@ -1,6 +1,6 @@
 import logger from '../logger.js'
 import db from '../db.js'
-import { L2PayloadTypes, ParsedOp, VscOp, BlockOp, OpBody, BridgeRefPayload, CustomJsonPayloads, BridgeRefResult, ElectionOp, ElectionPayload, ElectionMember, ShuffledSchedule, SignedBlock, UnsignedBlock, BlockPayload } from '../processor_types.js'
+import { L2PayloadTypes, ParsedOp, VscOp, BlockOp, OpBody, BridgeRefPayload, CustomJsonPayloads, BridgeRefResult, ElectionOp, ElectionPayload, ElectionMember, ShuffledSchedule, UnsignedBlock, BlockPayload } from '../processor_types.js'
 import { BlockScheduleParams, WitnessConsensusDid } from '../psql_types.js'
 import ipfs from './ipfs.js'
 import { CID } from 'kubo-rpc-client'
@@ -65,8 +65,14 @@ const processor = {
                         schedule.epoch = scheduleParams.epoch
                     }
                     const blockSlotHeight = op.block_num - (op.block_num % ROUND_LENGTH)
-                    const witnessSlot = schedule.shuffled.find(e => e.bn === blockSlotHeight && e.name === details.user)
+                    let witnessSlot = schedule.shuffled.find(e => e.bn === blockSlotHeight && e.name === details.user)
                     logger.trace('Witness slot at',op.id,witnessSlot)
+                    if (!witnessSlot) {
+                        // 10% of testnet blocks are proposed out of schedule, probably late?
+                        witnessSlot = schedule.shuffled.find(e => e.bn === blockSlotHeight+scheduleParams.rnd_length && e.name === details.user)
+                        if (witnessSlot)
+                            logger.warn(`Accepting late block proposal at op ${op.id}, ${op.block_num-witnessSlot.bn-scheduleParams.rnd_length+1} block(s) out of slot`)
+                    }
                     if (witnessSlot) {
                         const unsignedBlock: UnsignedBlock<CID> = {
                             ...payload.signed_block,
@@ -81,8 +87,12 @@ const processor = {
                         const isValid = await circuit.verify((await createDag(unsignedBlock)).bytes)
                         logger.debug(`Block ${payload.signed_block.block.substring(0,12)}...${payload.signed_block.block.slice(-6)} by ${witnessSlot.name}: ${bs.toString(2)} ${isValid}`)
                         if (isValid && pubKeys.length/witnessKeyset.length >= SUPERMAJORITY) {
+                            // vsc-node does not currently check previous block header when syncing
+                            // if we do check here, as the testnet genesis block isn't valid (published way out of schedule)
+                            // therefore every block thereafter would be invalid
                             details.payload = {
                                 block_hash: payload.signed_block.block,
+                                block_header_cid: (await createDag(unsignedBlock)).toString(),
                                 merkle_root: merkle,
                                 signature: { sig, bv }
                             } as BlockPayload
@@ -104,7 +114,7 @@ const processor = {
                         epoch: payload.epoch,
                         net_id: payload.net_id
                     }
-                    logger.trace(membersAtSlotStart.rows)
+                    // logger.trace(membersAtSlotStart.rows)
                     const keyset = membersAtSlotStart.rows.map(m => m.consensus_did)
                     const {circuit, bs} = BlsCircuit.deserializeRaw(d, sig, bv, keyset)
                     const pubKeys = []
@@ -178,9 +188,10 @@ const processor = {
             switch (op.op_type) {
                 case op_type_map.map.propose_block:
                     result.payload = result.payload as BlockPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.push_block($1,$2,$3,$4,$5,$6);`,[
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.push_block($1,$2,$3,$4,$5,$6,$7);`,[
                         op.id,
                         result.payload.block_hash,
+                        result.payload.block_header_cid,
                         result.user,
                         result.payload.merkle_root,
                         result.payload.signature.sig,

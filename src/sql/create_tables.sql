@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.blocks(
     id SERIAL PRIMARY KEY,
     proposed_in_op BIGINT NOT NULL,
     block_hash VARCHAR(59) NOT NULL,
+    block_header_hash VARCHAR(59) NOT NULL,
     proposer INTEGER NOT NULL,
     merkle_root BYTEA NOT NULL,
     sig BYTEA NOT NULL,

@@ -14,7 +14,7 @@ export interface OpBody {
     value: any
 }
 
-export type PayloadTypes = BlockPayload | NewContractPayload | NodeAnnouncePayload | ElectionPayload | MultisigTxRefPayload | DepositPayload
+export type PayloadTypes = NewContractPayload | NodeAnnouncePayload | ElectionPayload | MultisigTxRefPayload | DepositPayload
 
 export interface ParsedOp<T> {
     valid: boolean
@@ -33,12 +33,6 @@ export enum TxTypes {
     CustomJSON,
     AccountUpdate,
     Transfer
-}
-
-export type BlockPayload = {
-    block_hash: string
-    merkle_root: Buffer
-    signature: BLSAggSign<Buffer>
 }
 
 export interface UnsignedElection {
@@ -98,6 +92,13 @@ export interface BlockOp {
     net_id: string
     replay_id: number
     signed_block: SignedBlock<string>
+}
+
+export type BlockPayload = {
+    block_hash: string
+    block_header_cid: string
+    merkle_root: Buffer
+    signature: BLSAggSign<Buffer>
 }
 
 export interface UnsignedBlock<BlockCIDType> {

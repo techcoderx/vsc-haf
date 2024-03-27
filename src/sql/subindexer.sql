@@ -258,7 +258,7 @@ END
 $function$
 LANGUAGE plpgsql STABLE;
 
-CREATE OR REPLACE FUNCTION vsc_app.push_block(_proposed_in_op BIGINT, _block_hash VARCHAR, _proposer VARCHAR, _merkle BYTEA, _sig BYTEA, _bv BYTEA)
+CREATE OR REPLACE FUNCTION vsc_app.push_block(_proposed_in_op BIGINT, _block_hash VARCHAR, _block_header_hash VARCHAR, _proposer VARCHAR, _merkle BYTEA, _sig BYTEA, _bv BYTEA)
 RETURNS void
 AS
 $function$
@@ -267,8 +267,8 @@ DECLARE
     _new_block_id INTEGER;
 BEGIN
     SELECT id INTO _acc_id FROM hive.vsc_app_accounts WHERE name=_proposer;
-    INSERT INTO vsc_app.blocks(proposed_in_op, block_hash, proposer, merkle_root, sig, bv)
-        VALUES(_proposed_in_op, _block_hash, _acc_id, _merkle, _sig, _bv)
+    INSERT INTO vsc_app.blocks(proposed_in_op, block_hash, block_header_hash, proposer, merkle_root, sig, bv)
+        VALUES(_proposed_in_op, _block_hash, _block_header_hash, _acc_id, _merkle, _sig, _bv)
         RETURNING id INTO _new_block_id;
     
     IF EXISTS (SELECT 1 FROM vsc_app.witnesses w WHERE w.id=_acc_id) THEN

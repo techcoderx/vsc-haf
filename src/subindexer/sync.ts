@@ -51,7 +51,7 @@ const sync = {
         await db.client.query(`SELECT ${SCHEMA_NAME}.subindexer_update_last_processed($1);`,[last_op])
         await db.client.query('COMMIT;')
         let timeTaken = (new Date().getTime()-start)
-        logger.info('Subindexer - Op #'+first_op+' to #'+last_op+' - '+count+' ops - '+timeTaken+'ms ('+(count/timeTaken).toFixed(3)+'op/s)')
+        logger.info('Subindexer - Op #'+first_op+' to #'+last_op+' - '+count+' ops - '+timeTaken+'ms ('+(count/(timeTaken/1000)).toFixed(3)+'op/s)')
         sync.sync(isMassive)
     },
     postMassive: async () => {

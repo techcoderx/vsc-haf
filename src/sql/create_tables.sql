@@ -26,6 +26,32 @@ CREATE TABLE IF NOT EXISTS vsc_app.l1_users(
     last_op_ts TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS vsc_app.l1_txs(
+    id BIGINT PRIMARY KEY, -- id from l1_operations table
+    details BIGINT NOT NULL -- id from transactions table
+);
+
+CREATE TABLE IF NOT EXISTS vsc_app.l1_tx_multiauth(
+    id BIGINT PRIMARY KEY, -- id from l1_txs table
+    user_id INTEGER NOT NULL, -- id from accounts state provider table
+    auth_type SMALLINT NOT NULL, -- 1 for active auth, 2 for posting auth
+);
+
+CREATE TABLE IF NOT EXISTS vsc_app.l2_txs(
+    id VARCHAR(59) PRIMARY KEY, -- call_contract transaction CID
+    block_num INTEGER NOT NULL, -- included in l2 block number from blocks table
+    idx_in_block SMALLINT NOT NULL, -- position in l2 block, max 32767
+    tx_type SMALLINT NOT NULL, -- 1 for call_contract, 2 for contract_output
+    nonce INTEGER, -- currently not enforced
+    details BIGINT NOT NULL -- transaction details from transactions table
+);
+
+CREATE TABLE IF NOT EXISTS vsc_app.l2_tx_multiauth(
+    id VARCHAR(59) PRIMARY KEY, -- id from l2_txs table
+    did INTEGER NOT NULL, -- id from dids table
+    UNIQUE(id, did)
+);
+
 CREATE TABLE IF NOT EXISTS vsc_app.blocks(
     id SERIAL PRIMARY KEY,
     proposed_in_op BIGINT NOT NULL,
@@ -37,6 +63,15 @@ CREATE TABLE IF NOT EXISTS vsc_app.blocks(
     merkle_root BYTEA NOT NULL,
     sig BYTEA NOT NULL,
     bv BYTEA NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS vsc_app.transactions(
+    id BIGSERIAL PRIMARY KEY,
+    contract_id VARCHAR(68) NOT NULL,
+    contract_action VARCHAR NOT NULL,
+    payload jsonb NOT NULL,
+    io_gas INTEGER,
+    contract_output jsonb
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.contracts(

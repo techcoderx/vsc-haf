@@ -85,9 +85,9 @@ export interface VscOp extends Op {
     op_type: number
 }
 
-export type CustomJsonPayloads = BlockOp | ElectionOp | BridgeRefPayload
+export type CustomJsonPayloads = BlockOp | ElectionOp | BridgeRefPayload | L1CallTxOp
 export type BridgeRefResult = bigint[]
-export type L2PayloadTypes = BridgeRefResult | ElectionPayload | BlockPayload
+export type L2PayloadTypes = BridgeRefResult | ElectionPayload | BlockPayload | L1TxPayload
 export interface BlockOp {
     net_id: string
     replay_id: number
@@ -129,4 +129,23 @@ export interface ShuffledSchedule extends WitnessConsensusDid {
     bn: number
     bn_works: boolean
     in_past: boolean
+}
+
+export interface L1CallTxOp {
+    tx: {
+        op: 'call_contract'
+        action: string
+        payload: any
+        contract_id: string
+    }
+}
+
+export interface L1TxPayload {
+    callers: {
+        user: string
+        auth: 1 | 2
+    }[]
+    contract_id: string
+    action: string
+    payload: any
 }

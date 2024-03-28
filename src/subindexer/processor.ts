@@ -1,6 +1,6 @@
 import logger from '../logger.js'
 import db from '../db.js'
-import { L2PayloadTypes, ParsedOp, VscOp, BlockOp, OpBody, BridgeRefPayload, CustomJsonPayloads, BridgeRefResult, ElectionOp, ElectionPayload, ElectionMember, ShuffledSchedule, UnsignedBlock, BlockPayload } from '../processor_types.js'
+import { L2PayloadTypes, ParsedOp, VscOp, BlockOp, OpBody, BridgeRefPayload, CustomJsonPayloads, BridgeRefResult, ElectionOp, ElectionPayload, ElectionMember, ShuffledSchedule, UnsignedBlock, BlockPayload, L1CallTxOp, L1TxPayload } from '../processor_types.js'
 import { BlockScheduleParams, WitnessConsensusDid } from '../psql_types.js'
 import ipfs from './ipfs.js'
 import { CID } from 'kubo-rpc-client'
@@ -8,7 +8,7 @@ import { createDag } from './ipfs_dag.js'
 import { BlsCircuit, initBls } from '../utils/bls-did.js'
 import op_type_map from '../operations.js'
 import { BridgeRef } from './ipfs_payload.js'
-import { APP_CONTEXT, CUSTOM_JSON_IDS, EPOCH_LENGTH, REQUIRES_ACTIVE, ROUND_LENGTH, SCHEMA_NAME, SUPERMAJORITY } from '../constants.js'
+import { APP_CONTEXT, EPOCH_LENGTH, ROUND_LENGTH, SCHEMA_NAME, SUPERMAJORITY } from '../constants.js'
 import { shuffle } from '../utils/shuffle-seed.js'
 
 await initBls()
@@ -27,11 +27,9 @@ const processor = {
         // most of the code for validation here are from vsc-node repo
         // these are all custom jsons, so we parse the json payload right away
         let parsed: OpBody = JSON.parse(op.body)
-        let cjidx = CUSTOM_JSON_IDS.indexOf(parsed.value.id)
-        let requiresActiveAuth = REQUIRES_ACTIVE.includes(cjidx)
         let details: ParsedOp<L2PayloadTypes> = {
             valid: true,
-            user: requiresActiveAuth ? parsed.value.required_auths[0] : parsed.value.required_posting_auths[0],
+            user: parsed.value.required_auths.length > 0 ? parsed.value.required_auths[0] : parsed.value.required_posting_auths[0],
             block_num: op.block_num
         }
         try {
@@ -96,6 +94,19 @@ const processor = {
                             return { valid: false }
                     } else
                         return { valid: false }
+                    break
+                case op_type_map.map.tx:
+                    payload = payload as L1CallTxOp
+                    details.payload = {
+                        callers: [],
+                        contract_id: payload.tx.contract_id,
+                        action: payload.tx.action,
+                        payload: payload.tx.payload
+                    } as L1TxPayload
+                    for (let i in parsed.value.required_auths)
+                        details.payload.callers.push({ user: parsed.value.required_auths[i], auth: 1 })
+                    for (let i in parsed.value.required_posting_auths)
+                        details.payload.callers.push({ user: parsed.value.required_posting_auths[i], auth: 2 })
                     break
                 case op_type_map.map.election_result:
                     // election result
@@ -194,6 +205,17 @@ const processor = {
                         result.payload.merkle_root,
                         result.payload.signature.sig,
                         result.payload.signature.bv
+                    ])
+                    break
+                case op_type_map.map.tx:
+                    result.payload = result.payload as L1TxPayload
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_l1_call_tx($1,$2,$3::SMALLINT[],$4,$5,$6);`,[
+                        op.id,
+                        result.payload.callers.map(c => c.user),
+                        result.payload.callers.map(c => c.auth),
+                        result.payload.contract_id,
+                        result.payload.action,
+                        [result.payload.payload]
                     ])
                     break
                 case op_type_map.map.election_result:

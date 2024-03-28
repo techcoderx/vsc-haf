@@ -291,6 +291,50 @@ END
 $function$
 LANGUAGE plpgsql VOLATILE;
 
+CREATE OR REPLACE FUNCTION vsc_app.insert_l1_call_tx(
+    _in_op BIGINT,
+    _callers VARCHAR[],
+    _caller_auths SMALLINT[],
+    _contract_id VARCHAR,
+    _contract_action VARCHAR,
+    _payload jsonb -- normalised into single element jsonb array
+)
+RETURNS void
+AS
+$function$
+DECLARE
+    _caller_id INTEGER;
+    _new_l2_transaction_id BIGINT;
+    i INTEGER;
+BEGIN
+    IF (SELECT ARRAY_LENGTH(_callers, 1)) != (SELECT ARRAY_LENGTH(_caller_auths, 1)) THEN
+        RAISE EXCEPTION 'callers and caller_auths must have the same array length';
+    END IF;
+
+    INSERT INTO vsc_app.transactions(contract_id, contract_action, payload)
+        VALUES(_contract_id, _contract_action, _payload)
+        RETURNING id INTO _new_l2_transaction_id;
+
+    INSERT INTO vsc_app.l1_txs(id, details)
+        VALUES(_in_op, _new_l2_transaction_id);
+
+    FOR i IN array_lower(_callers, 1) .. array_upper(_callers, 1)
+    LOOP
+        IF _caller_auths[i] != 1 AND _caller_auths[i] != 2 THEN
+            RAISE EXCEPTION 'caller auths must be either 1s or 2s.';
+        END IF;
+        _caller_id := NULL;
+        SELECT id INTO _caller_id FROM hive.vsc_app_accounts WHERE name=_callers[i];
+        IF _caller_id IS NULL THEN
+            RAISE EXCEPTION 'hive username % does not exist', _callers[i];
+        END IF;
+        INSERT INTO vsc_app.l1_tx_multiauth(id, user_id, auth_type)
+            VALUES(_in_op, _caller_id, _caller_auths[i]);
+    END LOOP;
+END
+$function$
+LANGUAGE plpgsql VOLATILE;
+
 CREATE OR REPLACE FUNCTION vsc_app.insert_election_result(_proposed_in_op BIGINT, _proposer VARCHAR, _epoch INTEGER, _data_cid VARCHAR, _sig BYTEA, _bv BYTEA, _elected_members INTEGER[], _elected_keys VARCHAR[])
 RETURNS void
 AS

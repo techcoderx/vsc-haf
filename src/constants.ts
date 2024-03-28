@@ -14,6 +14,7 @@ export const CUSTOM_JSON_ALIAS: { [alias: string]: string } = {
     'vsc.announce_tx': 'vsc.tx'
 }
 export const REQUIRES_ACTIVE = [0,1,4,6]
+export const ANY_AUTH = [2,3]
 export const XFER_ACTIONS = [
     'deposit',
     'withdrawal',

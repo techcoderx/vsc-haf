@@ -3,7 +3,7 @@ import { CID } from 'multiformats/cid'
 import { encodePayload } from 'dag-jose-utils'
 import { bech32 } from "bech32"
 import randomDID from './did.js'
-import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS, APP_CONTEXT, REQUIRES_ACTIVE, START_BLOCK } from './constants.js'
+import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS, APP_CONTEXT, REQUIRES_ACTIVE, START_BLOCK, ANY_AUTH } from './constants.js'
 import db from './db.js'
 import logger from './logger.js'
 import { DepositPayload, MultisigTxRefPayload, NewContractPayload, NodeAnnouncePayload, Op, OpBody, ParsedOp, PayloadTypes, TxTypes } from './processor_types.js'
@@ -19,18 +19,28 @@ const processor = {
             if (parsed.type === 'custom_json_operation') {
                 let cjidx = CUSTOM_JSON_IDS.indexOf(parsed.value.id)
                 let requiresActiveAuth = REQUIRES_ACTIVE.includes(cjidx)
+                let anyAuth = ANY_AUTH.includes(cjidx)
                 if (cjidx === -1 || !parsed.value.json)
                     return { valid: false }
 
+                let user: string
                 // block proposals and contract creation requires active auth (possibly more?)
-                if (requiresActiveAuth && (!Array.isArray(parsed.value.required_auths) ||
-                    parsed.value.required_auths.length === 0))
-                    return { valid: false }
-
-                // everything else requires posting auth
-                else if (!requiresActiveAuth && (!Array.isArray(parsed.value.required_posting_auths) ||
-                    parsed.value.required_posting_auths.length === 0))
-                    return { valid: false }
+                if (requiresActiveAuth) {
+                    if (!Array.isArray(parsed.value.required_auths) || parsed.value.required_auths.length === 0)
+                        return { valid: false }
+                    else
+                        user = parsed.value.required_auths[0]
+                } else if (anyAuth) {
+                    // contract calls from l1 can use both
+                    // either one of these must be present, otherwise it wouldn't be a valid L1 tx that can ever reach here
+                    user = parsed.value.required_auths.length > 0 ? parsed.value.required_auths[0] : parsed.value.required_posting_auths[0]
+                } else {
+                    // everything else requires posting auth
+                    if (!Array.isArray(parsed.value.required_posting_auths) || parsed.value.required_posting_auths.length === 0)
+                        return { valid: false }
+                    else
+                        user = parsed.value.required_posting_auths[0]
+                }
                 let payload = JSON.parse(parsed.value.json)
                 let details: ParsedOp<PayloadTypes> = {
                     valid: true,
@@ -60,6 +70,7 @@ const processor = {
                             !Number.isInteger(payload.signed_block.headers.br[1]) ||
                             payload.signed_block.headers.br[0] < START_BLOCK ||
                             payload.signed_block.headers.br[1] < payload.signed_block.headers.br[0] ||
+                            (payload.signed_block.headers.prevb && typeof payload.signed_block.headers.prevb !== 'string') ||
                             typeof payload.signed_block.merkle_root !== 'string' ||
                             typeof payload.signed_block.signature !== 'object' ||
                             typeof payload.signed_block.signature.sig !== 'string' ||
@@ -94,6 +105,15 @@ const processor = {
                     case 2:
                     case 3:
                         // l1 contract calls
+                        if (typeof payload.tx !== 'object' ||
+                            typeof payload.tx.action !== 'string' ||
+                            typeof payload.tx.contract_id !== 'string')
+                            return { valid: false }
+                        // we might not want to check for contract existence here
+                        // as it is possible that the contract may be deployed on L2
+                        // so we only process this tx type on subindexer, which is
+                        // also easier to do anyway in an event a subindexer reindex
+                        // is required, the tables can be easily truncated.
                         break
                     case 4:
                         // election result
@@ -278,9 +298,6 @@ const processor = {
                 case op_type_map.map.create_contract:
                     pl = result.payload as NewContractPayload
                     await db.client.query(`SELECT ${SCHEMA_NAME}.insert_contract($1,$2,$3,$4,$5);`,[new_vsc_op.rows[0].process_operation,pl.contract_id,pl.name,pl.description,pl.code])
-                    break
-                case op_type_map.map.tx:
-                    // TODO process op
                     break
                 case op_type_map.map.multisig_txref:
                     pl = result.payload as MultisigTxRefPayload

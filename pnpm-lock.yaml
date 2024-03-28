@@ -29,9 +29,6 @@ dependencies:
   codeco:
     specifier: ^1.2.1
     version: 1.2.1
-  dag-jose-utils:
-    specifier: ^4.0.0
-    version: 4.0.0
   did-resolver:
     specifier: ^4.1.0
     version: 4.1.0
@@ -889,13 +886,6 @@ packages:
     dependencies:
       '@ipld/dag-cbor': 7.0.3
       multiformats: 11.0.2
-    dev: false
-
-  /dag-jose-utils@4.0.0:
-    resolution: {integrity: sha512-bmmXtVdEKp/zYH8El4GGkMREJioUztz8fzOErfy5dTbyKIVOF61C5sfsZLYCB/wiT/I9+SPNrQeo/Cx6Ik3wJQ==}
-    dependencies:
-      '@ipld/dag-cbor': 9.2.0
-      multiformats: 13.1.0
     dev: false
 
   /dag-jose@4.0.0:

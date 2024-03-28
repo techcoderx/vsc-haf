@@ -1,6 +1,5 @@
 import { cid as isCID } from 'is-ipfs'
 import { CID } from 'multiformats/cid'
-import { encodePayload } from 'dag-jose-utils'
 import { bech32 } from "bech32"
 import randomDID from './did.js'
 import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS, APP_CONTEXT, REQUIRES_ACTIVE, START_BLOCK, ANY_AUTH } from './constants.js'
@@ -9,6 +8,7 @@ import logger from './logger.js'
 import { DepositPayload, MultisigTxRefPayload, NewContractPayload, NodeAnnouncePayload, Op, OpBody, ParsedOp, PayloadTypes, TxTypes } from './processor_types.js'
 import op_type_map from './operations.js'
 import { isValidL1PubKey } from './utils/crypto.js'
+import { encodePayload } from './subindexer/ipfs_dag.js'
 
 const processor = {
     validateAndParse: async (op: Op): Promise<ParsedOp<PayloadTypes>> => {

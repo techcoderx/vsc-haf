@@ -37,7 +37,6 @@
     "bitset": "^5.1.1",
     "bs58": "^5.0.0",
     "codeco": "^1.2.1",
-    "dag-jose-utils": "^4.0.0",
     "did-resolver": "^4.1.0",
     "dids": "^4.0.4",
     "dotenv": "^16.3.1",

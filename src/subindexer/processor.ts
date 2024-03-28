@@ -209,13 +209,13 @@ const processor = {
                     break
                 case op_type_map.map.tx:
                     result.payload = result.payload as L1TxPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_l1_call_tx($1,$2,$3::SMALLINT[],$4,$5,$6);`,[
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_l1_call_tx($1,$2,$3::SMALLINT[],$4,$5,$6::jsonb);`,[
                         op.id,
                         result.payload.callers.map(c => c.user),
                         result.payload.callers.map(c => c.auth),
                         result.payload.contract_id,
                         result.payload.action,
-                        [result.payload.payload]
+                        JSON.stringify([result.payload.payload])
                     ])
                     break
                 case op_type_map.map.election_result:

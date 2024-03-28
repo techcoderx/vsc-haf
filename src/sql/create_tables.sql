@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.l1_txs(
 CREATE TABLE IF NOT EXISTS vsc_app.l1_tx_multiauth(
     id BIGINT PRIMARY KEY, -- id from l1_txs table
     user_id INTEGER NOT NULL, -- id from accounts state provider table
-    auth_type SMALLINT NOT NULL, -- 1 for active auth, 2 for posting auth
+    auth_type SMALLINT NOT NULL -- 1 for active auth, 2 for posting auth
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.l2_txs(

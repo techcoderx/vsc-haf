@@ -95,7 +95,7 @@ BEGIN
             FROM vsc_app.l1_operations vo
             JOIN hive.operations_view ho ON
                 vo.op_id = ho.id
-            WHERE vo.id >= _first_op AND vo.id <= _last_op AND (vo.op_type = 3 OR vo.op_type = 6 OR vo.op_type = 8);
+            WHERE vo.id >= _first_op AND vo.id <= _last_op AND (vo.op_type = 3 OR vo.op_type = 5 OR vo.op_type = 6 OR vo.op_type = 8);
 END
 $function$
 LANGUAGE plpgsql STABLE;

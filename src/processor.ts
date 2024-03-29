@@ -1,4 +1,3 @@
-import { cid as isCID } from 'is-ipfs'
 import { CID } from 'multiformats/cid'
 import { bech32 } from "bech32"
 import randomDID from './did.js'
@@ -8,7 +7,7 @@ import logger from './logger.js'
 import { DepositPayload, MultisigTxRefPayload, NewContractPayload, NodeAnnouncePayload, Op, OpBody, ParsedOp, PayloadTypes, TxTypes } from './processor_types.js'
 import op_type_map from './operations.js'
 import { isValidL1PubKey } from './utils/crypto.js'
-import { encodePayload } from './subindexer/ipfs_dag.js'
+import { encodePayload, isCID } from './subindexer/ipfs_dag.js'
 
 const processor = {
     validateAndParse: async (op: Op): Promise<ParsedOp<PayloadTypes>> => {
@@ -107,8 +106,11 @@ const processor = {
                         // l1 contract calls
                         if (typeof payload.tx !== 'object' ||
                             typeof payload.tx.action !== 'string' ||
-                            typeof payload.tx.contract_id !== 'string')
+                            typeof payload.tx.contract_id !== 'string' ||
+                            payload.tx.contract_id.length > 68 ||
+                            !payload.tx.contract_id.startsWith('vs4'))
                             return { valid: false }
+                        bech32.decode(payload.tx.contract_id)
                         // we might not want to check for contract existence here
                         // as it is possible that the contract may be deployed on L2
                         // so we only process this tx type on subindexer, which is

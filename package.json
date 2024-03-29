@@ -40,7 +40,6 @@
     "did-resolver": "^4.1.0",
     "dids": "^4.0.4",
     "dotenv": "^16.3.1",
-    "is-ipfs": "^8.0.1",
     "key-did-provider-ed25519": "^3.0.2",
     "key-did-resolver": "^3.0.0",
     "kubo-rpc-client": "^3.0.4",

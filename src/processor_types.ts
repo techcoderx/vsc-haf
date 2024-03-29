@@ -88,6 +88,7 @@ export interface VscOp extends Op {
 export type CustomJsonPayloads = BlockOp | ElectionOp | BridgeRefPayload | L1CallTxOp
 export type BridgeRefResult = bigint[]
 export type L2PayloadTypes = BridgeRefResult | ElectionPayload | BlockPayload | L1TxPayload
+export type L2Tx = L2ContractCallPayload | L2ContractOutPayload
 export interface BlockOp {
     net_id: string
     replay_id: number
@@ -100,6 +101,7 @@ export type BlockPayload = {
     br: [number, number]
     merkle_root: Buffer
     signature: BLSAggSign<Buffer>
+    txs: L2Tx[]
 }
 
 export interface UnsignedBlock<BlockCIDType> {
@@ -114,6 +116,32 @@ export interface UnsignedBlock<BlockCIDType> {
 
 export interface SignedBlock<T> extends UnsignedBlock<T> {
     signature: BLSAggSign<string>
+}
+
+export interface ContractCallPayload {
+    contract_id: string
+    action: string
+    payload: any
+}
+
+export interface L2TxPayload {
+    id: string
+    type: number
+    index: number
+}
+
+export interface L2ContractCallPayload extends ContractCallPayload, L2TxPayload {
+    type: 1
+    callers: string[]
+    nonce: number
+}
+
+export interface L2ContractOutPayload extends L2TxPayload {
+    type: 2
+    inputs: string[]
+    contract_id: string
+    io_gas: number
+    results: any[]
 }
 
 export interface ElectionOp extends UnsignedElection {
@@ -140,12 +168,9 @@ export interface L1CallTxOp {
     }
 }
 
-export interface L1TxPayload {
+export interface L1TxPayload extends ContractCallPayload {
     callers: {
         user: string
         auth: 1 | 2
     }[]
-    contract_id: string
-    action: string
-    payload: any
 }

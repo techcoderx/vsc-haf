@@ -4,10 +4,10 @@ import { L2PayloadTypes, ParsedOp, VscOp, BlockOp, OpBody, BridgeRefPayload, Cus
 import { BlockScheduleParams, WitnessConsensusDid } from '../psql_types.js'
 import ipfs from './ipfs.js'
 import { CID } from 'kubo-rpc-client'
-import { createDag } from './ipfs_dag.js'
+import { createDag, isCID } from './ipfs_dag.js'
 import { BlsCircuit, initBls } from '../utils/bls-did.js'
 import op_type_map from '../operations.js'
-import { BridgeRef } from './ipfs_payload.js'
+import { BlockBody, BridgeRef, TxBody } from './ipfs_payload.js'
 import { APP_CONTEXT, EPOCH_LENGTH, ROUND_LENGTH, SCHEMA_NAME, SUPERMAJORITY } from '../constants.js'
 import { shuffle } from '../utils/shuffle-seed.js'
 
@@ -78,7 +78,8 @@ const processor = {
                             pubKeys.push(pub[0])
                         circuit.setAgg(pubKeys)
                         const isValid = await circuit.verify((await createDag(unsignedBlock)).bytes)
-                        logger.debug(`Block ${payload.signed_block.block.substring(0,12)}...${payload.signed_block.block.slice(-6)} by ${witnessSlot.name}: ${bs.toString(2)} ${isValid}`)
+                        const blockCIDShort = `${payload.signed_block.block.substring(0,12)}...${payload.signed_block.block.slice(-6)}`
+                        logger.debug(`Block ${blockCIDShort} by ${witnessSlot.name}: ${bs.toString(2)} ${isValid}`)
                         if (isValid && pubKeys.length/witnessKeyset.length >= SUPERMAJORITY) {
                             // vsc-node does not currently check previous block header when syncing
                             // if we do check here, as the testnet genesis block isn't valid (published way out of schedule)
@@ -88,8 +89,101 @@ const processor = {
                                 block_header_cid: (await createDag(unsignedBlock)).toString(),
                                 br: payload.signed_block.headers.br,
                                 merkle_root: merkle,
-                                signature: { sig, bv }
+                                signature: { sig, bv },
+                                txs: []
                             } as BlockPayload
+                            const blockTxs: BlockBody = (await ipfs.dag.get(CID.parse(payload.signed_block.block))).value
+                            if (!Array.isArray(blockTxs.txs)) {
+                                logger.warn(`Accepting BLS validated block ${blockCIDShort} with no txs due to invalid block body on IPFS`)
+                                return details
+                            }
+                            for (let t in blockTxs.txs) {
+                                if (typeof blockTxs.txs[t].id !== 'string' ||
+                                    !isCID(blockTxs.txs[t].id) ||
+                                    CID.parse(blockTxs.txs[t].id).code !== 0x71 ||
+                                    typeof blockTxs.txs[t].type !== 'number' ||
+                                    ![1,2].includes(blockTxs.txs[t].type)) {
+                                    logger.warn(`Ignoring invalid tx at index ${t} in block ${blockCIDShort}`)
+                                    continue
+                                }
+                                try {
+                                    const txBody: TxBody = (await ipfs.dag.get(CID.parse(blockTxs.txs[t].id))).value
+                                    if (blockTxs.txs[t].type === 1 && txBody.__t === 'vsc-tx') {
+                                        // contract call
+                                        if (typeof txBody.headers !== 'object' ||
+                                            typeof txBody.headers.nonce !== 'number' ||
+                                            !Array.isArray(txBody.headers.required_auths) ||
+                                            typeof txBody.tx !== 'object' ||
+                                            typeof txBody.tx.action !== 'string' ||
+                                            typeof txBody.tx.contract_id !== 'string') {
+                                            logger.warn(`Ignoring malformed contract call tx at index ${t} in block ${blockCIDShort}`)
+                                            continue
+                                        }
+                                        const contractExists = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.contracts WHERE contract_id=$1;`,[txBody.tx.contract_id])
+                                        if (contractExists.rowCount! === 0) {
+                                            logger.warn(`Ignoring contract call to non-existent contract at index ${t} in block ${blockCIDShort}`)
+                                            continue
+                                        }
+                                        let invalidAuths = false
+                                        for (let i in txBody.headers.required_auths)
+                                            if (typeof txBody.headers.required_auths[i] !== 'string' ||
+                                                txBody.headers.required_auths[i].length > 78 ||
+                                                !txBody.headers.required_auths[i].startsWith('did:')) {
+                                                logger.warn(`Ignoring tx with invalid auth at index ${t} in block ${blockCIDShort}`)
+                                                invalidAuths = true
+                                                break
+                                            }
+                                        if (invalidAuths)
+                                            continue
+                                        details.payload.txs.push({
+                                            id: blockTxs.txs[t].id,
+                                            type: 1,
+                                            index: parseInt(t),
+                                            contract_id: txBody.tx.contract_id,
+                                            action: txBody.tx.action,
+                                            payload: [txBody.tx.payload],
+                                            callers: txBody.headers.required_auths,
+                                            nonce: txBody.headers.nonce
+                                        })
+                                    } else if (blockTxs.txs[t].type === 2 && txBody.__t === 'vsc-output') {
+                                        // contract output
+                                        if (typeof txBody.contract_id !== 'string' ||
+                                            !Array.isArray(txBody.inputs) ||
+                                            typeof txBody.io_gas !== 'number' ||
+                                            !Array.isArray(txBody.results)) {
+                                            logger.warn(`Ignoring contract output with malformed data at index ${t} in block ${blockCIDShort}`)
+                                            continue
+                                        }
+                                        const contractExists = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.contracts WHERE contract_id=$1;`,[txBody.contract_id])
+                                        if (contractExists.rowCount! === 0) {
+                                            logger.warn(`Ignoring contract output for non-existent contract at index ${t} in block ${blockCIDShort}`)
+                                            continue
+                                        }
+                                        let invalidInputs = false
+                                        for (let i in txBody.inputs)
+                                            if (typeof txBody.inputs[i] !== 'string' || !txBody.inputs[i] || txBody.inputs[i].length > 59) {
+                                                logger.warn(`Ignoring contract output due to invalid input, tx index ${t} in block ${blockCIDShort}`)
+                                                invalidInputs = true
+                                                break
+                                            }
+                                        if (invalidInputs)
+                                            continue
+                                        details.payload.txs.push({
+                                            id: blockTxs.txs[t].id,
+                                            type: 2,
+                                            index: parseInt(t),
+                                            contract_id: txBody.contract_id,
+                                            inputs: txBody.inputs,
+                                            io_gas: txBody.io_gas,
+                                            results: txBody.results
+                                        })
+                                    }
+                                } catch (e) {
+                                    logger.warn(`Ignoring tx that failed to parse at index ${t} in block ${blockCIDShort}`)
+                                    logger.trace(e)
+                                    continue
+                                }
+                            }
                         } else
                             return { valid: false }
                     } else
@@ -97,6 +191,9 @@ const processor = {
                     break
                 case op_type_map.map.tx:
                     payload = payload as L1CallTxOp
+                    const contractExists = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.contracts WHERE contract_id=$1;`,[payload.tx.contract_id])
+                    if (contractExists.rowCount! === 0)
+                        return { valid: false }
                     details.payload = {
                         callers: [],
                         contract_id: payload.tx.contract_id,
@@ -195,7 +292,7 @@ const processor = {
             switch (op.op_type) {
                 case op_type_map.map.propose_block:
                     result.payload = result.payload as BlockPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.push_block($1,$2,$3,$4,$5,$6,$7,$8,$9);`,[
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.push_block($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb);`,[
                         op.id,
                         result.user,
                         result.payload.block_hash,
@@ -204,7 +301,8 @@ const processor = {
                         result.payload.br[1],
                         result.payload.merkle_root,
                         result.payload.signature.sig,
-                        result.payload.signature.bv
+                        result.payload.signature.bv,
+                        JSON.stringify(result.payload.txs)
                     ])
                     break
                 case op_type_map.map.tx:

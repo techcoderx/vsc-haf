@@ -38,9 +38,6 @@ dependencies:
   dotenv:
     specifier: ^16.3.1
     version: 16.4.5
-  is-ipfs:
-    specifier: ^8.0.1
-    version: 8.0.4
   key-did-provider-ed25519:
     specifier: ^3.0.2
     version: 3.0.2
@@ -378,14 +375,6 @@ packages:
 
   /@multiformats/base-x@4.0.1:
     resolution: {integrity: sha512-eMk0b9ReBbV23xXU693TAIrLyeO5iTgBZGSJfpqriG8UkYvr/hC9u9pyMlAakDNHWmbhMZCDs6KQO0jzKD8OTw==}
-    dev: false
-
-  /@multiformats/mafmt@12.1.6:
-    resolution: {integrity: sha512-tlJRfL21X+AKn9b5i5VnaTD6bNttpSpcqwKVmDmSHLwxoz97fAHaepqFOk/l1fIu94nImIXneNbhsJx/RQNIww==}
-    dependencies:
-      '@multiformats/multiaddr': 12.1.14
-    transitivePeerDependencies:
-      - supports-color
     dev: false
 
   /@multiformats/multiaddr-to-uri@9.0.8:
@@ -1307,19 +1296,6 @@ packages:
   /is-fullwidth-code-point@3.0.0:
     resolution: {integrity: sha512-zymm5+u+sCsSWyD9qNaejV3DFvhCKclKdizYaJUuHA83RLjb7nSuGnddCHGv0hk+KY7BMAlsWeK4Ueg6EV6XQg==}
     engines: {node: '>=8'}
-    dev: false
-
-  /is-ipfs@8.0.4:
-    resolution: {integrity: sha512-upkO6a8WgBSZMMmuPzmF2NQLWXtiJtHxdEfEiMWrOzCKoZ+XEiM0XlK4fFMfo/PyiRmPMJ4PsNrXyvJeqMrJXA==}
-    engines: {node: '>=16.0.0', npm: '>=7.0.0'}
-    dependencies:
-      '@multiformats/mafmt': 12.1.6
-      '@multiformats/multiaddr': 12.1.14
-      iso-url: 1.2.1
-      multiformats: 13.1.0
-      uint8arrays: 5.0.3
-    transitivePeerDependencies:
-      - supports-color
     dev: false
 
   /is-lambda@1.0.1:

@@ -267,7 +267,8 @@ CREATE OR REPLACE FUNCTION vsc_app.push_block(
     _br_end INTEGER,
     _merkle BYTEA,
     _sig BYTEA,
-    _bv BYTEA
+    _bv BYTEA,
+    _txs jsonb
 )
 RETURNS void
 AS
@@ -275,6 +276,7 @@ $function$
 DECLARE
     _acc_id INTEGER;
     _new_block_id INTEGER;
+    _tx jsonb;
 BEGIN
     SELECT id INTO _acc_id FROM hive.vsc_app_accounts WHERE name=_proposer;
     INSERT INTO vsc_app.blocks(proposed_in_op, proposer, block_hash, block_header_hash, br_start, br_end, merkle_root, sig, bv)
@@ -286,6 +288,115 @@ BEGIN
             last_block=_new_block_id,
             produced=produced+1
         WHERE id=_acc_id;
+    END IF;
+
+    FOR _tx IN SELECT * FROM jsonb_array_elements(_txs)
+    LOOP
+        IF (i->>'type')::INT = 1 THEN
+            SELECT vsc_app.push_l2_contract_call_tx(i->>'id', _new_block_id, (i->>'index')::SMALLINT, i->>'contract_id', i->>'action', i->'payload'::jsonb, (SELECT ARRAY(SELECT jsonb_array_elements_text(i->'callers'))), (i->>'nonce')::INT);
+        ELSIF (i->>'type')::INT = 2 THEN
+            SELECT vsc_app.push_l2_contract_output_tx(i->>'id', _new_block_id, (i->>'index')::SMALLINT, i->>'contract_id', (SELECT ARRAY(SELECT jsonb_array_elements_text(i->'inputs'))), (i->>'io_gas')::INT, i->'results');
+        END IF;
+    END LOOP;
+END
+$function$
+LANGUAGE plpgsql VOLATILE;
+
+CREATE OR REPLACE FUNCTION vsc_app.push_l2_contract_call_tx(
+    _id VARCHAR,
+    _l2_block_num INTEGER,
+    _index SMALLINT,
+    _contract_id VARCHAR,
+    _contract_action VARCHAR,
+    _payload jsonb,
+    _callers VARCHAR[],
+    _nonce INTEGER
+)
+RETURNS void
+AS
+$function$
+DECLARE
+    _new_l2_transaction_id BIGINT;
+    _caller VARCHAR;
+    _caller_id INTEGER;
+BEGIN
+    IF (SELECT EXISTS (SELECT 1 FROM vsc_app.l2_txs WHERE id=_id)) THEN
+        RETURN;
+    END IF;
+
+    INSERT INTO vsc_app.transactions(contract_id, contract_action, payload)
+        VALUES(_contract_id, _contract_action, _payload)
+        RETURNING id INTO _new_l2_transaction_id;
+
+    INSERT INTO vsc_app.l2_txs(id, block_num, idx_in_block, tx_type, nonce, details)
+        VALUES(_id, _l2_block_num, _index, 1, _nonce, _new_l2_transaction_id);
+
+    FOREACH _caller IN ARRAY _callers
+    LOOP
+        _caller_id := NULL;
+        SELECT id INTO _caller_id FROM vsc_app.dids WHERE did=_caller;
+        IF _caller_id IS NULL THEN
+            INSERT INTO vsc_app.dids(did) VALUES(_caller) RETURNING id INTO _caller_id;
+        END IF;
+        INSERT INTO vsc_app.l2_tx_multiauth(id, did)
+            VALUES(_id, _caller);
+    END LOOP;
+END
+$function$
+LANGUAGE plpgsql VOLATILE;
+
+CREATE OR REPLACE FUNCTION vsc_app.push_l2_contract_output_tx(
+    _id VARCHAR,
+    _l2_block_num INTEGER,
+    _index SMALLINT,
+    _contract_id VARCHAR,
+    _inputs VARCHAR[],
+    _io_gas INTEGER,
+    _results jsonb
+)
+RETURNS void
+AS
+$function$
+DECLARE
+    _input VARCHAR;
+    _input_tx_id BIGINT;
+
+    _bn INTEGER;
+    _tb SMALLINT;
+BEGIN
+    IF (SELECT EXISTS (SELECT 1 FROM vsc_app.l2_txs WHERE id=_id)) THEN
+        RETURN;
+    END IF;
+
+    FOREACH _input IN ARRAY _inputs
+    LOOP
+        IF LENGTH(_input) = 40 THEN
+            SELECT block_num, trx_in_block INTO _bn, _tb
+                FROM hive.vsc_app_transactions_view
+                WHERE trx_hash = decode(_input, 'hex');
+            SELECT details INTO _input_tx_id FROM vsc_app.l1_txs WHERE id = (
+                SELECT id
+                FROM vsc_app.l1_operations
+                WHERE block_num = _bn AND trx_in_block = tb AND op_type = 5
+                LIMIT 1
+                -- which one if there are multiple contract calls in the same l1 tx???
+                -- op_pos is currently not provided in contract output on IPFS
+            );
+        ELSE
+            SELECT details INTO _input_tx_id FROM vsc_app.l2_txs WHERE id = _input;
+        END IF;
+        IF _input_tx_id IS NULL THEN
+            CONTINUE;
+        END IF;
+        UPDATE vsc_app.transactions SET
+            io_gas = _io_gas,
+            contract_output = _results
+        WHERE id = _input_tx_id;
+    END LOOP;
+
+    IF _input_tx_id IS NOT NULL THEN
+        INSERT INTO vsc_app.l2_txs(id, block_num, idx_in_block, tx_type, details)
+            VALUES(_id, _l2_block_num, _index, 2, _input_tx_id);
     END IF;
 END
 $function$
@@ -345,6 +456,9 @@ DECLARE
     _ek VARCHAR;
     i INTEGER;
 BEGIN
+    IF (SELECT EXISTS (SELECT 1 FROM vsc_app.election_results WHERE epoch=_epoch)) THEN
+        RETURN;
+    END IF;
     SELECT id INTO _acc_id FROM hive.vsc_app_accounts WHERE name=_proposer;
     INSERT INTO vsc_app.election_results(epoch, proposed_in_op, proposer, data_cid, sig, bv)
         VALUES(_epoch, _proposed_in_op, _acc_id, _data_cid, _sig, _bv);

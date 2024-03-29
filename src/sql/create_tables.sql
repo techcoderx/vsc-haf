@@ -48,8 +48,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.l2_txs(
 
 CREATE TABLE IF NOT EXISTS vsc_app.l2_tx_multiauth(
     id VARCHAR(59) PRIMARY KEY, -- id from l2_txs table
-    did INTEGER NOT NULL, -- id from dids table
-    UNIQUE(id, did)
+    did INTEGER NOT NULL -- id from dids table
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.blocks(

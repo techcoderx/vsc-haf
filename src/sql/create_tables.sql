@@ -164,6 +164,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.anchor_refs(
 CREATE TABLE IF NOT EXISTS vsc_app.anchor_ref_txs(
     ref_id INTEGER,
     tx_id BYTEA,
+    idx_in_ref INTEGER NOT NULL,
     PRIMARY KEY(ref_id, tx_id)  
 );
 

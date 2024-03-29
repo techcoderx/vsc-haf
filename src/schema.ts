@@ -29,16 +29,6 @@ const HAF_FKS: FKS_TYPE = {
         fk: 'id',
         ref: `hive.${APP_CONTEXT}_accounts(id)`
     },
-    block_proposed_in_op_fk: {
-        table: SCHEMA_NAME+'.blocks',
-        fk: 'proposed_in_op',
-        ref: SCHEMA_NAME+'.l1_operations(id)'
-    },
-    block_proposer_fk: {
-        table: SCHEMA_NAME+'.blocks',
-        fk: 'proposer',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
-    },
     contract_created_in_op_fk: {
         table: SCHEMA_NAME+'.contracts',
         fk: 'created_in_op',

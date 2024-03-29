@@ -416,16 +416,16 @@ AS
 $function$
 DECLARE
     _ref_id INTEGER;
-    _tx VARCHAR;
+    i INTEGER;
 BEGIN
     INSERT INTO vsc_app.anchor_refs(cid, block_num, idx_in_block, tx_root)
         VALUES(_id, _l2_block_num, _index, decode(_root, 'hex'))
         RETURNING id INTO _ref_id;
 
-    FOREACH _tx IN ARRAY _txs
+    FOR i IN 1 .. array_upper(_txs, 1)
     LOOP
-        INSERT INTO vsc_app.anchor_ref_txs(ref_id, tx_id)
-            VALUES(_ref_id, decode(_tx, 'hex'));
+        INSERT INTO vsc_app.anchor_ref_txs(ref_id, tx_id, idx_in_ref)
+            VALUES(_ref_id, decode(_txs[i], 'hex'), i-1);
     END LOOP;
 END
 $function$

@@ -66,7 +66,7 @@ export interface AnchorRefHead {
 }
 
 export interface AnchorRefBody {
-    txs: Buffer[]
+    txs: Uint8Array[]
 }
 
 export interface AnchorRefPayload extends AnchorRefHead {

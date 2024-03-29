@@ -188,7 +188,7 @@ const processor = {
                                         }
                                         let invalidRefs = false
                                         for (let b in txBody.txs)
-                                            if (!Buffer.isBuffer(txBody.txs[b]) && txBody.txs[b].length !== 20) {
+                                            if (!(txBody.txs[b] instanceof Uint8Array) || txBody.txs[b].length !== 20) {
                                                 logger.warn(`Ignoring invalid anchor ref in block ${blockCIDShort}`)
                                                 invalidRefs = true
                                                 break
@@ -201,7 +201,7 @@ const processor = {
                                             index: parseInt(t),
                                             chain: 'hive',
                                             data: txroot.toString('hex'),
-                                            txs: txBody.txs.map(b => b.toString('hex')) // buffer cannot be serialized into json
+                                            txs: txBody.txs.map(b => Buffer.from(b).toString('hex')) // buffer cannot be serialized into json
                                         })
                                     }
                                 } catch (e) {

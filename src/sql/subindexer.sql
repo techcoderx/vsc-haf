@@ -292,10 +292,10 @@ BEGIN
 
     FOR _tx IN SELECT * FROM jsonb_array_elements(_txs)
     LOOP
-        IF (i->>'type')::INT = 1 THEN
-            SELECT vsc_app.push_l2_contract_call_tx(i->>'id', _new_block_id, (i->>'index')::SMALLINT, i->>'contract_id', i->>'action', i->'payload'::jsonb, (SELECT ARRAY(SELECT jsonb_array_elements_text(i->'callers'))), (i->>'nonce')::INT);
-        ELSIF (i->>'type')::INT = 2 THEN
-            SELECT vsc_app.push_l2_contract_output_tx(i->>'id', _new_block_id, (i->>'index')::SMALLINT, i->>'contract_id', (SELECT ARRAY(SELECT jsonb_array_elements_text(i->'inputs'))), (i->>'io_gas')::INT, i->'results');
+        IF (_tx->>'type')::INT = 1 THEN
+            PERFORM vsc_app.push_l2_contract_call_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, _tx->>'contract_id', _tx->>'action', (_tx->'payload')::jsonb, (SELECT ARRAY(SELECT jsonb_array_elements_text(_tx->'callers'))), (_tx->>'nonce')::INT);
+        ELSIF (_tx->>'type')::INT = 2 THEN
+            PERFORM vsc_app.push_l2_contract_output_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, _tx->>'contract_id', (SELECT ARRAY(SELECT jsonb_array_elements_text(_tx->'inputs'))), (_tx->>'io_gas')::INT, (_tx->'results')::jsonb);
         END IF;
     END LOOP;
 END
@@ -339,7 +339,7 @@ BEGIN
             INSERT INTO vsc_app.dids(did) VALUES(_caller) RETURNING id INTO _caller_id;
         END IF;
         INSERT INTO vsc_app.l2_tx_multiauth(id, did)
-            VALUES(_id, _caller);
+            VALUES(_id, _caller_id);
     END LOOP;
 END
 $function$
@@ -377,7 +377,7 @@ BEGIN
             SELECT details INTO _input_tx_id FROM vsc_app.l1_txs WHERE id = (
                 SELECT id
                 FROM vsc_app.l1_operations
-                WHERE block_num = _bn AND trx_in_block = tb AND op_type = 5
+                WHERE block_num = _bn AND trx_in_block = _tb AND op_type = 5
                 LIMIT 1
                 -- which one if there are multiple contract calls in the same l1 tx???
                 -- op_pos is currently not provided in contract output on IPFS

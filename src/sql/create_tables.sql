@@ -153,6 +153,20 @@ CREATE TABLE IF NOT EXISTS vsc_app.subindexer_state(
     last_processed_op BIGINT NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS vsc_app.anchor_refs(
+    id SERIAL PRIMARY KEY,
+    cid VARCHAR(59) NOT NULL, -- call_contract transaction CID
+    block_num INTEGER NOT NULL, -- included in l2 block number from blocks table
+    idx_in_block SMALLINT NOT NULL,
+    tx_root BYTEA NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS vsc_app.anchor_ref_txs(
+    ref_id INTEGER,
+    tx_id BYTEA,
+    PRIMARY KEY(ref_id, tx_id)  
+);
+
 CREATE TABLE IF NOT EXISTS vsc_app.multisig_txrefs(
     id SERIAL PRIMARY KEY,
     in_op BIGINT NOT NULL,

@@ -7,7 +7,7 @@ import { CID } from 'kubo-rpc-client'
 import { createDag, isCID } from './ipfs_dag.js'
 import { BlsCircuit, initBls } from '../utils/bls-did.js'
 import op_type_map from '../operations.js'
-import { BlockBody, BridgeRef, TxBody } from './ipfs_payload.js'
+import { AnchorRefBody, AnchorRefHead, BlockBody, BridgeRef, ContractCallBody, ContractOutBody } from './ipfs_payload.js'
 import { APP_CONTEXT, EPOCH_LENGTH, ROUND_LENGTH, SCHEMA_NAME, SUPERMAJORITY } from '../constants.js'
 import { shuffle } from '../utils/shuffle-seed.js'
 
@@ -102,13 +102,13 @@ const processor = {
                                     !isCID(blockTxs.txs[t].id) ||
                                     CID.parse(blockTxs.txs[t].id).code !== 0x71 ||
                                     typeof blockTxs.txs[t].type !== 'number' ||
-                                    ![1,2].includes(blockTxs.txs[t].type)) {
+                                    ![1,2,5].includes(blockTxs.txs[t].type)) {
                                     logger.warn(`Ignoring invalid tx at index ${t} in block ${blockCIDShort}`)
                                     continue
                                 }
                                 try {
-                                    const txBody: TxBody = (await ipfs.dag.get(CID.parse(blockTxs.txs[t].id))).value
-                                    if (blockTxs.txs[t].type === 1 && txBody.__t === 'vsc-tx') {
+                                    if (blockTxs.txs[t].type === 1) {
+                                        const txBody: ContractCallBody = (await ipfs.dag.get(CID.parse(blockTxs.txs[t].id))).value
                                         // contract call
                                         if (typeof txBody.headers !== 'object' ||
                                             typeof txBody.headers.nonce !== 'number' ||
@@ -145,7 +145,8 @@ const processor = {
                                             callers: txBody.headers.required_auths,
                                             nonce: txBody.headers.nonce
                                         })
-                                    } else if (blockTxs.txs[t].type === 2 && txBody.__t === 'vsc-output') {
+                                    } else if (blockTxs.txs[t].type === 2) {
+                                        const txBody: ContractOutBody = (await ipfs.dag.get(CID.parse(blockTxs.txs[t].id))).value
                                         // contract output
                                         if (typeof txBody.contract_id !== 'string' ||
                                             !Array.isArray(txBody.inputs) ||
@@ -176,6 +177,30 @@ const processor = {
                                             inputs: txBody.inputs,
                                             io_gas: txBody.io_gas,
                                             results: txBody.results
+                                        })
+                                    } else if (blockTxs.txs[t].type === 5) {
+                                        const txBody: AnchorRefBody = (await ipfs.dag.get(CID.parse(blockTxs.txs[t].id))).value
+                                        const arh = blockTxs.txs[t] as AnchorRefHead
+                                        const txroot = Buffer.from(arh.data, 'base64url')
+                                        if (txroot.length !== 32 || !Array.isArray(txBody.txs) || arh.chain !== 'hive') {
+                                            logger.warn(`Ignoring invalid anchor ref tx in block ${blockCIDShort}`)
+                                            continue
+                                        }
+                                        let invalidRefs = false
+                                        for (let b in txBody.txs)
+                                            if (!Buffer.isBuffer(txBody.txs[b]) && txBody.txs[b].length !== 20) {
+                                                logger.warn(`Ignoring invalid anchor ref in block ${blockCIDShort}`)
+                                                invalidRefs = true
+                                                break
+                                            }
+                                        if (invalidRefs)
+                                            continue
+                                        details.payload.txs.push({
+                                            id: blockTxs.txs[t].id,
+                                            type: 5,
+                                            chain: 'hive',
+                                            data: txroot.toString('hex'),
+                                            txs: txBody.txs.map(b => b.toString('hex')) // buffer cannot be serialized into json
                                         })
                                     }
                                 } catch (e) {

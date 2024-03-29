@@ -296,6 +296,8 @@ BEGIN
             PERFORM vsc_app.push_l2_contract_call_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, _tx->>'contract_id', _tx->>'action', (_tx->'payload')::jsonb, (SELECT ARRAY(SELECT jsonb_array_elements_text(_tx->'callers'))), (_tx->>'nonce')::INT);
         ELSIF (_tx->>'type')::INT = 2 THEN
             PERFORM vsc_app.push_l2_contract_output_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, _tx->>'contract_id', (SELECT ARRAY(SELECT jsonb_array_elements_text(_tx->'inputs'))), (_tx->>'io_gas')::INT, (_tx->'results')::jsonb);
+        ELSIF (_tx->>'type')::INT = 5 THEN
+            PERFORM vsc_app.push_anchor_ref(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, _tx->>'data', (SELECT ARRAY(SELECT jsonb_array_elements_text(_tx->'txs'))));
         END IF;
     END LOOP;
 END
@@ -398,6 +400,33 @@ BEGIN
         INSERT INTO vsc_app.l2_txs(id, block_num, idx_in_block, tx_type, details)
             VALUES(_id, _l2_block_num, _index, 2, _input_tx_id);
     END IF;
+END
+$function$
+LANGUAGE plpgsql VOLATILE;
+
+CREATE OR REPLACE FUNCTION vsc_app.push_anchor_ref(
+    _id VARCHAR,
+    _l2_block_num INTEGER,
+    _index SMALLINT,
+    _root VARCHAR,
+    _txs VARCHAR[]
+)
+RETURNS void
+AS
+$function$
+DECLARE
+    _ref_id INTEGER;
+    _tx VARCHAR;
+BEGIN
+    INSERT INTO vsc_app.anchor_refs(cid, block_num, idx_in_block, tx_root)
+        VALUES(_id, _l2_block_num, _index, decode(_root, 'hex'))
+        RETURNING id INTO _ref_id;
+
+    FOREACH _tx IN ARRAY _txs
+    LOOP
+        INSERT INTO vsc_app.anchor_ref_txs(ref_id, tx_id)
+            VALUES(_ref_id, decode(_tx, 'hex'));
+    END LOOP;
 END
 $function$
 LANGUAGE plpgsql VOLATILE;

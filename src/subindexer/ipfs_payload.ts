@@ -19,7 +19,7 @@ interface ContractOutHead {
     type: 2
 }
 
-type BlockBodyTx = ContractCallHead | ContractOutHead
+type BlockBodyTx = ContractCallHead | ContractOutHead | AnchorRefHead
 
 export interface BlockBody {
     __t: 'vsc-block'
@@ -31,8 +31,6 @@ export interface BlockBody {
     sig_root?: string
     txs: BlockBodyTx[]
 }
-
-export type TxBody = ContractCallBody | ContractOutBody
 
 export interface ContractCallBody {
     __t: 'vsc-tx'
@@ -58,4 +56,19 @@ export interface ContractOutBody {
     io_gas: number
     results: any[]
     state_merkle: string
+}
+
+export interface AnchorRefHead {
+    chain: 'hive'
+    data: string
+    id: string
+    type: 5
+}
+
+export interface AnchorRefBody {
+    txs: Buffer[]
+}
+
+export interface AnchorRefPayload extends AnchorRefHead {
+    txs: string[]
 }

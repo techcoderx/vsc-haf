@@ -1,3 +1,4 @@
+import { AnchorRefPayload } from './subindexer/ipfs_payload.js'
 import { WitnessConsensusDid } from './psql_types.js'
 
 export interface Op {
@@ -88,7 +89,7 @@ export interface VscOp extends Op {
 export type CustomJsonPayloads = BlockOp | ElectionOp | BridgeRefPayload | L1CallTxOp
 export type BridgeRefResult = bigint[]
 export type L2PayloadTypes = BridgeRefResult | ElectionPayload | BlockPayload | L1TxPayload
-export type L2Tx = L2ContractCallPayload | L2ContractOutPayload
+export type L2Tx = L2ContractCallPayload | L2ContractOutPayload | AnchorRefPayload
 export interface BlockOp {
     net_id: string
     replay_id: number

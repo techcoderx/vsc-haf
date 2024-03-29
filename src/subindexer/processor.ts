@@ -198,6 +198,7 @@ const processor = {
                                         details.payload.txs.push({
                                             id: blockTxs.txs[t].id,
                                             type: 5,
+                                            index: parseInt(t),
                                             chain: 'hive',
                                             data: txroot.toString('hex'),
                                             txs: txBody.txs.map(b => b.toString('hex')) // buffer cannot be serialized into json

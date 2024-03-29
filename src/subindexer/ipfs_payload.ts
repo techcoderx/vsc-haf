@@ -70,5 +70,6 @@ export interface AnchorRefBody {
 }
 
 export interface AnchorRefPayload extends AnchorRefHead {
+    index: number
     txs: string[]
 }

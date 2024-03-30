@@ -141,56 +141,67 @@ END
 $function$
 LANGUAGE plpgsql STABLE;
 
-DROP TYPE IF EXISTS vsc_api.block_type CASCADE;
-CREATE TYPE vsc_api.block_type AS (
-    id INTEGER,
-    block_num INTEGER,
-    trx_in_block SMALLINT,
-    ts TIMESTAMP,
-    block_hash VARCHAR,
-    block_header_hash VARCHAR,
-    proposer VARCHAR
-);
-
 CREATE OR REPLACE FUNCTION vsc_api.get_block_range(blk_id_start INTEGER, blk_count INTEGER)
 RETURNS jsonb
 AS
 $function$
-DECLARE
-    b vsc_api.block_type;
-    _block_details vsc_api.block_type[];
-    _blocks jsonb[] DEFAULT '{}';
 BEGIN
     IF blk_count > 1000 OR blk_count <= 0 THEN
         RETURN jsonb_build_object(
             'error', 'blk_count must be between 1 and 1000'
         );
     END IF;
-    SELECT ARRAY(
-        SELECT ROW(bk.id, l1_op.block_num, l1_op.trx_in_block, l1_op.ts, bk.block_hash, bk.block_header_hash, a.name)::vsc_api.block_type
-            FROM vsc_app.blocks bk
-            JOIN vsc_app.l1_operations l1_op ON
-                bk.proposed_in_op = l1_op.id
-            JOIN hive.vsc_app_accounts a ON
-                bk.proposer = a.id
-            WHERE bk.id >= blk_id_start AND bk.id < blk_id_start+blk_count
-    ) INTO _block_details;
-    FOREACH b IN ARRAY _block_details
-    LOOP
-        SELECT ARRAY_APPEND(_blocks, jsonb_build_object(
-            'id', b.id,
-            'ts', b.ts,
-            'block_hash', b.block_header_hash,
-            'block_body_hash', b.block_hash,
-            'proposer', b.proposer,
-            'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(b.block_num, b.trx_in_block)),
-            'l1_block', b.block_num
-        )) INTO _blocks;
-    END LOOP;
-
-    RETURN array_to_json(_blocks)::jsonb;
+    RETURN (
+        SELECT jsonb_agg(jsonb_build_object(
+            'id', bk.id,
+            'ts', l1_op.ts,
+            'block_hash', bk.block_header_hash,
+            'block_body_hash', bk.block_hash,
+            'proposer', a.name,
+            'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(l1_op.block_num, l1_op.trx_in_block)),
+            'l1_block', l1_op.block_num
+        ))
+        FROM vsc_app.blocks bk
+        JOIN vsc_app.l1_operations l1_op ON
+            bk.proposed_in_op = l1_op.id
+        JOIN hive.vsc_app_accounts a ON
+            bk.proposer = a.id
+        WHERE bk.id >= blk_id_start AND bk.id < blk_id_start+blk_count
+    );
 END
 $function$
+LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION vsc_api.get_txs_in_block(blk_id INTEGER)
+RETURNS jsonb
+AS $function$
+BEGIN
+    RETURN (WITH result AS (
+        SELECT t.id, t.block_num, t.idx_in_block, t.tx_type, MIN(d.did) did, COUNT(a.id) auth_count
+            FROM vsc_app.l2_txs t
+            LEFT JOIN vsc_app.l2_tx_multiauth a ON
+                a.id = t.id
+            LEFT JOIN vsc_app.dids d ON
+                a.did = d.id
+            WHERE t.block_num = blk_id
+            GROUP BY t.id
+        UNION ALL
+        SELECT r.cid AS id, r.block_num, r.idx_in_block, 5, NULL, 0
+            FROM vsc_app.anchor_refs r
+            WHERE r.block_num = blk_id
+            ORDER BY idx_in_block ASC
+    )
+    SELECT jsonb_agg(
+        jsonb_build_object(
+            'id', id,
+            'block_num', block_num,
+            'idx_in_block', idx_in_block,
+            'tx_type', tx_type,
+            'did', did,
+            'auth_count', auth_count
+        )
+    ) FROM result);
+END $function$
 LANGUAGE plpgsql STABLE;
 
 DROP TYPE IF EXISTS vsc_api.l1_op_type CASCADE;
@@ -607,57 +618,35 @@ END
 $function$
 LANGUAGE plpgsql STABLE;
 
-DROP TYPE IF EXISTS vsc_api.contract_type CASCADE;
-CREATE TYPE vsc_api.contract_type AS (
-    contract_id VARCHAR,
-    created_in_op BIGINT,
-    name VARCHAR,
-    description VARCHAR,
-    code VARCHAR,
-    block_num INTEGER,
-    trx_in_block SMALLINT,
-    ts TIMESTAMP
-);
-
 CREATE OR REPLACE FUNCTION vsc_api.list_latest_contracts(count INTEGER = 100)
 RETURNS jsonb
-AS
-$function$
-DECLARE
-    result vsc_api.contract_type;
-    results vsc_api.contract_type[];
-    results_arr jsonb[] DEFAULT '{}';
+AS $function$
 BEGIN
     IF count <= 0 OR count > 100 THEN
         RETURN jsonb_build_object(
             'error', 'count must be between 1 and 100'
         );
     END IF;
-    SELECT ARRAY(
-        SELECT ROW(c.*, o.block_num, o.trx_in_block, o.ts)
-        FROM vsc_app.contracts c
-        JOIN vsc_app.l1_operations o ON
-            o.id=c.created_in_op
-        ORDER BY o.ts DESC
-        LIMIT count
-    ) INTO results;
-
-    FOREACH result IN ARRAY results
-    LOOP
-        SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
-            'contract_id', result.contract_id,
-            'created_in_op', (SELECT vsc_app.get_tx_hash_by_op(result.block_num, result.trx_in_block)),
-            'created_in_l1_block', result.block_num,
-            'created_at', result.ts,
-            'name', result.name,
-            'description', result.description,
-            'code', result.code
-        )) INTO results_arr;
-    END LOOP;
-
-    RETURN array_to_json(results_arr)::jsonb;
-END
-$function$
+    RETURN (
+        WITH contracts AS (
+            SELECT c.*, o.block_num, o.trx_in_block, o.ts
+            FROM vsc_app.contracts c
+            JOIN vsc_app.l1_operations o ON
+                o.id=c.created_in_op
+            ORDER BY o.block_num DESC
+            LIMIT 10
+        )
+        SELECT jsonb_agg(jsonb_build_object(
+            'contract_id', contract_id,
+            'created_in_op', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
+            'created_in_l1_block', block_num,
+            'created_at', ts,
+            'name', name,
+            'description', description,
+            'code', code
+        )) FROM contracts
+    );
+END $function$
 LANGUAGE plpgsql STABLE;
 
 CREATE OR REPLACE FUNCTION vsc_api.get_contract_by_id(id VARCHAR)
@@ -666,28 +655,20 @@ AS
 $function$
 DECLARE
 	ct_id ALIAS FOR id;
-    result vsc_api.contract_type = NULL;
 BEGIN
-    SELECT c.*, o.block_num, o.trx_in_block, o.ts
-        INTO result
-        FROM vsc_app.contracts c
-        JOIN vsc_app.l1_operations o ON
-            o.id=c.created_in_op
-        WHERE c.contract_id = ct_id;
-    IF result = NULL THEN
-        RETURN jsonb_build_object(
-            'error', 'contract not found'
-        );
-    END IF;
-    RETURN jsonb_build_object(
-        'contract_id', result.contract_id,
-        'created_in_op', (SELECT vsc_app.get_tx_hash_by_op(result.block_num, result.trx_in_block)),
-        'created_in_l1_block', result.block_num,
-        'created_at', result.ts,
-        'name', result.name,
-        'description', result.description,
-        'code', result.code
-    );
+    RETURN COALESCE((SELECT jsonb_build_object(
+        'contract_id', c.contract_id,
+        'created_in_op', (SELECT vsc_app.get_tx_hash_by_op(o.block_num, o.trx_in_block)),
+        'created_in_l1_block', o.block_num,
+        'created_at', o.ts,
+        'name', c.name,
+        'description', c.description,
+        'code', c.code
+    )
+    FROM vsc_app.contracts c
+    JOIN vsc_app.l1_operations o ON
+        o.id=c.created_in_op
+    WHERE c.contract_id = ct_id), jsonb_build_object('error', 'contract not found'));
 END
 $function$
 LANGUAGE plpgsql STABLE;
@@ -860,4 +841,136 @@ BEGIN
     RETURN (SELECT vsc_app.format_deposit_type(results));
 END
 $function$
+LANGUAGE plpgsql STABLE;
+
+-- Elections
+CREATE OR REPLACE FUNCTION vsc_api.list_epochs(last_epoch INTEGER = NULL, count INTEGER = 100)
+RETURNS jsonb
+AS $function$
+BEGIN
+    RETURN (
+        WITH epochs AS (
+            SELECT e.epoch, o.block_num, o.ts, a.name, e.data_cid, e.sig, e.bv
+            FROM vsc_app.election_results e
+            JOIN vsc_app.l1_operations o ON
+                o.id = e.proposed_in_op
+            JOIN hive.vsc_app_accounts a ON
+                a.id = e.proposer
+            WHERE e.epoch <= COALESCE(last_epoch, 2147483647)
+            ORDER BY e.epoch
+            LIMIT count
+        )
+        SELECT jsonb_agg(jsonb_build_object(
+            'epoch', epoch,
+            'l1_block_num', block_num,
+            'ts', ts,
+            'proposer', name,
+            'data_cid', data_cid,
+            'sig', encode(sig, 'hex'),
+            'bv', encode(bv, 'hex')
+        )) FROM epochs
+    );
+END $function$
+LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION vsc_api.get_election_at_epoch(epoch INTEGER, with_consensus_did BOOLEAN = FALSE)
+RETURNS jsonb
+AS $function$
+BEGIN
+    IF with_consensus_did IS TRUE THEN
+        RETURN (
+            SELECT jsonb_agg(jsonb_build_object(
+                'username', name,
+                'consensus_did', consensus_did
+            ))
+            FROM vsc_app.get_election_at_epoch(epoch)
+        );
+    ELSE
+        RETURN (SELECT jsonb_agg(name) FROM vsc_app.get_election_at_epoch(epoch));
+    END IF;
+END $function$
+LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION vsc_api.get_members_at_block(blk_num INTEGER, with_consensus_did BOOLEAN = FALSE)
+RETURNS jsonb
+AS $function$
+BEGIN
+    IF with_consensus_did IS TRUE THEN
+        RETURN (
+            SELECT jsonb_agg(jsonb_build_object(
+                'username', name,
+                'consensus_did', consensus_did
+            ))
+            FROM vsc_app.get_members_at_block(blk_num)
+        );
+    ELSE
+        RETURN (SELECT jsonb_agg(name) FROM vsc_app.get_members_at_block(blk_num));
+    END IF;
+END $function$
+LANGUAGE plpgsql STABLE;
+
+-- Anchor refs
+CREATE OR REPLACE FUNCTION vsc_api.list_anchor_refs(last_ref INTEGER = NULL, count INTEGER = 100)
+RETURNS jsonb
+AS $function$
+BEGIN
+    IF count <= 0 OR count > 100 THEN
+        RETURN jsonb_build_object(
+            'error', 'count must be between 1 and 100'
+        );
+    END IF;
+    RETURN (
+        SELECT jsonb_agg(jsonb_build_object(
+            'id', r.id,
+            'cid', r.cid,
+            'block_num', r.block_num,
+            'tx_root', encode(r.tx_root, 'hex')
+        ))
+        FROM vsc_app.anchor_refs r
+        WHERE r.id <= COALESCE(last_ref, 2147483647)
+        LIMIT count
+    );
+END $function$
+LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION vsc_api.get_anchor_ref_by_id(id INTEGER)
+RETURNS jsonb
+AS $function$
+DECLARE
+    aref_id ALIAS FOR id;
+BEGIN
+    RETURN (COALESCE(
+        (SELECT jsonb_build_object(
+            'id', r.id,
+            'cid', r.cid,
+            'block_num', r.block_num,
+            'tx_root', encode(r.tx_root, 'hex'),
+            'refs', (SELECT jsonb_agg(encode(tx_id, 'hex')) FROM vsc_app.anchor_ref_txs WHERE ref_id = r.id)
+        )
+        FROM vsc_app.anchor_refs r
+        WHERE r.id = aref_id),
+        jsonb_build_object('error', 'anchor ref not found')
+    ));
+END $function$
+LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION vsc_api.get_anchor_ref_by_cid(cid VARCHAR)
+RETURNS jsonb
+AS $function$
+DECLARE
+    aref_cid ALIAS FOR cid;
+BEGIN
+    RETURN (COALESCE(
+        (SELECT jsonb_build_object(
+            'id', r.id,
+            'cid', r.cid,
+            'block_num', r.block_num,
+            'tx_root', encode(r.tx_root, 'hex'),
+            'refs', (SELECT jsonb_agg(encode(tx_id, 'hex')) FROM vsc_app.anchor_ref_txs WHERE ref_id = r.id)
+        )
+        FROM vsc_app.anchor_refs r
+        WHERE r.cid = aref_cid),
+        jsonb_build_object('error', 'anchor ref not found')
+    ));
+END $function$
 LANGUAGE plpgsql STABLE;

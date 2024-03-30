@@ -196,7 +196,7 @@ BEGIN
             'id', id,
             'block_num', block_num,
             'idx_in_block', idx_in_block,
-            'tx_type', tx_type,
+            'tx_type', (SELECT vsc_app.l2_tx_type_by_id(tx_type::SMALLINT)),
             'did', did,
             'auth_count', auth_count
         )

@@ -64,6 +64,23 @@ END
 $function$
 LANGUAGE plpgsql IMMUTABLE;
 
+-- SMALLINT to L2 tx type string mapping
+CREATE OR REPLACE FUNCTION vsc_app.l2_tx_type_by_id(id SMALLINT = -1)
+RETURNS VARCHAR
+AS $function$
+BEGIN
+    IF id = 1 THEN
+        RETURN 'call_contract';
+    ELSIF id = 2 THEN
+        RETURN 'contract_output';
+    ELSIF id = 5 THEN
+        RETURN 'anchor_ref';
+    ELSE
+        RETURN '';
+    END IF;
+END $function$
+LANGUAGE plpgsql IMMUTABLE;
+
 -- Process transactions
 CREATE OR REPLACE FUNCTION vsc_app.process_operation(_username VARCHAR, _op_id BIGINT, _op_type INTEGER, _ts TIMESTAMP)
 RETURNS BIGINT

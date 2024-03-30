@@ -98,7 +98,16 @@ export const HAF_FKS: FKS_TYPE = {
 }
 
 // Indexes
-export const INDEXES: INDEXES_TYPE = {}
+export const INDEXES: INDEXES_TYPE = {
+    block_hash_idx: {
+        table_name: SCHEMA_NAME+'.blocks',
+        columns: [{ col_name: 'block_hash', order: Ordering.ASC }]
+    },
+    block_header_hash_idx: {
+        table_name: SCHEMA_NAME+'.blocks',
+        columns: [{ col_name: 'block_header_hash', order: Ordering.ASC }]
+    }
+}
 
 const schema = {
     setup: async () => {

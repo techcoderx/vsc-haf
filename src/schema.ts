@@ -139,10 +139,6 @@ const INDEXES: INDEXES_TYPE = {
         table_name: SCHEMA_NAME+'.l1_operations',
         columns: [{ col_name: 'user_id', order: Ordering.ASC }, { col_name: 'op_type', order: Ordering.ASC }]
     },
-    block_hash_idx: {
-        table_name: SCHEMA_NAME+'.blocks',
-        columns: [{ col_name: 'block_hash', order: Ordering.ASC }]
-    },
     contract_created_in_op_idx: {
         table_name: SCHEMA_NAME+'.contracts',
         columns: [{ col_name: 'created_in_op', order: Ordering.DESC }]

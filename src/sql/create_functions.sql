@@ -32,40 +32,7 @@ END
 $function$
 LANGUAGE plpgsql STABLE;
 
--- Get transaction_id from operation id
-DROP TYPE IF EXISTS vsc_app.l1_tx_type CASCADE;
-CREATE TYPE vsc_app.l1_tx_type AS (
-    trx_hash TEXT,
-    block_num INTEGER,
-    created_at TIMESTAMP
-);
-
-CREATE OR REPLACE FUNCTION vsc_app.helper_get_tx_by_op_id(_op_id BIGINT)
-RETURNS vsc_app.l1_tx_type
-AS
-$function$
-DECLARE
-    result vsc_app.l1_tx_type;
-BEGIN
-    -- Seperate queries for tx id and timestamp are faster than joining 3 tables in single query
-    SELECT encode(htx.trx_hash::bytea, 'hex'), htx.block_num
-        INTO result
-        FROM hive.transactions_view htx
-        JOIN hive.operations_view ho ON
-            ho.block_num = htx.block_num AND
-            ho.trx_in_block = htx.trx_in_block
-        WHERE ho.id = _op_id;
-
-    SELECT hb.created_at
-        INTO result.created_at
-        FROM hive.blocks_view hb
-        WHERE hb.num = result.block_num;
-
-    RETURN result;
-END
-$function$
-LANGUAGE plpgsql STABLE;
-
+-- Get transaction hash from block_num and trx_in_block
 CREATE OR REPLACE FUNCTION vsc_app.get_tx_hash_by_op(_block_num INTEGER, _trx_in_block SMALLINT)
 RETURNS TEXT
 AS

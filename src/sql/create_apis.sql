@@ -204,6 +204,114 @@ BEGIN
 END $function$
 LANGUAGE plpgsql STABLE;
 
+CREATE OR REPLACE FUNCTION vsc_api.get_l1_tx(trx_id VARCHAR, op_pos INTEGER)
+RETURNS jsonb
+AS $function$
+DECLARE
+    l1_op_id BIGINT;
+    op_position ALIAS FOR op_pos;
+    _bn INTEGER;
+    _tb SMALLINT;
+    _auth_active jsonb;
+    _auth_posting jsonb;
+BEGIN
+    SELECT o.id, ht.block_num, ht.trx_in_block INTO l1_op_id, _bn, _tb
+        FROM hive.vsc_app_transactions_view ht
+        JOIN vsc_app.l1_operations o ON
+            o.block_num = ht.block_num AND o.trx_in_block = ht.trx_in_block
+        WHERE ht.trx_hash = decode(trx_id, 'hex')::BYTEA AND o.op_pos = op_position AND o.op_type = (SELECT ot.id FROM vsc_app.l1_operation_types ot WHERE ot.op_name = 'tx');
+    IF l1_op_id IS NULL THEN
+        RETURN jsonb_build_object('error', 'could not find contract call transaction');
+    END IF;
+    SELECT (ho.body::jsonb->'value')->'required_auths', (ho.body::jsonb->'value')->'required_posting_auths'
+        INTO _auth_active, _auth_posting
+        FROM hive.vsc_app_operations_view ho
+        WHERE ho.block_num = _bn AND ho.trx_in_block = _tb AND ho.op_pos = op_position;
+    RETURN (
+        SELECT jsonb_agg(jsonb_build_object(
+            'id', trx_id || '-' || op_pos::VARCHAR,
+            'input', trx_id || '-' || op_pos::VARCHAR,
+            'input_src', 'hive',
+            'output', (SELECT id FROM vsc_app.l2_txs t2 WHERE details = d.id AND t2.tx_type = 2 LIMIT 1),
+            'block_num', _bn,
+            'idx_in_block', _tb,
+            'tx_type', 'call_contract',
+            'signers', jsonb_build_object(
+                'active', _auth_active,
+                'posting', _auth_posting
+            ),
+            'contract_id', d.contract_id,
+            'contract_action', d.contract_action,
+            'payload', (d.payload->0),
+            'io_gas', d.io_gas,
+            'contract_output', d.contract_output
+        ))
+        FROM vsc_app.l1_txs t
+        JOIN vsc_app.transactions d ON
+            t.details = d.id
+        WHERE t.id = l1_op_id
+    );
+END $function$
+LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION vsc_api.get_l2_tx(trx_id VARCHAR)
+RETURNS jsonb
+AS $function$
+DECLARE
+    _result jsonb;
+    _tx_type SMALLINT;
+    _input VARCHAR;
+    _input_src VARCHAR = 'vsc';
+    _tx_id BIGINT;
+BEGIN
+    SELECT jsonb_build_object(
+        'id', t.id,
+        'block_num', t.block_num,
+        'idx_in_block', t.idx_in_block,
+        'tx_type', (SELECT vsc_app.l2_tx_type_by_id(t.tx_type::SMALLINT)),
+        'nonce', t.nonce,
+        'signers', (
+            SELECT jsonb_agg(k.did)
+            FROM vsc_app.l2_tx_multiauth ma
+            JOIN vsc_app.dids k ON
+                ma.did = k.id
+            WHERE ma.id = t.id
+        ),
+        'contract_id', d.contract_id,
+        'contract_action', d.contract_action,
+        'payload', (d.payload->0),
+        'io_gas', d.io_gas,
+        'contract_output', d.contract_output
+    ), t.tx_type, d.id
+    INTO _result, _tx_type, _tx_id
+    FROM vsc_app.l2_txs t
+    JOIN vsc_app.transactions d ON
+        t.details = d.id
+    WHERE t.id = trx_id;
+
+    IF _tx_type = 1 THEN
+        _result := _result || jsonb_build_object('input', trx_id, 'input_src', _input_src, 'output', (
+            SELECT id FROM vsc_app.l2_txs WHERE details = _tx_id AND tx_type = 2 LIMIT 1
+        ));
+    ELSIF _tx_type = 2 THEN
+        SELECT id INTO _input FROM vsc_app.l2_txs WHERE details = _tx_id AND tx_type = 1;
+        IF _input IS NULL THEN
+            SELECT encode(ht.trx_hash, 'hex') INTO _input
+                FROM vsc_app.l1_txs t
+                JOIN vsc_app.l1_operations o ON
+                    o.id = t.id
+                JOIN hive.transactions_view ht ON
+                    ht.block_num = o.block_num AND ht.trx_in_block = o.trx_in_block
+                WHERE details = _tx_id;
+            _input_src := 'hive';
+        END IF;
+        _result := _result || jsonb_build_object('input', _input, 'input_src', _input_src, 'output', trx_id);
+    END IF;
+
+    RETURN _result;
+END $function$
+LANGUAGE plpgsql STABLE;
+
 DROP TYPE IF EXISTS vsc_api.l1_op_type CASCADE;
 CREATE TYPE vsc_api.l1_op_type AS (
     id BIGINT,

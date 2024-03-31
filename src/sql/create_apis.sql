@@ -25,7 +25,7 @@ BEGIN
         'db_version', _db_version,
         'epoch', (SELECT epoch FROM vsc_app.election_results ORDER BY epoch DESC LIMIT 1),
         'l2_block_height', (SELECT COUNT(*) FROM vsc_app.blocks),
-        'l2_transactions', (SELECT COUNT(*) FROM vsc_app.transactions),
+        'transactions', (SELECT COUNT(*) FROM vsc_app.transactions),
         'operations', (SELECT COUNT(*) FROM vsc_app.l1_operations),
         'contracts', (SELECT COUNT(*) FROM vsc_app.contracts),
         'witnesses', (SELECT COUNT(*) FROM vsc_app.witnesses),
@@ -159,6 +159,7 @@ BEGIN
             'block_hash', bk.block_header_hash,
             'block_body_hash', bk.block_hash,
             'proposer', a.name,
+            'txs', (SELECT COUNT(*) FROM vsc_app.l2_txs t WHERE t.block_num = bk.id)+(SELECT COUNT(*) FROM vsc_app.anchor_refs ar WHERE ar.block_num = bk.id),
             'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(l1_op.block_num, l1_op.trx_in_block)),
             'l1_block', l1_op.block_num
         ))

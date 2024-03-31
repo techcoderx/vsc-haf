@@ -212,10 +212,11 @@ DECLARE
     op_position ALIAS FOR op_pos;
     _bn INTEGER;
     _tb SMALLINT;
+    _ts TIMESTAMP;
     _auth_active jsonb;
     _auth_posting jsonb;
 BEGIN
-    SELECT o.id, ht.block_num, ht.trx_in_block INTO l1_op_id, _bn, _tb
+    SELECT o.id, ht.block_num, ht.trx_in_block, timestamp INTO l1_op_id, _bn, _tb, _ts
         FROM hive.vsc_app_transactions_view ht
         JOIN vsc_app.l1_operations o ON
             o.block_num = ht.block_num AND o.trx_in_block = ht.trx_in_block
@@ -235,6 +236,7 @@ BEGIN
             'output', (SELECT id FROM vsc_app.l2_txs t2 WHERE details = d.id AND t2.tx_type = 2 LIMIT 1),
             'block_num', _bn,
             'idx_in_block', _tb,
+            'ts', _ts,
             'tx_type', 'call_contract',
             'signers', jsonb_build_object(
                 'active', _auth_active,
@@ -268,6 +270,7 @@ BEGIN
         'id', t.id,
         'block_num', t.block_num,
         'idx_in_block', t.idx_in_block,
+        'ts', bo.ts,
         'tx_type', (SELECT vsc_app.l2_tx_type_by_id(t.tx_type::SMALLINT)),
         'nonce', t.nonce,
         'signers', (
@@ -287,6 +290,10 @@ BEGIN
     FROM vsc_app.l2_txs t
     JOIN vsc_app.transactions d ON
         t.details = d.id
+    JOIN vsc_app.blocks b ON
+        b.id = t.block_num
+    JOIN vsc_app.l1_operations bo ON
+        bo.id = b.proposed_in_op
     WHERE t.id = trx_id;
 
     IF _tx_type = 1 THEN
@@ -1032,9 +1039,14 @@ BEGIN
             'id', r.id,
             'cid', r.cid,
             'block_num', r.block_num,
+            'ts', bo.ts,
             'tx_root', encode(r.tx_root, 'hex')
         ))
         FROM vsc_app.anchor_refs r
+        JOIN vsc_app.blocks b ON
+            b.id = r.block_num
+        JOIN vsc_app.l1_operations bo ON
+            bo.id = b.proposed_in_op
         WHERE r.id <= COALESCE(last_ref, 2147483647)
         LIMIT count
     );
@@ -1052,10 +1064,15 @@ BEGIN
             'id', r.id,
             'cid', r.cid,
             'block_num', r.block_num,
+            'ts', bo.ts,
             'tx_root', encode(r.tx_root, 'hex'),
             'refs', (SELECT jsonb_agg(encode(tx_id, 'hex')) FROM vsc_app.anchor_ref_txs WHERE ref_id = r.id)
         )
         FROM vsc_app.anchor_refs r
+        JOIN vsc_app.blocks b ON
+            b.id = r.block_num
+        JOIN vsc_app.l1_operations bo ON
+            bo.id = b.proposed_in_op
         WHERE r.id = aref_id),
         jsonb_build_object('error', 'anchor ref not found')
     ));
@@ -1073,10 +1090,15 @@ BEGIN
             'id', r.id,
             'cid', r.cid,
             'block_num', r.block_num,
+            'ts', bo.ts,
             'tx_root', encode(r.tx_root, 'hex'),
             'refs', (SELECT jsonb_agg(encode(tx_id, 'hex')) FROM vsc_app.anchor_ref_txs WHERE ref_id = r.id)
         )
         FROM vsc_app.anchor_refs r
+        JOIN vsc_app.blocks b ON
+            b.id = r.block_num
+        JOIN vsc_app.l1_operations bo ON
+            bo.id = b.proposed_in_op
         WHERE r.cid = aref_cid),
         jsonb_build_object('error', 'anchor ref not found')
     ));

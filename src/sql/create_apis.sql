@@ -405,8 +405,8 @@ BEGIN
     
     RETURN jsonb_build_object(
         'name', username,
-        'tx_count', _count,
-        'last_activity', _last_op_ts
+        'tx_count', COALESCE(_count, 0),
+        'last_activity', COALESCE(_last_op_ts, '1970-01-01T00:00:00')
     );
 END
 $function$

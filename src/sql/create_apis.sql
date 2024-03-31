@@ -29,6 +29,7 @@ BEGIN
         'operations', (SELECT COUNT(*) FROM vsc_app.l1_operations),
         'contracts', (SELECT COUNT(*) FROM vsc_app.contracts),
         'witnesses', (SELECT COUNT(*) FROM vsc_app.witnesses),
+        'bridge_txs', (SELECT COUNT(*) FROM vsc_app.deposits_to_hive)+(SELECT COUNT(*) FROM vsc_app.deposits_to_did)+(SELECT COUNT(*) FROM vsc_app.withdrawals),
         'anchor_refs', (SELECT COUNT(*) FROM vsc_app.anchor_refs),
         'txrefs', (SELECT COUNT(*) FROM vsc_app.multisig_txrefs)
     );

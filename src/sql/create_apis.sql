@@ -825,137 +825,102 @@ $function$
 LANGUAGE plpgsql STABLE;
 
 -- Bridge operations
-DROP TYPE IF EXISTS vsc_api.deposit_type CASCADE;
-CREATE TYPE vsc_api.deposit_type AS (
-    id INTEGER,
-    block_num INTEGER,
-    trx_in_block SMALLINT,
-    ts TIMESTAMP,
-    amount INTEGER,
-    asset SMALLINT,
-    name VARCHAR
-);
-CREATE OR REPLACE FUNCTION vsc_app.format_deposit_type(bridge_txs vsc_api.deposit_type[])
+CREATE OR REPLACE FUNCTION vsc_api.list_latest_deposits_hive(last_id INTEGER = NULL, count INTEGER = 100)
 RETURNS jsonb
-AS
-$function$
-DECLARE
-    bridge_tx vsc_api.deposit_type;
-    results_arr jsonb[] DEFAULT '{}';
-BEGIN
-    FOREACH bridge_tx IN ARRAY bridge_txs
-    LOOP
-        SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
-            'id', bridge_tx.id,
-            'ts', bridge_tx.ts,
-            'in_op', (SELECT vsc_app.get_tx_hash_by_op(bridge_tx.block_num, bridge_tx.trx_in_block)),
-            'l1_block', bridge_tx.block_num,
-            'username', bridge_tx.name,
-            'amount', ROUND(bridge_tx.amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(bridge_tx.asset))
-        )) INTO results_arr;
-    END LOOP;
-
-    RETURN array_to_json(results_arr)::jsonb;
-END
-$function$
-LANGUAGE plpgsql IMMUTABLE;
-
-CREATE OR REPLACE FUNCTION vsc_api.list_latest_deposits_hive(count INTEGER = 100)
-RETURNS jsonb
-AS
-$function$
-DECLARE
-    results vsc_api.deposit_type[];
+AS $function$
 BEGIN
     IF count <= 0 OR count > 100 THEN
         RETURN jsonb_build_object(
             'error', 'count must be between 1 and 100'
         );
     END IF;
-    SELECT ARRAY(
-        SELECT ROW(c.id, o.block_num, o.trx_in_block, o.ts, c.amount, c.asset, a.name)
-        FROM vsc_app.deposits_to_hive c
-        JOIN vsc_app.l1_operations o ON
-            o.id=c.in_op
-        JOIN hive.vsc_app_accounts a ON
-            a.id=c.dest_acc
-        ORDER BY c.id DESC
-        LIMIT count
-    ) INTO results;
-
-    RETURN (SELECT vsc_app.format_deposit_type(results));
-END
-$function$
+    RETURN (
+        WITH deposits AS (
+            SELECT c.id, o.block_num, o.trx_in_block, o.ts, c.amount, c.asset, a.name
+            FROM vsc_app.deposits_to_hive c
+            JOIN vsc_app.l1_operations o ON
+                o.id=c.in_op
+            JOIN hive.vsc_app_accounts a ON
+                a.id=c.dest_acc
+            WHERE c.id <= COALESCE(last_id, 2147483647)
+            ORDER BY c.id DESC
+            LIMIT count
+        )
+        SELECT jsonb_agg(jsonb_build_object(
+            'id', id,
+            'ts', ts,
+            'in_op', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
+            'l1_block', block_num,
+            'username', name,
+            'amount', ROUND(amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(asset))
+        )) FROM deposits
+    );
+END $function$
 LANGUAGE plpgsql STABLE;
 
 CREATE OR REPLACE FUNCTION vsc_api.list_latest_deposits_did(count INTEGER = 100)
 RETURNS jsonb
-AS
-$function$
-DECLARE
-    result vsc_api.deposit_type;
-    results vsc_api.deposit_type[];
-    results_arr jsonb[] DEFAULT '{}';
+AS $function$
 BEGIN
     IF count <= 0 OR count > 100 THEN
         RETURN jsonb_build_object(
             'error', 'count must be between 1 and 100'
         );
     END IF;
-    SELECT ARRAY(
-        SELECT ROW(c.id, o.block_num, o.trx_in_block, o.ts, c.amount, c.asset, a.did)
-        FROM vsc_app.deposits_to_did c
-        JOIN vsc_app.l1_operations o ON
-            o.id=c.in_op
-        JOIN vsc_app.dids a ON
-            a.id=c.dest_did
-        ORDER BY c.id DESC
-        LIMIT count
-    ) INTO results;
-
-    FOREACH result IN ARRAY results
-    LOOP
-        SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
-            'id', result.id,
-            'ts', result.ts,
-            'in_op', (SELECT vsc_app.get_tx_hash_by_op(result.block_num, result.trx_in_block)),
-            'l1_block', result.block_num,
-            'did_key', result.did,
-            'amount', ROUND(result.amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(result.asset))
-        )) INTO results_arr;
-    END LOOP;
-
-    RETURN array_to_json(results_arr)::jsonb;
-END
-$function$
+    RETURN (
+        WITH deposits AS (
+            SELECT c.id, o.block_num, o.trx_in_block, o.ts, c.amount, c.asset, a.did
+            FROM vsc_app.deposits_to_did c
+            JOIN vsc_app.l1_operations o ON
+                o.id=c.in_op
+            JOIN vsc_app.dids a ON
+                a.id=c.dest_did
+            ORDER BY c.id DESC
+            LIMIT count
+        )
+        SELECT jsonb_agg(jsonb_build_object(
+            'id', id,
+            'ts', ts,
+            'in_op', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
+            'l1_block', block_num,
+            'did_key', did,
+            'amount', ROUND(amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(asset))
+        )) FROM deposits
+    );
+END $function$
 LANGUAGE plpgsql STABLE;
 
-CREATE OR REPLACE FUNCTION vsc_api.list_latest_withdrawals(count INTEGER = 100)
+CREATE OR REPLACE FUNCTION vsc_api.list_latest_withdrawals(last_id INTEGER = NULL, count INTEGER = 100)
 RETURNS jsonb
-AS
-$function$
-DECLARE
-    results vsc_api.deposit_type[];
+AS $function$
 BEGIN
     IF count <= 0 OR count > 100 THEN
         RETURN jsonb_build_object(
             'error', 'count must be between 1 and 100'
         );
     END IF;
-    SELECT ARRAY(
-        SELECT ROW(c.id, o.block_num, o.trx_in_block, o.ts, c.amount, c.asset, a.name)
-        FROM vsc_app.withdrawals c
-        JOIN vsc_app.l1_operations o ON
-            o.id=c.in_op
-        JOIN hive.vsc_app_accounts a ON
-            a.id=c.dest_acc
-        ORDER BY c.id DESC
-        LIMIT count
-    ) INTO results;
-
-    RETURN (SELECT vsc_app.format_deposit_type(results));
-END
-$function$
+    RETURN (
+        WITH withdrawals AS (
+            SELECT c.id, o.block_num, o.trx_in_block, o.ts, c.amount, c.asset, a.name
+            FROM vsc_app.withdrawals c
+            JOIN vsc_app.l1_operations o ON
+                o.id=c.in_op
+            JOIN hive.vsc_app_accounts a ON
+                a.id=c.dest_acc
+            WHERE c.id <= COALESCE(last_id, 2147483647)
+            ORDER BY c.id DESC
+            LIMIT count
+        )
+        SELECT jsonb_agg(jsonb_build_object(
+            'id', id,
+            'ts', ts,
+            'in_op', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
+            'l1_block', block_num,
+            'username', name,
+            'amount', ROUND(amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(asset))
+        )) FROM withdrawals
+    );
+END $function$
 LANGUAGE plpgsql STABLE;
 
 -- Elections

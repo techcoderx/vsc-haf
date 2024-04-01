@@ -299,6 +299,10 @@ BEGIN
         bo.id = b.proposed_in_op
     WHERE t.id = trx_id;
 
+    IF _result IS NULL THEN
+        RETURN jsonb_build_object('error', 'transaction not found');
+    END IF;
+
     IF _tx_type = 1 THEN
         _result := _result || jsonb_build_object('input', trx_id, 'input_src', _input_src, 'output', (
             SELECT id FROM vsc_app.l2_txs WHERE details = _tx_id AND tx_type = 2 LIMIT 1

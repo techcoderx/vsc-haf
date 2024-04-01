@@ -99,6 +99,10 @@ export const HAF_FKS: FKS_TYPE = {
 
 // Indexes
 export const INDEXES: INDEXES_TYPE = {
+    anchor_refs_cid_idx: {
+        table_name: SCHEMA_NAME+'.anchor_refs',
+        columns: [{ col_name: 'cid', order: Ordering.ASC }]
+    },
     block_hash_idx: {
         table_name: SCHEMA_NAME+'.blocks',
         columns: [{ col_name: 'block_hash', order: Ordering.ASC }]
@@ -106,6 +110,10 @@ export const INDEXES: INDEXES_TYPE = {
     block_header_hash_idx: {
         table_name: SCHEMA_NAME+'.blocks',
         columns: [{ col_name: 'block_header_hash', order: Ordering.ASC }]
+    },
+    election_results_data_cid_idx: {
+        table_name: SCHEMA_NAME+'.election_results',
+        columns: [{ col_name: 'data_cid', order: Ordering.ASC }]
     }
 }
 

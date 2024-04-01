@@ -162,7 +162,8 @@ BEGIN
             'proposer', a.name,
             'txs', (SELECT COUNT(*) FROM vsc_app.l2_txs t WHERE t.block_num = bk.id)+(SELECT COUNT(*) FROM vsc_app.anchor_refs ar WHERE ar.block_num = bk.id),
             'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(l1_op.block_num, l1_op.trx_in_block)),
-            'l1_block', l1_op.block_num
+            'l1_block', l1_op.block_num,
+            'bv', encode(bk.bv, 'hex')
         ))
         FROM vsc_app.blocks bk
         JOIN vsc_app.l1_operations l1_op ON
@@ -1074,5 +1075,73 @@ BEGIN
         WHERE r.cid = aref_cid),
         jsonb_build_object('error', 'anchor ref not found')
     ));
+END $function$
+LANGUAGE plpgsql STABLE;
+
+-- Search by CID
+CREATE OR REPLACE FUNCTION vsc_api.search_by_cid(cid VARCHAR)
+RETURNS jsonb
+AS $function$
+DECLARE
+    _cid ALIAS FOR cid;
+    _result_int INTEGER;
+    _result_varchar VARCHAR;
+BEGIN
+    -- Block search
+    SELECT id INTO _result_int FROM vsc_app.blocks WHERE block_hash = _cid OR block_header_hash = _cid;
+    IF _result_int IS NOT NULL THEN
+        RETURN jsonb_build_object(
+            'type', 'block',
+            'result', _result_int
+        );
+    END IF;
+
+    -- Transaction search
+    SELECT tx_type::INTEGER INTO _result_int FROM vsc_app.l2_txs WHERE id = _cid;
+    IF _result_int IS NOT NULL THEN
+        IF _result_int = 1 THEN
+            RETURN jsonb_build_object(
+                'type', 'call_contract',
+                'result', _cid
+            );
+        ELSIF _result_int = 2 THEN
+            RETURN jsonb_build_object(
+                'type', 'contract_output',
+                'result', _cid
+            );
+        END IF;
+    END IF;
+
+    -- Contract search
+    SELECT contract_id INTO _result_varchar FROM vsc_app.contracts WHERE contract_id = _cid;
+    IF _result_varchar IS NOT NULL THEN
+        RETURN jsonb_build_object(
+            'type', 'contract',
+            'result', _cid
+        );
+    END IF;
+
+    -- Election search
+    SELECT epoch INTO _result_int FROM vsc_app.election_results WHERE data_cid = _cid;
+    IF _result_int IS NOT NULL THEN
+        RETURN jsonb_build_object(
+            'type', 'election_result',
+            'result', _result_int
+        );
+    END IF;
+
+    -- Anchor ref search
+    SELECT a.id INTO _result_int FROM vsc_app.anchor_refs a WHERE a.cid = _cid;
+    IF _result_int IS NOT NULL THEN
+        RETURN jsonb_build_object(
+            'type', 'anchor_ref',
+            'result', _result_int
+        );
+    END IF;
+
+    RETURN jsonb_build_object(
+        'type', NULL,
+        'result', NULL
+    );
 END $function$
 LANGUAGE plpgsql STABLE;

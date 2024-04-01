@@ -8,6 +8,7 @@ GRANT SELECT ON ALL TABLES IN SCHEMA vsc_api TO vsc_user;
 GRANT SELECT ON ALL TABLES IN SCHEMA vsc_app TO vsc_user;
 GRANT SELECT ON TABLE hive.vsc_app_accounts TO vsc_user;
 GRANT SELECT ON hive.vsc_app_transactions_view TO vsc_user;
+GRANT SELECT ON hive.vsc_app_operations_view TO vsc_user;
 
 -- GET /
 CREATE OR REPLACE FUNCTION vsc_api.home()
@@ -218,7 +219,7 @@ DECLARE
     _auth_active jsonb;
     _auth_posting jsonb;
 BEGIN
-    SELECT o.id, ht.block_num, ht.trx_in_block, timestamp INTO l1_op_id, _bn, _tb, _ts
+    SELECT o.id, ht.block_num, ht.trx_in_block, o.ts INTO l1_op_id, _bn, _tb, _ts
         FROM hive.vsc_app_transactions_view ht
         JOIN vsc_app.l1_operations o ON
             o.block_num = ht.block_num AND o.trx_in_block = ht.trx_in_block
@@ -231,7 +232,7 @@ BEGIN
         FROM hive.vsc_app_operations_view ho
         WHERE ho.block_num = _bn AND ho.trx_in_block = _tb AND ho.op_pos = op_position;
     RETURN (
-        SELECT jsonb_agg(jsonb_build_object(
+        SELECT jsonb_build_object(
             'id', trx_id || '-' || op_pos::VARCHAR,
             'input', trx_id || '-' || op_pos::VARCHAR,
             'input_src', 'hive',
@@ -249,7 +250,7 @@ BEGIN
             'payload', (d.payload->0),
             'io_gas', d.io_gas,
             'contract_output', d.contract_output
-        ))
+        )
         FROM vsc_app.l1_txs t
         JOIN vsc_app.transactions d ON
             t.details = d.id

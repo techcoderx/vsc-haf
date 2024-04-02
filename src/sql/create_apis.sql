@@ -1030,6 +1030,56 @@ BEGIN
 END $function$
 LANGUAGE plpgsql STABLE;
 
+CREATE OR REPLACE FUNCTION vsc_api.get_l2_blocks_in_epoch(epoch_num INTEGER, start_id INTEGER = 0, count INTEGER = 200)
+RETURNS jsonb
+AS $function$
+DECLARE
+    _start_op BIGINT;
+    _end_op BIGINT;
+BEGIN
+    IF epoch_num < 0 THEN
+        RETURN jsonb_build_object('error', 'epoch_num must be greater or equals to 0');
+    ELSIF start_id < 0 THEN
+        RETURN jsonb_build_object('error', 'start_id must be greater or equals to 0');
+    ELSIF count < 1 OR count > 200 THEN
+        RETURN jsonb_build_object('error', 'count must be between 1 and 200');
+    END IF;
+
+    SELECT proposed_in_op INTO _start_op FROM vsc_app.election_results WHERE epoch = epoch_num;
+    IF _start_op IS NULL THEN
+        RETURN jsonb_build_object('error', 'epoch does not exist');
+    END IF;
+
+    SELECT proposed_in_op INTO _end_op FROM vsc_app.election_results WHERE epoch = epoch_num+1;
+    IF _end_op IS NULL THEN
+        SELECT id INTO _end_op FROM vsc_app.l1_operations ORDER BY id DESC LIMIT 1;
+        _end_op := _end_op + 1;
+    END IF;
+
+    RETURN COALESCE((
+        WITH blocks AS (
+            SELECT bk.id, l1_op.ts, bk.block_header_hash, a.name, bk.bv
+            FROM vsc_app.blocks bk
+            JOIN vsc_app.l1_operations l1_op ON
+                bk.proposed_in_op = l1_op.id
+            JOIN hive.vsc_app_accounts a ON
+                bk.proposer = a.id
+            WHERE bk.proposed_in_op >= _start_op AND bk.proposed_in_op < _end_op AND bk.id >= start_id
+            ORDER BY bk.id ASC
+            LIMIT count
+        )
+        SELECT jsonb_agg(jsonb_build_object(
+            'id', b.id,
+            'ts', b.ts,
+            'block_hash', b.block_header_hash,
+            'proposer', b.name,
+            'txs', (SELECT COUNT(*) FROM vsc_app.l2_txs t WHERE t.block_num = b.id)+(SELECT COUNT(*) FROM vsc_app.anchor_refs ar WHERE ar.block_num = b.id),
+            'bv', encode(b.bv, 'hex')
+        )) FROM blocks b
+    ), '[]'::jsonb);
+END $function$
+LANGUAGE plpgsql STABLE;
+
 -- Anchor refs
 CREATE OR REPLACE FUNCTION vsc_api.list_anchor_refs(last_ref INTEGER = NULL, count INTEGER = 100)
 RETURNS jsonb

@@ -111,6 +111,10 @@ export const INDEXES: INDEXES_TYPE = {
         table_name: SCHEMA_NAME+'.blocks',
         columns: [{ col_name: 'block_header_hash', order: Ordering.ASC }]
     },
+    block_proposed_in_op_idx: {
+        table_name: SCHEMA_NAME+'.blocks',
+        columns: [{ col_name: 'proposed_in_op', order: Ordering.ASC }]
+    },
     election_results_data_cid_idx: {
         table_name: SCHEMA_NAME+'.election_results',
         columns: [{ col_name: 'data_cid', order: Ordering.ASC }]

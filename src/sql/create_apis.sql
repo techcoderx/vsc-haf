@@ -936,9 +936,14 @@ CREATE OR REPLACE FUNCTION vsc_api.list_epochs(last_epoch INTEGER = NULL, count 
 RETURNS jsonb
 AS $function$
 BEGIN
+    IF count <= 0 OR count > 100 THEN
+        RETURN jsonb_build_object(
+            'error', 'count must be between 1 and 100'
+        );
+    END IF;
     RETURN (
         WITH epochs AS (
-            SELECT e.epoch, o.block_num, o.ts, a.name, e.data_cid, e.sig, e.bv
+            SELECT e.epoch, o.block_num, o.trx_in_block, o.ts, a.name, e.data_cid, e.sig, e.bv
             FROM vsc_app.election_results e
             JOIN vsc_app.l1_operations o ON
                 o.id = e.proposed_in_op
@@ -951,6 +956,7 @@ BEGIN
         SELECT jsonb_agg(jsonb_build_object(
             'epoch', epoch,
             'l1_block_num', block_num,
+            'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
             'ts', ts,
             'proposer', name,
             'data_cid', data_cid,

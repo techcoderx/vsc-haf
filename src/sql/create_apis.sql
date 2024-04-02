@@ -1003,6 +1003,33 @@ BEGIN
 END $function$
 LANGUAGE plpgsql STABLE;
 
+CREATE OR REPLACE FUNCTION vsc_api.get_epoch(epoch_num INTEGER)
+RETURNS jsonb
+AS $function$
+BEGIN
+    RETURN (COALESCE((
+        SELECT jsonb_build_object(
+            'epoch', e.epoch,
+            'l1_block_num', o.block_num,
+            'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(o.block_num, o.trx_in_block)),
+            'ts', o.ts,
+            'proposer', a.name,
+            'data_cid', e.data_cid,
+            'election', (SELECT vsc_api.get_election_at_epoch(epoch_num, FALSE)),
+            'members_at_start', (SELECT vsc_api.get_members_at_block(o.block_num - (o.block_num % 7200), FALSE)),
+            'sig', encode(e.sig, 'hex'),
+            'bv', encode(e.bv, 'hex')
+        )
+        FROM vsc_app.election_results e
+        JOIN vsc_app.l1_operations o ON
+            o.id = e.proposed_in_op
+        JOIN hive.vsc_app_accounts a ON
+            a.id = e.proposer
+        WHERE e.epoch = epoch_num
+    ), jsonb_build_object('error', 'epoch not found')));
+END $function$
+LANGUAGE plpgsql STABLE;
+
 -- Anchor refs
 CREATE OR REPLACE FUNCTION vsc_api.list_anchor_refs(last_ref INTEGER = NULL, count INTEGER = 100)
 RETURNS jsonb

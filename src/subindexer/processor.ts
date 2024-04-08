@@ -31,7 +31,9 @@ const processor = {
         let details: ParsedOp<L2PayloadTypes> = {
             valid: true,
             user: parsed.value.required_auths.length > 0 ? parsed.value.required_auths[0] : parsed.value.required_posting_auths[0],
-            block_num: op.block_num
+            block_num: op.block_num,
+            trx_in_block: op.trx_in_block,
+            op_pos: op.op_pos
         }
         try {
             let payload: CustomJsonPayloads = JSON.parse(parsed.value.json)

@@ -15,7 +15,7 @@ export interface OpBody {
     value: any
 }
 
-export type PayloadTypes = NewContractPayload | NodeAnnouncePayload | ElectionPayload | MultisigTxRefPayload | DepositPayload
+export type PayloadTypes = NodeAnnouncePayload | ElectionPayload | MultisigTxRefPayload | DepositPayload
 
 export interface ParsedOp<T> {
     valid: boolean
@@ -45,13 +45,6 @@ export interface UnsignedElection {
 export interface ElectionPayload extends UnsignedElection {
     signature: BLSAggSign<Buffer>
     members?: ElectionMember<number>[]
-}
-
-export type NewContractPayload = {
-    contract_id: string
-    name?: string
-    description?: string
-    code: string
 }
 
 export type NodeAnnouncePayload = {
@@ -86,9 +79,9 @@ export interface VscOp extends Op {
     op_type: number
 }
 
-export type CustomJsonPayloads = BlockOp | ElectionOp | BridgeRefPayload | L1CallTxOp
+export type CustomJsonPayloads = BlockOp | NewContractOp | ElectionOp | BridgeRefPayload | L1CallTxOp
 export type BridgeRefResult = bigint[]
-export type L2PayloadTypes = BridgeRefResult | ElectionPayload | BlockPayload | L1TxPayload
+export type L2PayloadTypes = BridgeRefResult | ElectionPayload | BlockPayload | L1TxPayload | NewContractPayload
 export type L2Tx = L2ContractCallPayload | L2ContractOutPayload | AnchorRefPayload
 export interface BlockOp {
     net_id: string
@@ -158,6 +151,28 @@ export interface ShuffledSchedule extends WitnessConsensusDid {
     bn: number
     bn_works: boolean
     in_past: boolean
+}
+
+export interface NewContract {
+    name?: string
+    description?: string
+    code: string
+}
+
+export interface NewContractOp extends NewContract {
+    net_id: string
+    storage_proof?: {
+        hash: string
+        signature: BLSAggSign<string>
+    }
+}
+
+export interface NewContractPayload extends NewContract {
+    contract_id: string
+    storage_proof?: {
+        hash: string
+        signature: BLSAggSign<Buffer>
+    }
 }
 
 export interface L1CallTxOp {

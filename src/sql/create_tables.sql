@@ -78,7 +78,10 @@ CREATE TABLE IF NOT EXISTS vsc_app.contracts(
     created_in_op BIGINT NOT NULL,
     name VARCHAR,
     description VARCHAR,
-    code VARCHAR(59) NOT NULL
+    code VARCHAR(59) NOT NULL,
+    proof_hash VARCHAR(59),
+    proof_sig BYTEA,
+    proof_bv BYTEA
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.witnesses(

@@ -113,17 +113,21 @@ export class BlsCircuit {
 
     const bs = BitSet.fromHexString(bv)
     const pubKeys = new Map();
+    const pubKeyArray: string[] = []
     for(let keyIdx in keyset) {
       if(bs.get(Number(keyIdx)) === 1) {
         pubKeys.set(keyset[keyIdx], true)
+        pubKeyArray.push(keyset[keyIdx])
       }
     }
 
     let circuit = new BlsCircuit(msg);
     circuit.aggPubKeys = pubKeys
+    circuit.setAgg(pubKeyArray)
     circuit.sig = bls.Signature.fromBytes(signature)
 
     return {
+      pubKeys: pubKeyArray,
       circuit,
       bs
     }

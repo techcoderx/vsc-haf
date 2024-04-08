@@ -29,11 +29,6 @@ const HAF_FKS: FKS_TYPE = {
         fk: 'id',
         ref: `hive.${APP_CONTEXT}_accounts(id)`
     },
-    contract_created_in_op_fk: {
-        table: SCHEMA_NAME+'.contracts',
-        fk: 'created_in_op',
-        ref: SCHEMA_NAME+'.l1_operations(id)'
-    },
     witness_account_fk: {
         table: SCHEMA_NAME+'.witnesses',
         fk: 'id',
@@ -138,10 +133,6 @@ const INDEXES: INDEXES_TYPE = {
     l1_operation_user_txtype_idx: {
         table_name: SCHEMA_NAME+'.l1_operations',
         columns: [{ col_name: 'user_id', order: Ordering.ASC }, { col_name: 'op_type', order: Ordering.ASC }]
-    },
-    contract_created_in_op_idx: {
-        table_name: SCHEMA_NAME+'.contracts',
-        columns: [{ col_name: 'created_in_op', order: Ordering.DESC }]
     },
     witness_did_idx: {
         table_name: SCHEMA_NAME+'.witnesses',

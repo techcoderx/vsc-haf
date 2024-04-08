@@ -95,7 +95,7 @@ BEGIN
             FROM vsc_app.l1_operations vo
             JOIN hive.operations_view ho ON
                 vo.op_id = ho.id
-            WHERE vo.id >= _first_op AND vo.id <= _last_op AND (vo.op_type = 3 OR vo.op_type = 5 OR vo.op_type = 6 OR vo.op_type = 8);
+            WHERE vo.id >= _first_op AND vo.id <= _last_op AND (vo.op_type = 3 OR vo.op_type = 4 OR vo.op_type = 5 OR vo.op_type = 6 OR vo.op_type = 8);
 END
 $function$
 LANGUAGE plpgsql STABLE;
@@ -534,6 +534,25 @@ BEGIN
         ORDER BY id DESC
         LIMIT 1
     ) AND status != _status_id_completed;
+END
+$function$
+LANGUAGE plpgsql VOLATILE;
+
+CREATE OR REPLACE FUNCTION vsc_app.insert_contract(
+    _created_in_op BIGINT,
+    _contract_id VARCHAR,
+    _contract_name VARCHAR,
+    _contract_description VARCHAR,
+    _code_hash VARCHAR,
+    _proof_hash VARCHAR = NULL,
+    _proof_sig BYTEA = NULL,
+    _proof_bv BYTEA = NULL)
+RETURNS void
+AS
+$function$
+BEGIN
+    INSERT INTO vsc_app.contracts(contract_id, created_in_op, name, description, code, proof_hash, proof_sig, proof_bv)
+        VALUES(_contract_id, _created_in_op, _contract_name, _contract_description, _code_hash, _proof_hash, _proof_sig, _proof_bv);
 END
 $function$
 LANGUAGE plpgsql VOLATILE;

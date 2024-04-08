@@ -786,7 +786,12 @@ BEGIN
         'created_at', o.ts,
         'name', c.name,
         'description', c.description,
-        'code', c.code
+        'code', c.code,
+        'storage_proof', jsonb_build_object(
+            'hash', c.proof_hash,
+            'sig', encode(c.proof_sig, 'hex'),
+            'bv', encode(c.proof_bv, 'hex')
+        )
     )
     FROM vsc_app.contracts c
     JOIN vsc_app.l1_operations o ON

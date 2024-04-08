@@ -1,5 +1,6 @@
 ALTER TABLE vsc_app.blocks DROP CONSTRAINT IF EXISTS block_proposed_in_op_fk;
 ALTER TABLE vsc_app.blocks DROP CONSTRAINT IF EXISTS block_proposer_fk;
+ALTER TABLE vsc_app.contracts DROP CONSTRAINT IF EXISTS contract_created_in_op_fk;
 ALTER TABLE vsc_app.election_results DROP CONSTRAINT IF EXISTS election_proposed_in_op_fk;
 ALTER TABLE vsc_app.election_results DROP CONSTRAINT IF EXISTS election_proposer_fk;
 ALTER TABLE vsc_app.election_result_members DROP CONSTRAINT IF EXISTS elected_members_epoch_fk;
@@ -20,6 +21,7 @@ TRUNCATE TABLE vsc_app.subindexer_state;
 TRUNCATE TABLE vsc_app.election_result_members;
 TRUNCATE TABLE vsc_app.election_results;
 TRUNCATE TABLE vsc_app.blocks;
+TRUNCATE TABLE vsc_app.contracts;
 TRUNCATE TABLE vsc_app.l1_txs;
 TRUNCATE TABLE vsc_app.l1_tx_multiauth;
 TRUNCATE TABLE vsc_app.l2_txs;

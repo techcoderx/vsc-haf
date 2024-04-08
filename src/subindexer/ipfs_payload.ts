@@ -73,3 +73,8 @@ export interface AnchorRefPayload extends AnchorRefHead {
     index: number
     txs: string[]
 }
+
+export interface ContractStorageProof {
+    cid: string
+    type: 'data-availability'
+}

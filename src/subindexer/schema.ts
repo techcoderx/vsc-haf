@@ -20,6 +20,11 @@ export const HAF_FKS: FKS_TYPE = {
         fk: 'proposer',
         ref: `hive.${APP_CONTEXT}_accounts(id)`
     },
+    contract_created_in_op_fk: {
+        table: SCHEMA_NAME+'.contracts',
+        fk: 'created_in_op',
+        ref: SCHEMA_NAME+'.l1_operations(id)'
+    },
     election_proposed_in_op_fk: {
         table: SCHEMA_NAME+'.election_results',
         fk: 'proposed_in_op',
@@ -114,6 +119,10 @@ export const INDEXES: INDEXES_TYPE = {
     block_proposed_in_op_idx: {
         table_name: SCHEMA_NAME+'.blocks',
         columns: [{ col_name: 'proposed_in_op', order: Ordering.ASC }]
+    },
+    contract_created_in_op_idx: {
+        table_name: SCHEMA_NAME+'.contracts',
+        columns: [{ col_name: 'created_in_op', order: Ordering.DESC }]
     },
     election_results_data_cid_idx: {
         table_name: SCHEMA_NAME+'.election_results',

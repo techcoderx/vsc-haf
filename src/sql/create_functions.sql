@@ -231,22 +231,6 @@ END
 $function$
 LANGUAGE plpgsql VOLATILE;
 
-CREATE OR REPLACE FUNCTION vsc_app.insert_contract(
-    _created_in_op BIGINT,
-    _contract_id VARCHAR,
-    _contract_name VARCHAR,
-    _contract_description VARCHAR,
-    _code_hash VARCHAR)
-RETURNS void
-AS
-$function$
-BEGIN
-    INSERT INTO vsc_app.contracts(contract_id, created_in_op, name, description, code)
-        VALUES(_contract_id, _created_in_op, _contract_name, _contract_description, _code_hash);
-END
-$function$
-LANGUAGE plpgsql VOLATILE;
-
 CREATE OR REPLACE FUNCTION vsc_app.insert_multisig_txref(
     _in_op BIGINT,
     _txref VARCHAR

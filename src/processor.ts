@@ -1,13 +1,13 @@
 import { CID } from 'multiformats/cid'
 import { bech32 } from "bech32"
 import randomDID from './did.js'
-import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS, APP_CONTEXT, REQUIRES_ACTIVE, START_BLOCK, ANY_AUTH } from './constants.js'
+import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS, APP_CONTEXT, REQUIRES_ACTIVE, START_BLOCK, ANY_AUTH, CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT } from './constants.js'
 import db from './db.js'
 import logger from './logger.js'
 import { DepositPayload, MultisigTxRefPayload, NewContractPayload, NodeAnnouncePayload, Op, OpBody, ParsedOp, PayloadTypes, TxTypes } from './processor_types.js'
 import op_type_map from './operations.js'
 import { isValidL1PubKey } from './utils/crypto.js'
-import { encodePayload, isCID } from './subindexer/ipfs_dag.js'
+import { isCID } from './subindexer/ipfs_dag.js'
 
 const processor = {
     validateAndParse: async (op: Op): Promise<ParsedOp<PayloadTypes>> => {
@@ -83,23 +83,27 @@ const processor = {
                         break
                     case 1:
                         // create contract
-                        if (!isCID(payload.code) ||
-                            CID.parse(payload.code).code !== 0x55)
+                        if (!isCID(payload.code))
                             return { valid: false }
-                        const trx_hash = await db.client.query(`SELECT ${SCHEMA_NAME}.get_tx_hash_by_op($1,$2::SMALLINT);`,[details.block_num,details.trx_in_block])
-                        const contractIdHash = (await encodePayload({
-                            ref_id: trx_hash.rows[0].get_tx_hash_by_op,
-                            index: details.op_pos!.toString()
-                        })).cid
-                        const bech32Addr = bech32.encode('vs4', bech32.toWords(contractIdHash.bytes))
-                        details.payload = {
-                            contract_id: bech32Addr,
-                            code: payload.code
+                        const contractCode = CID.parse(payload.code)
+                        if (contractCode.code !== 0x55 && contractCode.code !== 0x71)
+                            return { valid: false }
+                        if (details.block_num! >= CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT) {
+                            if (typeof payload.storage_proof !== 'object' ||
+                                typeof payload.storage_proof.hash !== 'string' ||
+                                typeof payload.storage_proof.signature !== 'object' ||
+                                typeof payload.storage_proof.signature.sig !== 'string' ||
+                                typeof payload.storage_proof.signature.bv !== 'string' ||
+                                !isCID(payload.storage_proof.hash))
+                                return { valid: false }
+                            const proofCID = CID.parse(payload.storage_proof.hash)
+                            if (proofCID.code !== 0x71)
+                                return { valid: false }
+                            sig = Buffer.from(payload.storage_proof.signature.sig, 'base64url')
+                            bv = Buffer.from(payload.storage_proof.signature.bv, 'base64url')
+                            if (sig.length !== 96)
+                                return { valid: false }
                         }
-                        if (typeof payload.name === 'string')
-                            details.payload.name = payload.name
-                        if (typeof payload.description === 'string')
-                            details.payload.description = payload.description
                         break
                     case 2:
                     case 3:
@@ -296,10 +300,6 @@ const processor = {
                 case op_type_map.map.announce_node:
                     pl = result.payload as NodeAnnouncePayload
                     await db.client.query(`SELECT ${SCHEMA_NAME}.update_witness($1,$2,$3,$4,$5,$6,$7,$8,$9);`,[result.user,pl.did,pl.consensus_did,pl.sk_posting,pl.sk_active,pl.sk_owner,pl.witnessEnabled,new_vsc_op.rows[0].process_operation,pl.git_commit])
-                    break
-                case op_type_map.map.create_contract:
-                    pl = result.payload as NewContractPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_contract($1,$2,$3,$4,$5);`,[new_vsc_op.rows[0].process_operation,pl.contract_id,pl.name,pl.description,pl.code])
                     break
                 case op_type_map.map.multisig_txref:
                     pl = result.payload as MultisigTxRefPayload

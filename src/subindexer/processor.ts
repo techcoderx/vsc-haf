@@ -1,14 +1,15 @@
 import logger from '../logger.js'
 import db from '../db.js'
-import { L2PayloadTypes, ParsedOp, VscOp, BlockOp, OpBody, BridgeRefPayload, CustomJsonPayloads, BridgeRefResult, ElectionOp, ElectionPayload, ElectionMember, ShuffledSchedule, UnsignedBlock, BlockPayload, L1CallTxOp, L1TxPayload } from '../processor_types.js'
+import { L2PayloadTypes, ParsedOp, VscOp, BlockOp, OpBody, BridgeRefPayload, CustomJsonPayloads, BridgeRefResult, ElectionOp, ElectionPayload, ElectionMember, ShuffledSchedule, UnsignedBlock, BlockPayload, L1CallTxOp, L1TxPayload, NewContractPayload, NewContractOp } from '../processor_types.js'
 import { BlockScheduleParams, WitnessConsensusDid } from '../psql_types.js'
 import ipfs from './ipfs.js'
 import { CID } from 'kubo-rpc-client'
-import { createDag, isCID } from './ipfs_dag.js'
+import { bech32 } from 'bech32'
+import { createDag, isCID, encodePayload } from './ipfs_dag.js'
 import { BlsCircuit, initBls } from '../utils/bls-did.js'
 import op_type_map from '../operations.js'
-import { AnchorRefBody, AnchorRefHead, BlockBody, BridgeRef, ContractCallBody, ContractOutBody } from './ipfs_payload.js'
-import { APP_CONTEXT, EPOCH_LENGTH, ROUND_LENGTH, SCHEMA_NAME, SUPERMAJORITY } from '../constants.js'
+import { AnchorRefBody, AnchorRefHead, BlockBody, BridgeRef, ContractCallBody, ContractOutBody, ContractStorageProof } from './ipfs_payload.js'
+import { APP_CONTEXT, CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT, EPOCH_LENGTH, ROUND_LENGTH, SCHEMA_NAME, SUPERMAJORITY } from '../constants.js'
 import { shuffle } from '../utils/shuffle-seed.js'
 
 await initBls()
@@ -72,11 +73,7 @@ const processor = {
                             block: CID.parse(payload.signed_block.block)
                         }
                         delete unsignedBlock.signature
-                        const {circuit, bs} = BlsCircuit.deserializeRaw(unsignedBlock, sig, bv, witnessKeyset)
-                        const pubKeys = []
-                        for(let pub of circuit.aggPubKeys)
-                            pubKeys.push(pub[0])
-                        circuit.setAgg(pubKeys)
+                        const {pubKeys, circuit, bs} = BlsCircuit.deserializeRaw(unsignedBlock, sig, bv, witnessKeyset)
                         const isValid = await circuit.verify((await createDag(unsignedBlock)).bytes)
                         const blockCIDShort = `${payload.signed_block.block.substring(0,12)}...${payload.signed_block.block.slice(-6)}`
                         logger.debug(`Block ${blockCIDShort} by ${witnessSlot.name}: ${bs.toString(2)} ${isValid}`)
@@ -215,6 +212,45 @@ const processor = {
                     } else
                         return { valid: false }
                     break
+                case op_type_map.map.create_contract:
+                    payload = payload as NewContractOp
+                    const trx_hash = await db.client.query(`SELECT ${SCHEMA_NAME}.get_tx_hash_by_op($1,$2::SMALLINT);`,[details.block_num,details.trx_in_block])
+                    const contractIdHash = (await encodePayload({
+                        ref_id: trx_hash.rows[0].get_tx_hash_by_op,
+                        index: details.op_pos!.toString()
+                    })).cid
+                    const bech32Addr = bech32.encode('vs4', bech32.toWords(contractIdHash.bytes))
+                    details.payload = {
+                        contract_id: bech32Addr,
+                        code: payload.code
+                    }
+                    if (typeof payload.name === 'string')
+                        details.payload.name = payload.name
+                    if (typeof payload.description === 'string')
+                        details.payload.description = payload.description
+                    if (op.block_num >= CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT) {
+                        const proofCID = CID.parse(payload.storage_proof!.hash)
+                        const proof: ContractStorageProof = (await ipfs.dag.get(proofCID)).value
+                        if (proof.cid !== payload.code || proof.type !== 'data-availability')
+                            return { valid: false }
+                        sig = Buffer.from(payload.storage_proof!.signature.sig)
+                        bv = Buffer.from(payload.storage_proof!.signature.bv)
+                        const members = await db.client.query<WitnessConsensusDid>(`SELECT * FROM ${SCHEMA_NAME}.get_members_at_block($1);`,[op.block_num])
+                        const keyset = members.rows.map(m => m.consensus_did)
+                        const {circuit, bs} = BlsCircuit.deserializeRaw({ hash: proofCID.bytes }, sig, bv, keyset)
+                        const isValid = await circuit.verify(proofCID.bytes)
+                        logger.debug(`New contract at op ${op.id} storage proof: ${bs.toString(2)} ${isValid}`)
+                        if (!isValid)
+                            return { valid: false }
+                        details.payload.storage_proof = {
+                            hash: details.payload.storage_proof!.hash,
+                            signature: {
+                                sig: sig,
+                                bv: bv
+                            }
+                        }
+                    }
+                    break
                 case op_type_map.map.tx:
                     payload = payload as L1CallTxOp
                     const contractExists = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.contracts WHERE contract_id=$1;`,[payload.tx.contract_id])
@@ -246,11 +282,7 @@ const processor = {
                     }
                     // logger.trace(membersAtSlotStart.rows)
                     const keyset = membersAtSlotStart.rows.map(m => m.consensus_did)
-                    const {circuit, bs} = BlsCircuit.deserializeRaw(d, sig, bv, keyset)
-                    const pubKeys = []
-                    for(let pub of circuit.aggPubKeys)
-                        pubKeys.push(pub[0])
-                    circuit.setAgg(pubKeys)
+                    const {pubKeys, circuit, bs} = BlsCircuit.deserializeRaw(d, sig, bv, keyset)
                     const isValid = await circuit.verify((await createDag(d)).bytes)
                     logger.debug(`Epoch ${d.epoch} election: ${bs.toString(2)} ${isValid}`)
                     if (isValid && (((pubKeys.length / members.rowCount!) > SUPERMAJORITY) || payload.epoch === 0)) {
@@ -329,6 +361,21 @@ const processor = {
                         result.payload.signature.sig,
                         result.payload.signature.bv,
                         JSON.stringify(result.payload.txs)
+                    ])
+                    break
+                case op_type_map.map.create_contract:
+                    result.payload = result.payload as NewContractPayload
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_contract($1,$2,$3,$4,$5,$6,$7,$8);`,[
+                        op.id,
+                        result.payload.contract_id,
+                        result.payload.name,
+                        result.payload.description,
+                        result.payload.code,
+                        ...(result.payload.storage_proof ? [
+                            result.payload.storage_proof.hash,
+                            result.payload.storage_proof.signature.sig,
+                            result.payload.storage_proof.signature.bv
+                        ]: [null, null, null])
                     ])
                     break
                 case op_type_map.map.tx:

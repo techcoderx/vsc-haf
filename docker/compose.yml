@@ -26,6 +26,19 @@ services:
     depends_on:
       haf:
         condition: service_healthy
+  vsc-haf-uninstall-subindexer:
+    image: vsc-haf:${VSC_HAF_VERSION:-${HIVE_API_NODE_VERSION}}
+    profiles:
+      - vsc-haf-uninstall-subindexer
+    environment:
+      POSTGRES_HOST: haf
+    command:
+      - uninstall_subindexer
+    networks:
+      haf-network:
+    depends_on:
+      haf:
+        condition: service_healthy
   vsc-haf-block-processing:
     image: vsc-haf:${VSC_HAF_VERSION:-${HIVE_API_NODE_VERSION}}
     profiles:

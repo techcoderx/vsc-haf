@@ -752,18 +752,21 @@ BEGIN
     END IF;
     RETURN (
         WITH contracts AS (
-            SELECT c.*, o.block_num, o.trx_in_block, o.ts
+            SELECT c.*, o.block_num, o.trx_in_block, o.ts, a.name AS creator
             FROM vsc_app.contracts c
             JOIN vsc_app.l1_operations o ON
                 o.id=c.created_in_op
+            JOIN hive.vsc_app_accounts a ON
+                a.id=o.user_id
             ORDER BY o.block_num DESC
-            LIMIT 10
+            LIMIT count
         )
         SELECT jsonb_agg(jsonb_build_object(
             'contract_id', contract_id,
             'created_in_op', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
             'created_in_l1_block', block_num,
             'created_at', ts,
+            'creator', creator,
             'name', name,
             'description', description,
             'code', code
@@ -784,6 +787,7 @@ BEGIN
         'created_in_op', (SELECT vsc_app.get_tx_hash_by_op(o.block_num, o.trx_in_block)),
         'created_in_l1_block', o.block_num,
         'created_at', o.ts,
+        'creator', a.name,
         'name', c.name,
         'description', c.description,
         'code', c.code,
@@ -796,6 +800,8 @@ BEGIN
     FROM vsc_app.contracts c
     JOIN vsc_app.l1_operations o ON
         o.id=c.created_in_op
+    JOIN hive.vsc_app_accounts a ON
+        a.id=o.user_id
     WHERE c.contract_id = ct_id), jsonb_build_object('error', 'contract not found'));
 END
 $function$

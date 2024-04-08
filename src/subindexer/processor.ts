@@ -235,8 +235,8 @@ const processor = {
                         const proof: ContractStorageProof = (await ipfs.dag.get(proofCID)).value
                         if (proof.cid !== payload.code || proof.type !== 'data-availability')
                             return { valid: false }
-                        sig = Buffer.from(payload.storage_proof!.signature.sig)
-                        bv = Buffer.from(payload.storage_proof!.signature.bv)
+                        sig = Buffer.from(payload.storage_proof!.signature.sig, 'base64url')
+                        bv = Buffer.from(payload.storage_proof!.signature.bv, 'base64url')
                         const members = await db.client.query<WitnessConsensusDid>(`SELECT * FROM ${SCHEMA_NAME}.get_members_at_block($1);`,[op.block_num])
                         const keyset = members.rows.map(m => m.consensus_did)
                         const {circuit, bs} = BlsCircuit.deserializeRaw({ hash: proofCID.bytes }, sig, bv, keyset)
@@ -245,7 +245,7 @@ const processor = {
                         if (!isValid)
                             return { valid: false }
                         details.payload.storage_proof = {
-                            hash: details.payload.storage_proof!.hash,
+                            hash: payload.storage_proof!.hash,
                             signature: {
                                 sig: sig,
                                 bv: bv

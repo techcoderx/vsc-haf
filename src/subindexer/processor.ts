@@ -149,7 +149,7 @@ const processor = {
                                         // contract output
                                         if (typeof txBody.contract_id !== 'string' ||
                                             !Array.isArray(txBody.inputs) ||
-                                            typeof txBody.io_gas !== 'number' ||
+                                            (typeof txBody.io_gas !== 'number' && txBody.io_gas !== null) ||
                                             !Array.isArray(txBody.results)) {
                                             logger.warn(`Ignoring contract output with malformed data at index ${t} in block ${blockCIDShort}`)
                                             continue

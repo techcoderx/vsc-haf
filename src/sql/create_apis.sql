@@ -195,7 +195,7 @@ BEGIN
             WHERE r.block_num = blk_id
             ORDER BY idx_in_block ASC
     )
-    SELECT jsonb_agg(
+    SELECT COALESCE(jsonb_agg(
         jsonb_build_object(
             'id', id,
             'block_num', block_num,
@@ -204,7 +204,7 @@ BEGIN
             'did', did,
             'auth_count', auth_count
         )
-    ) FROM result);
+    ), '[]'::jsonb) FROM result);
 END $function$
 LANGUAGE plpgsql STABLE;
 

@@ -1207,11 +1207,11 @@ BEGIN
     END IF;
 
     -- Contract search
-    SELECT contract_id INTO _result_varchar FROM vsc_app.contracts WHERE contract_id = _cid;
+    SELECT contract_id INTO _result_varchar FROM vsc_app.contracts WHERE contract_id = _cid OR code = _cid;
     IF _result_varchar IS NOT NULL THEN
         RETURN jsonb_build_object(
             'type', 'contract',
-            'result', _cid
+            'result', _result_varchar
         );
     END IF;
 

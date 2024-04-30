@@ -961,7 +961,7 @@ BEGIN
             JOIN hive.vsc_app_accounts a ON
                 a.id = e.proposer
             WHERE e.epoch <= COALESCE(last_epoch, 2147483647)
-            ORDER BY e.epoch
+            ORDER BY e.epoch DESC
             LIMIT count
         )
         SELECT jsonb_agg(jsonb_build_object(

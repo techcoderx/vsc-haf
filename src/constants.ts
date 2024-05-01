@@ -28,6 +28,7 @@ export const START_BLOCK = 81614028
 export const CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT =  84162592
 export const NETWORK_ID = 'testnet/0bf2e474-6b9e-4165-ad4e-a0d78968d20c'
 export const MULTISIG_ACCOUNT = 'vsc.ms-8968d20c'
+export const MULTISIG_ACCOUNT_2 = 'vsc.gateway'
 export const ROUND_LENGTH = 10
 export const EPOCH_LENGTH = 20 * 60 * 6
 export const SUPERMAJORITY = 2/3

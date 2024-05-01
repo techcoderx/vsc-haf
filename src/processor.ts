@@ -1,18 +1,26 @@
 import { CID } from 'multiformats/cid'
 import { bech32 } from "bech32"
 import randomDID from './did.js'
-import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS, APP_CONTEXT, REQUIRES_ACTIVE, START_BLOCK, ANY_AUTH, CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT } from './constants.js'
+import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS, APP_CONTEXT, REQUIRES_ACTIVE, START_BLOCK, ANY_AUTH, CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT, MULTISIG_ACCOUNT_2 } from './constants.js'
 import db from './db.js'
 import logger from './logger.js'
-import { DepositPayload, MultisigTxRefPayload, NewContractPayload, NodeAnnouncePayload, Op, OpBody, ParsedOp, PayloadTypes, TxTypes } from './processor_types.js'
+import { DepositPayload, MultisigTxRefPayload, NodeAnnouncePayload, Op, OpBody, ParsedOp, PayloadTypes, TxTypes } from './processor_types.js'
 import op_type_map from './operations.js'
 import { isValidL1PubKey } from './utils/crypto.js'
 import { isCID } from './subindexer/ipfs_dag.js'
+
+const getMultisigAccount = (block_num: number) => {
+    if (block_num < 85000000)
+        return MULTISIG_ACCOUNT
+    else
+        return MULTISIG_ACCOUNT_2
+}
 
 const processor = {
     validateAndParse: async (op: Op): Promise<ParsedOp<PayloadTypes>> => {
         try {
             let parsed: OpBody = JSON.parse(op.body)
+            const msAcc = getMultisigAccount(op.block_num)
             if (!parsed.value)
                 return { valid: false }
             if (parsed.type === 'custom_json_operation') {
@@ -52,7 +60,7 @@ const processor = {
                     tx_type: TxTypes.CustomJSON,
                     op_type: cjidx
                 }
-                if (details.user !== MULTISIG_ACCOUNT && payload.net_id !== NETWORK_ID)
+                if (details.user !== msAcc && payload.net_id !== NETWORK_ID)
                     return { valid: false }
                 let sig: Buffer, bv: Buffer, merkle: Buffer
                 switch (cjidx) {
@@ -145,7 +153,7 @@ const processor = {
                         break
                     case 5:
                         // multisig_txref
-                        if (details.user !== MULTISIG_ACCOUNT ||
+                        if (details.user !== msAcc ||
                             typeof payload.ref_id !== 'string' ||
                             !isCID(payload.ref_id) ||
                             CID.parse(payload.ref_id).code !== 0x71)
@@ -156,7 +164,7 @@ const processor = {
                         break
                     case 6:
                         // bridge_ref
-                        if (details.user !== MULTISIG_ACCOUNT ||
+                        if (details.user !== msAcc ||
                             typeof payload.ref_id !== 'string' ||
                             !isCID(payload.ref_id) ||
                             CID.parse(payload.ref_id).code !== 0x71)
@@ -170,7 +178,7 @@ const processor = {
                 }
                 return details
             } else if (parsed.type === 'account_update_operation') {
-                if (parsed.value.account === MULTISIG_ACCOUNT)
+                if (parsed.value.account === msAcc)
                     return {
                         valid: true,
                         id: op.id,
@@ -215,7 +223,7 @@ const processor = {
                 }
                 return details
             } else if (parsed.type === 'transfer_operation') {
-                if ((parsed.value.from !== MULTISIG_ACCOUNT && parsed.value.to !== MULTISIG_ACCOUNT))
+                if ((parsed.value.from !== msAcc && parsed.value.to !== msAcc))
                     return { valid: false }
                 let details: ParsedOp<DepositPayload> = {
                     valid: true,
@@ -224,7 +232,7 @@ const processor = {
                     block_num: op.block_num,
                     tx_type: TxTypes.Transfer
                 }
-                if (parsed.value.to === MULTISIG_ACCOUNT) {
+                if (parsed.value.to === msAcc) {
                     let payload: any = {}
                     try {
                         payload = JSON.parse(parsed.value.memo)
@@ -269,7 +277,7 @@ const processor = {
                     if (details.payload.asset === -1)
                         return { valid: false } // this should not happen
                     return details
-                } else if (parsed.value.from === MULTISIG_ACCOUNT) {
+                } else if (parsed.value.from === msAcc) {
                     // withdrawal
                     details.op_type = 1
                     details.user = parsed.value.to
@@ -294,7 +302,7 @@ const processor = {
         let result = await processor.validateAndParse(op)
         if (result.valid) {
             logger.trace('Processing op',result)
-            let pl, op_number = op_type_map.translate(result.tx_type!, result.op_type!, result.user === MULTISIG_ACCOUNT)
+            let pl, op_number = op_type_map.translate(result.tx_type!, result.op_type!, result.user === getMultisigAccount(op.block_num))
             let new_vsc_op = await db.client.query(`SELECT ${SCHEMA_NAME}.process_operation($1,$2,$3,$4);`,[result.user, result.id, op_number, result.ts])
             switch (op_number) {
                 case op_type_map.map.announce_node:

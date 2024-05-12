@@ -327,6 +327,58 @@ BEGIN
 END $function$
 LANGUAGE plpgsql STABLE;
 
+CREATE OR REPLACE FUNCTION vsc_api.get_l1_contract_call(trx_id VARCHAR, op_pos INTEGER = 0)
+RETURNS jsonb
+AS $function$
+DECLARE
+    _result jsonb;
+    _tb SMALLINT;
+    _bn INTEGER;
+    _ra jsonb;
+    _rpa jsonb;
+    _op_pos ALIAS FOR op_pos;
+BEGIN
+    SELECT ho.block_num, ho.trx_in_block, ho.body::jsonb->'value'->'required_auths', ho.body::jsonb->'value'->'required_posting_auths'
+        INTO _bn, _tb, _ra, _rpa
+        FROM hive.transactions_view ht
+        JOIN hive.operations_view ho ON
+            ho.block_num = ht.block_num AND ho.trx_in_block = ht.trx_in_block
+        WHERE trx_hash = decode(trx_id, 'hex');
+    IF _tb IS NULL OR _bn IS NULL THEN
+        RETURN jsonb_build_object('error', 'could not find L1 transaction');
+    END IF;
+    SELECT jsonb_build_object(
+        'id', o.id,
+        'block_num', _bn,
+        'idx_in_block', _tb,
+        'ts', o.ts,
+        'tx_type', 'call_contract',
+        'nonce', o.nonce,
+        'input', trx_id,
+        'input_src', 'hive',
+        'output', (SELECT id FROM vsc_app.l2_txs WHERE details = d.id AND tx_type = 2 LIMIT 1),
+        'signers', jsonb_build_object(
+            'active', _ra,
+            'posting', _rpa
+        ),
+        'contract_id', d.contract_id,
+        'contract_action', d.contract_action,
+        'payload', (d.payload->0),
+        'io_gas', d.io_gas,
+        'contract_output', d.contract_output
+    )
+    INTO _result
+    FROM vsc_app.l1_operations o
+    JOIN vsc_app.l1_txs t ON
+        t.id = o.id
+    JOIN vsc_app.transactions d ON
+        t.details = d.id
+    WHERE o.block_num = _bn AND o.trx_in_block = _tb AND o.op_pos = _op_pos AND o.op_type = 5;
+
+    RETURN COALESCE(_result, jsonb_build_object('error', 'could not find contract call operation in L1 transaction'));
+END $function$
+LANGUAGE plpgsql STABLE;
+
 DROP TYPE IF EXISTS vsc_api.l1_op_type CASCADE;
 CREATE TYPE vsc_api.l1_op_type AS (
     id BIGINT,

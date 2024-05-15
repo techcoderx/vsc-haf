@@ -81,6 +81,7 @@ BEGIN
         'ts', _ts,
         'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(_block_num, _tb)),
         'l1_block', _block_num,
+        'txs', (SELECT COUNT(*) FROM vsc_app.l2_txs t WHERE t.block_num = _block_id)+(SELECT COUNT(*) FROM vsc_app.anchor_refs ar WHERE ar.block_num = _block_id),
         'merkle_root', encode(_merkle, 'hex'),
         'signature', (jsonb_build_object(
             'sig', encode(_sig, 'hex'),
@@ -133,6 +134,7 @@ BEGIN
         'ts', _ts,
         'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(_block_num, _tb)),
         'l1_block', _block_num,
+        'txs', (SELECT COUNT(*) FROM vsc_app.l2_txs t WHERE t.block_num = blk_id)+(SELECT COUNT(*) FROM vsc_app.anchor_refs ar WHERE ar.block_num = blk_id),
         'merkle_root', encode(_merkle, 'hex'),
         'signature', (jsonb_build_object(
             'sig', encode(_sig, 'hex'),

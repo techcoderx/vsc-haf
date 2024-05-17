@@ -206,6 +206,39 @@ END
 $function$
 LANGUAGE plpgsql STABLE;
 
+CREATE OR REPLACE FUNCTION vsc_app.get_election_at_block(_block_num INTEGER)
+RETURNS SETOF vsc_app.witnesses_at_block
+AS $function$
+DECLARE
+    _epoch INTEGER;
+BEGIN
+    SELECT vsc_app.get_epoch_at_block(_block_num) INTO _epoch;
+    RETURN QUERY
+        SELECT * FROM vsc_app.get_election_at_epoch(_epoch);
+END $function$
+LANGUAGE plpgsql STABLE;
+
+DROP TYPE IF EXISTS vsc_app.last_election_info CASCADE;
+CREATE TYPE vsc_app.last_election_info AS (
+    epoch INTEGER,
+    bh INTEGER
+);
+
+CREATE OR REPLACE FUNCTION vsc_app.get_last_election_at_block(_block_num INTEGER)
+RETURNS SETOF vsc_app.last_election_info
+AS $function$
+BEGIN
+    RETURN QUERY
+        SELECT e.epoch, o.block_num
+            FROM vsc_app.election_results e
+            JOIN vsc_app.l1_operations o ON
+                o.id = e.proposed_in_op
+            WHERE o.block_num <= _block_num
+            ORDER BY epoch DESC
+            LIMIT 1;
+END $function$
+LANGUAGE plpgsql STABLE;
+
 CREATE OR REPLACE FUNCTION vsc_app.get_members_at_block(_block_num INTEGER)
 RETURNS SETOF vsc_app.witnesses_at_block
 AS

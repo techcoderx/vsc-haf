@@ -1,7 +1,7 @@
 import logger from '../logger.js'
 import db from '../db.js'
 import { L2PayloadTypes, ParsedOp, VscOp, BlockOp, OpBody, BridgeRefPayload, CustomJsonPayloads, BridgeRefResult, ElectionOp, ElectionPayload, ElectionMember, ShuffledSchedule, UnsignedBlock, BlockPayload, L1CallTxOp, L1TxPayload, NewContractPayload, NewContractOp } from '../processor_types.js'
-import { BlockScheduleParams, WitnessConsensusDid } from '../psql_types.js'
+import { BlockScheduleParams, LastElectionDetail, WitnessConsensusDid } from '../psql_types.js'
 import ipfs from './ipfs.js'
 import { CID } from 'kubo-rpc-client'
 import { bech32 } from 'bech32'
@@ -9,7 +9,7 @@ import { createDag, isCID, encodePayload } from './ipfs_dag.js'
 import { BlsCircuit, initBls } from '../utils/bls-did.js'
 import op_type_map from '../operations.js'
 import { AnchorRefBody, AnchorRefHead, BlockBody, BridgeRef, ContractCallBody, ContractOutBody, ContractStorageProof } from './ipfs_payload.js'
-import { APP_CONTEXT, CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT, EPOCH_LENGTH, ROUND_LENGTH, SCHEMA_NAME, SUPERMAJORITY } from '../constants.js'
+import { APP_CONTEXT, CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT, EPOCH_LENGTH, MIN_BLOCKS_SINCE_LAST_ELECTION, MAX_BLOCKS_SINCE_LAST_ELECTION, ROUND_LENGTH, SCHEMA_NAME, SUPERMAJORITY, ELECTION_MAJORITY_UPDATE_EPOCH } from '../constants.js'
 import { shuffle } from '../utils/shuffle-seed.js'
 
 await initBls()
@@ -19,6 +19,49 @@ const schedule: {
     height?: number
     epoch?: number
 } = {}
+
+class Range {
+    private constructor(readonly start: number, readonly end: number) {
+        if (end <= start) {
+            throw new Error(`range error: end > start must be true {end: ${end}, start: ${start}}`)
+        }
+    }
+
+    static from([start, end]: [number, number]) {
+        return new Range(start, end);
+    }
+
+    position(value: number) {
+        const {start, end} = this
+        if (value < start || value > end) {
+            throw new Error(`range error: value ${value} not in range [${start},${end}]`)
+        }
+        return (value - start) / (end - start)
+    }
+
+    value(position: number) {
+        const {start, end} = this
+        if (position < 0 || position > 1) {
+            throw new Error(`range error: position ${position} not in range [0,1]`)
+        }
+        return position * (end - start) + start
+    }
+
+    map(value: number, to: Range) {
+        const position = this.position(value)
+        return to.value(position)
+    }
+}
+
+const minimalRequiredElectionVotes = (blocksSinceLastElection: number, memberCountOfLastElection: number): number => {
+    if (blocksSinceLastElection < MIN_BLOCKS_SINCE_LAST_ELECTION) {
+        throw new Error('tried to run election before time slot')
+    }
+    const minMembers = Math.floor((memberCountOfLastElection / 2) + 1) // 1/2 + 1
+    const maxMembers = Math.ceil(memberCountOfLastElection * 2 / 3) // 2/3
+    const drift = (MAX_BLOCKS_SINCE_LAST_ELECTION - Math.min(blocksSinceLastElection, MAX_BLOCKS_SINCE_LAST_ELECTION)) / MAX_BLOCKS_SINCE_LAST_ELECTION;
+    return Math.round(Range.from([0, 1]).map(drift, Range.from([minMembers, maxMembers])));
+}
 
 const processor = {
     validateAndParse: async (op: VscOp): Promise<ParsedOp<L2PayloadTypes>> => {
@@ -277,6 +320,7 @@ const processor = {
                     const slotHeight = op.block_num - (op.block_num % EPOCH_LENGTH)
                     const members = await db.client.query<WitnessConsensusDid>(`SELECT * FROM ${SCHEMA_NAME}.get_members_at_block($1);`,[op.block_num])
                     const membersAtSlotStart = await db.client.query<WitnessConsensusDid>(`SELECT * FROM ${SCHEMA_NAME}.get_members_at_block($1);`,[slotHeight])
+                    const lastElection = await db.client.query<LastElectionDetail>(`SELECT * FROM ${SCHEMA_NAME}.get_last_election_at_block($1);`,[op.block_num])
                     const d = {
                         data: payload.data,
                         epoch: payload.epoch,
@@ -287,7 +331,8 @@ const processor = {
                     const {pubKeys, circuit, bs} = BlsCircuit.deserializeRaw(d, sig, bv, keyset)
                     const isValid = await circuit.verify((await createDag(d)).bytes)
                     logger.debug(`Epoch ${d.epoch} election: ${bs.toString(2)} ${isValid}`)
-                    if (isValid && (((pubKeys.length / members.rowCount!) > SUPERMAJORITY) || payload.epoch === 0)) {
+                    const voteMajority = ((lastElection.rowCount ? lastElection.rows[0].epoch : 0) <= ELECTION_MAJORITY_UPDATE_EPOCH) ? members.rowCount! * SUPERMAJORITY : minimalRequiredElectionVotes(op.block_num - lastElection.rows[0].bh, members.rowCount!)
+                    if (isValid && ((pubKeys.length >= voteMajority) || payload.epoch === 0)) {
                         const electedMembers: { members: ElectionMember<string>[] } = (await ipfs.dag.get(CID.parse(payload.data))).value
                         if (!Array.isArray(electedMembers.members))
                             return { valid: false }

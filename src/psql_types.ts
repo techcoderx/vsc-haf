@@ -31,3 +31,8 @@ export type WitnessConsensusDid = {
     name: string
     consensus_did: string
 }
+
+export type LastElectionDetail = {
+    epoch: number
+    bh: number
+}

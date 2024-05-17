@@ -8,6 +8,6 @@ const ipfs = create({
 })
 
 const ipfsId = await ipfs.id()
-logger.debug('Connected to IPFS node',ipfsId.id.toString())
+logger.info('Connected to IPFS node',ipfsId.id.toString())
 
 export default ipfs

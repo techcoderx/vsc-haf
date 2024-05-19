@@ -21,10 +21,15 @@ const schedule: {
 } = {}
 
 class Range {
-    private constructor(readonly start: number, readonly end: number) {
+    public start: number
+    public end: number
+
+    constructor(start: number, end: number) {
         if (end <= start) {
             throw new Error(`range error: end > start must be true {end: ${end}, start: ${start}}`)
         }
+        this.start = start
+        this.end = end
     }
 
     static from([start, end]: [number, number]) {

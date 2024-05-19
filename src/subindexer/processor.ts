@@ -336,7 +336,7 @@ const processor = {
                     const {pubKeys, circuit, bs} = BlsCircuit.deserializeRaw(d, sig, bv, keyset)
                     const isValid = await circuit.verify((await createDag(d)).bytes)
                     logger.debug(`Epoch ${d.epoch} election: ${bs.toString(2)} ${isValid}`)
-                    const voteMajority = ((lastElection.rowCount ? lastElection.rows[0].epoch : 0) <= ELECTION_MAJORITY_UPDATE_EPOCH) ? members.rowCount! * SUPERMAJORITY : minimalRequiredElectionVotes(op.block_num - lastElection.rows[0].bh, members.rowCount!)
+                    const voteMajority = ((lastElection.rows.length > 0 ? lastElection.rows[0].epoch+1 : 0) <= ELECTION_MAJORITY_UPDATE_EPOCH) ? members.rowCount! * SUPERMAJORITY : minimalRequiredElectionVotes(op.block_num - lastElection.rows[0].bh, members.rowCount!)
                     if (isValid && ((pubKeys.length >= voteMajority) || payload.epoch === 0)) {
                         const electedMembers: { members: ElectionMember<string>[] } = (await ipfs.dag.get(CID.parse(payload.data))).value
                         if (!Array.isArray(electedMembers.members))

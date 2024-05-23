@@ -332,8 +332,9 @@ const processor = {
                         net_id: payload.net_id
                     }
                     // logger.trace(membersAtSlotStart.rows)
-                    const oldElection = (lastElection.rows.length > 0 ? lastElection.rows[0].epoch+1 : 0) <= ELECTION_MAJORITY_UPDATE_EPOCH
-                    const keyset = oldElection ? membersAtSlotStart.rows.map(m => m.consensus_did) : membersAtSlotStart.rows.filter(v => VIP_WITNESSES.includes(v.name)).map(m => m.consensus_did).concat(membersAtSlotStart.rows.filter(v => !VIP_WITNESSES.includes(v.name)).map(m => m.consensus_did))
+                    const oldElection = (lastElection.rows.length > 0 ? lastElection.rows[0].epoch+1 : 0) < ELECTION_MAJORITY_UPDATE_EPOCH
+                    const useVIPWitnesses = (lastElection.rows.length > 0 ? lastElection.rows[0].epoch+1 : 0) > ELECTION_MAJORITY_UPDATE_EPOCH
+                    const keyset = useVIPWitnesses ? membersAtSlotStart.rows.map(m => m.consensus_did) : membersAtSlotStart.rows.filter(v => VIP_WITNESSES.includes(v.name)).map(m => m.consensus_did).concat(membersAtSlotStart.rows.filter(v => !VIP_WITNESSES.includes(v.name)).map(m => m.consensus_did))
                     const {pubKeys, circuit, bs} = BlsCircuit.deserializeRaw(d, sig, bv, keyset)
                     const isValid = await circuit.verify((await createDag(d)).bytes)
                     logger.debug(`Epoch ${d.epoch} election: ${bs.toString(2)} ${isValid}`)

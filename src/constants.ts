@@ -35,3 +35,12 @@ export const SUPERMAJORITY = 2/3
 export const ELECTION_MAJORITY_UPDATE_EPOCH = 122
 export const MIN_BLOCKS_SINCE_LAST_ELECTION = 1200 // 1 hour
 export const MAX_BLOCKS_SINCE_LAST_ELECTION = 403200 // 2 weeks
+export const VIP_WITNESSES = [
+    'geo52rey.dev',
+    'geo52rey.vsc',
+    'manu-node',
+    'v4vapp.vsc',
+    'vaultec-scc',
+    'vsc.node1',
+    'vsc.node2'
+] // must be in alphabetical order

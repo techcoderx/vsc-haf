@@ -9,7 +9,7 @@ import { createDag, isCID, encodePayload } from './ipfs_dag.js'
 import { BlsCircuit, initBls } from '../utils/bls-did.js'
 import op_type_map from '../operations.js'
 import { AnchorRefBody, AnchorRefHead, BlockBody, BridgeRef, ContractCallBody, ContractOutBody, ContractStorageProof } from './ipfs_payload.js'
-import { APP_CONTEXT, CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT, EPOCH_LENGTH, MIN_BLOCKS_SINCE_LAST_ELECTION, MAX_BLOCKS_SINCE_LAST_ELECTION, ROUND_LENGTH, SCHEMA_NAME, SUPERMAJORITY, ELECTION_MAJORITY_UPDATE_EPOCH } from '../constants.js'
+import { APP_CONTEXT, CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT, EPOCH_LENGTH, MIN_BLOCKS_SINCE_LAST_ELECTION, MAX_BLOCKS_SINCE_LAST_ELECTION, ROUND_LENGTH, SCHEMA_NAME, SUPERMAJORITY, ELECTION_MAJORITY_UPDATE_EPOCH, VIP_WITNESSES } from '../constants.js'
 import { shuffle } from '../utils/shuffle-seed.js'
 
 await initBls()
@@ -332,7 +332,9 @@ const processor = {
                         net_id: payload.net_id
                     }
                     // logger.trace(membersAtSlotStart.rows)
-                    const keyset = membersAtSlotStart.rows.map(m => m.consensus_did)
+                    const membersAtSlotStartVIP = membersAtSlotStart.rows.filter(v => VIP_WITNESSES.includes(v.name))
+                    const membersAtSlotStartNonVIP = membersAtSlotStart.rows.filter(v => !VIP_WITNESSES.includes(v.name))
+                    const keyset = membersAtSlotStartVIP.map(m => m.consensus_did).concat(membersAtSlotStartNonVIP.map(m => m.consensus_did))
                     const {pubKeys, circuit, bs} = BlsCircuit.deserializeRaw(d, sig, bv, keyset)
                     const isValid = await circuit.verify((await createDag(d)).bytes)
                     logger.debug(`Epoch ${d.epoch} election: ${bs.toString(2)} ${isValid}`)

@@ -332,13 +332,12 @@ const processor = {
                         net_id: payload.net_id
                     }
                     // logger.trace(membersAtSlotStart.rows)
-                    const membersAtSlotStartVIP = membersAtSlotStart.rows.filter(v => VIP_WITNESSES.includes(v.name))
-                    const membersAtSlotStartNonVIP = membersAtSlotStart.rows.filter(v => !VIP_WITNESSES.includes(v.name))
-                    const keyset = membersAtSlotStartVIP.map(m => m.consensus_did).concat(membersAtSlotStartNonVIP.map(m => m.consensus_did))
+                    const oldElection = (lastElection.rows.length > 0 ? lastElection.rows[0].epoch+1 : 0) <= ELECTION_MAJORITY_UPDATE_EPOCH
+                    const keyset = oldElection ? membersAtSlotStart.rows.map(m => m.consensus_did) : membersAtSlotStart.rows.filter(v => VIP_WITNESSES.includes(v.name)).map(m => m.consensus_did).concat(membersAtSlotStart.rows.filter(v => !VIP_WITNESSES.includes(v.name)).map(m => m.consensus_did))
                     const {pubKeys, circuit, bs} = BlsCircuit.deserializeRaw(d, sig, bv, keyset)
                     const isValid = await circuit.verify((await createDag(d)).bytes)
                     logger.debug(`Epoch ${d.epoch} election: ${bs.toString(2)} ${isValid}`)
-                    const voteMajority = ((lastElection.rows.length > 0 ? lastElection.rows[0].epoch+1 : 0) <= ELECTION_MAJORITY_UPDATE_EPOCH) ? members.rowCount! * SUPERMAJORITY : minimalRequiredElectionVotes(op.block_num - lastElection.rows[0].bh, members.rowCount!)
+                    const voteMajority = oldElection ? members.rowCount! * SUPERMAJORITY : minimalRequiredElectionVotes(op.block_num - lastElection.rows[0].bh, members.rowCount!)
                     if (isValid && ((pubKeys.length >= voteMajority) || payload.epoch === 0)) {
                         const electedMembers: { members: ElectionMember<string>[] } = (await ipfs.dag.get(CID.parse(payload.data))).value
                         if (!Array.isArray(electedMembers.members))

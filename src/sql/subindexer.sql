@@ -532,7 +532,7 @@ BEGIN
     FOR i IN array_lower(_elected_members, 1) .. array_upper(_elected_members, 1)
     LOOP
         INSERT INTO vsc_app.election_result_members(epoch, witness_id, consensus_did, idx)
-            VALUES (_epoch, _elected_members[i], _elected_keys[i], idx::SMALLINT);
+            VALUES (_epoch, _elected_members[i], _elected_keys[i], i::SMALLINT);
     END LOOP;
 END
 $function$

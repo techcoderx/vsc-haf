@@ -183,7 +183,7 @@ BEGIN
             JOIN hive.vsc_app_accounts a ON
                 a.id = em.witness_id
             WHERE epoch = _epoch
-            ORDER BY a.name ASC;
+            ORDER BY em.idx ASC;
 END
 $function$
 LANGUAGE plpgsql STABLE;
@@ -531,8 +531,8 @@ BEGIN
 
     FOR i IN array_lower(_elected_members, 1) .. array_upper(_elected_members, 1)
     LOOP
-        INSERT INTO vsc_app.election_result_members(epoch, witness_id, consensus_did)
-            VALUES (_epoch, _elected_members[i], _elected_keys[i]);
+        INSERT INTO vsc_app.election_result_members(epoch, witness_id, consensus_did, idx)
+            VALUES (_epoch, _elected_members[i], _elected_keys[i], idx::SMALLINT);
     END LOOP;
 END
 $function$

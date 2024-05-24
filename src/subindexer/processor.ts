@@ -68,10 +68,6 @@ const minimalRequiredElectionVotes = (blocksSinceLastElection: number, memberCou
     return Math.round(Range.from([0, 1]).map(drift, Range.from([minMembers, maxMembers])));
 }
 
-const sortedWitnessKeys = (members: WitnessConsensusDid[]): string[] => {
-    return members.filter(v => VIP_WITNESSES.includes(v.name)).map(m => m.consensus_did).concat(members.filter(v => !VIP_WITNESSES.includes(v.name)).map(m => m.consensus_did))
-}
-
 const processor = {
     validateAndParse: async (op: VscOp): Promise<ParsedOp<L2PayloadTypes>> => {
         // we know at this point that the operation looks valid as it has
@@ -97,11 +93,8 @@ const processor = {
                     sig = Buffer.from(payload.signed_block.signature.sig, 'base64url')
                     bv = Buffer.from(payload.signed_block.signature.bv, 'base64url')
                     merkle = Buffer.from(payload.signed_block.merkle_root, 'base64url')
-                    const blockInEpoch = await db.client.query<LastElectionDetail>(`SELECT * FROM ${SCHEMA_NAME}.get_last_election_at_block($1);`,[op.block_num])
-                    if (!blockInEpoch.rowCount)
-                        return { valid: false } // following validation will always fail if no epoch
                     const witnessSet = await db.client.query<WitnessConsensusDid>(`SELECT * FROM ${SCHEMA_NAME}.get_members_at_block($1);`,[op.block_num])
-                    const witnessKeyset = blockInEpoch.rows[0].epoch < ELECTION_UPDATE_1_EPOCH ? witnessSet.rows.map(m => m.consensus_did) : sortedWitnessKeys(witnessSet.rows)
+                    const witnessKeyset = witnessSet.rows.map(m => m.consensus_did)
                     const scheduleParams = (await db.client.query<BlockScheduleParams>(`SELECT * FROM ${SCHEMA_NAME}.get_block_schedule_params($1);`,[op.block_num])).rows[0]
                     if (!schedule.shuffled || schedule.height !== scheduleParams.past_rnd_height || schedule.epoch !== scheduleParams.epoch) {
                         const outSchedule: WitnessConsensusDid[] = []
@@ -292,11 +285,8 @@ const processor = {
                             return { valid: false }
                         sig = Buffer.from(payload.storage_proof!.signature.sig, 'base64url')
                         bv = Buffer.from(payload.storage_proof!.signature.bv, 'base64url')
-                        const currentEpoch = await db.client.query<LastElectionDetail>(`SELECT * FROM ${SCHEMA_NAME}.get_last_election_at_block($1);`,[op.block_num])
-                        if (!currentEpoch.rowCount)
-                            return { valid: false } // should never happen
                         const members = await db.client.query<WitnessConsensusDid>(`SELECT * FROM ${SCHEMA_NAME}.get_members_at_block($1);`,[op.block_num])
-                        const keyset = currentEpoch.rows[0].epoch < ELECTION_UPDATE_1_EPOCH ? members.rows.map(m => m.consensus_did) : sortedWitnessKeys(members.rows)
+                        const keyset = members.rows.map(m => m.consensus_did)
                         const {circuit, bs} = BlsCircuit.deserializeRaw({ hash: proofCID.bytes }, sig, bv, keyset)
                         const isValid = await circuit.verify(proofCID.bytes)
                         logger.debug(`New contract at op ${op.id} storage proof: ${bs.toString(2)} ${isValid}`)
@@ -343,8 +333,7 @@ const processor = {
                     }
                     // logger.trace(membersAtSlotStart.rows)
                     const oldElection = (lastElection.rows.length > 0 ? lastElection.rows[0].epoch+1 : 0) < ELECTION_UPDATE_1_EPOCH
-                    const useVIPWitnesses = (lastElection.rows.length > 0 ? lastElection.rows[0].epoch+1 : 0) > ELECTION_UPDATE_1_EPOCH
-                    const keyset = !useVIPWitnesses ? membersAtSlotStart.rows.map(m => m.consensus_did) : sortedWitnessKeys(membersAtSlotStart.rows)
+                    const keyset =  membersAtSlotStart.rows.map(m => m.consensus_did)
                     const {pubKeys, circuit, bs} = BlsCircuit.deserializeRaw(d, sig, bv, keyset)
                     const isValid = await circuit.verify((await createDag(d)).bytes)
                     logger.debug(`Epoch ${d.epoch} election: ${bs.toString(2)} ${isValid}`)

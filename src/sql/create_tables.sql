@@ -137,6 +137,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.election_result_members(
     epoch INTEGER NOT NULL,
     witness_id INTEGER NOT NULL, -- hive user id, not vsc witness id
     consensus_did VARCHAR(78) NOT NULL,
+    idx SMALLINT NOT NULL,
     UNIQUE(epoch, witness_id)
 );
 

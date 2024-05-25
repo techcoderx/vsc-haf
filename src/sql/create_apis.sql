@@ -262,6 +262,40 @@ BEGIN
 END $function$
 LANGUAGE plpgsql STABLE;
 
+CREATE OR REPLACE FUNCTION vsc_api.get_l1_tx_all_outputs(trx_id VARCHAR)
+RETURNS jsonb
+AS $function$
+DECLARE
+    op_nums INTEGER[];
+    op_num INTEGER;
+    result jsonb;
+    result_arr jsonb[] DEFAULT '{}';
+BEGIN
+    SELECT ARRAY(
+        SELECT ho.op_pos
+            FROM hive.transactions_view ht
+            JOIN hive.operations_view ho ON
+                ho.block_num = ht.block_num AND ho.trx_in_block = ht.trx_in_block
+            WHERE trx_hash = decode(trx_id, 'hex')
+    ) INTO op_nums;
+
+    IF op_nums IS NULL THEN
+        RETURN '[]'::jsonb;
+    END IF;
+
+    FOREACH op_num IN ARRAY op_nums
+    LOOP
+        SELECT vsc_api.get_l1_tx(trx_id, op_num) INTO result;
+        IF NOT result ? 'error' THEN
+            SELECT ARRAY_APPEND(result_arr, result) INTO result_arr;
+        ELSE
+            SELECT ARRAY_APPEND(result_arr, NULL) INTO result_arr;
+        END IF;
+    END LOOP;
+    RETURN array_to_json(result_arr)::jsonb;
+END $function$
+LANGUAGE plpgsql STABLE;
+
 CREATE OR REPLACE FUNCTION vsc_api.get_l2_tx(trx_id VARCHAR)
 RETURNS jsonb
 AS $function$

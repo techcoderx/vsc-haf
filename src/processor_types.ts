@@ -44,7 +44,11 @@ export interface UnsignedElection {
 
 export interface ElectionPayload extends UnsignedElection {
     signature: BLSAggSign<Buffer>
+}
+
+export interface ElectionPayload2 extends ElectionPayload {
     members: ElectionMemberWeighted<number>[]
+    voted_weight: number
     weight_total: number
 }
 
@@ -82,7 +86,7 @@ export interface VscOp extends Op {
 
 export type CustomJsonPayloads = BlockOp | NewContractOp | ElectionOp | BridgeRefPayload | L1CallTxOp
 export type BridgeRefResult = bigint[]
-export type L2PayloadTypes = BridgeRefResult | ElectionPayload | BlockPayload | L1TxPayload | NewContractPayload
+export type L2PayloadTypes = BridgeRefResult | ElectionPayload2 | BlockPayload | L1TxPayload | NewContractPayload
 export type L2Tx = L2ContractCallPayload | L2ContractOutPayload | AnchorRefPayload
 export interface BlockOp {
     net_id: string
@@ -97,6 +101,7 @@ export type BlockPayload = {
     merkle_root: Buffer
     signature: BLSAggSign<Buffer>
     txs: L2Tx[]
+    voted_weight: number
 }
 
 export interface UnsignedBlock<BlockCIDType> {

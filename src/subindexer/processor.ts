@@ -1,6 +1,6 @@
 import logger from '../logger.js'
 import db from '../db.js'
-import { L2PayloadTypes, ParsedOp, VscOp, BlockOp, OpBody, BridgeRefPayload, CustomJsonPayloads, BridgeRefResult, ElectionOp, ElectionPayload, ElectionMember, ElectionMemberWeighted, ShuffledSchedule, UnsignedBlock, BlockPayload, L1CallTxOp, L1TxPayload, NewContractPayload, NewContractOp } from '../processor_types.js'
+import { L2PayloadTypes, ParsedOp, VscOp, BlockOp, OpBody, BridgeRefPayload, CustomJsonPayloads, BridgeRefResult, ElectionOp, ElectionPayload2, ElectionMember, ElectionMemberWeighted, ShuffledSchedule, UnsignedBlock, BlockPayload, L1CallTxOp, L1TxPayload, NewContractPayload, NewContractOp } from '../processor_types.js'
 import { BlockScheduleParams, LastElectionDetail, WitnessConsensusDid } from '../psql_types.js'
 import ipfs from './ipfs.js'
 import { CID } from 'kubo-rpc-client'
@@ -136,7 +136,8 @@ const processor = {
                                 br: payload.signed_block.headers.br,
                                 merkle_root: merkle,
                                 signature: { sig, bv },
-                                txs: []
+                                txs: [],
+                                voted_weight: votedWeight
                             } as BlockPayload
                             const blockTxs: BlockBody = (await ipfs.dag.get(CID.parse(payload.signed_block.block))).value
                             if (!Array.isArray(blockTxs.txs)) {
@@ -363,8 +364,9 @@ const processor = {
                             ...d,
                             signature: { sig, bv },
                             members: validatedElectedMembers,
+                            voted_weight: votedWeight,
                             weight_total: electedMembers.weight_total ?? electedMembers.members.length
-                        } as ElectionPayload
+                        } as ElectionPayload2
                     } else
                         return { valid: false }
                     break
@@ -409,7 +411,7 @@ const processor = {
             switch (op.op_type) {
                 case op_type_map.map.propose_block:
                     result.payload = result.payload as BlockPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.push_block($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb);`,[
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.push_block($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11);`,[
                         op.id,
                         result.user,
                         result.payload.block_hash,
@@ -419,7 +421,8 @@ const processor = {
                         result.payload.merkle_root,
                         result.payload.signature.sig,
                         result.payload.signature.bv,
-                        JSON.stringify(result.payload.txs)
+                        JSON.stringify(result.payload.txs),
+                        result.payload.voted_weight
                     ])
                     break
                 case op_type_map.map.create_contract:
@@ -449,8 +452,8 @@ const processor = {
                     ])
                     break
                 case op_type_map.map.election_result:
-                    result.payload = result.payload as ElectionPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_election_result($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);`,[
+                    result.payload = result.payload as ElectionPayload2
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_election_result($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);`,[
                         op.id,
                         result.user,
                         result.payload.epoch,
@@ -460,7 +463,8 @@ const processor = {
                         '{'+result.payload.members.map(m => m.account).join(',')+'}',
                         '{"'+result.payload.members.map(m => m.key).join('","')+'"}',
                         '{'+result.payload.members.map(m => m.weight).join(',')+'}',
-                        result.payload.weight_total
+                        result.payload.weight_total,
+                        result.payload.voted_weight
                     ])
                     break
                 case op_type_map.map.bridge_ref:

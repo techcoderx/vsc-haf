@@ -165,7 +165,8 @@ BEGIN
             'txs', (SELECT COUNT(*) FROM vsc_app.l2_txs t WHERE t.block_num = bk.id)+(SELECT COUNT(*) FROM vsc_app.anchor_refs ar WHERE ar.block_num = bk.id),
             'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(l1_op.block_num, l1_op.trx_in_block)),
             'l1_block', l1_op.block_num,
-            'weights', (SELECT jsonb_agg(weight) FROM vsc_app.get_election_at_block(l1_op.block_num)),
+            'voted_weight', bk.voted_weight,
+            'eligible_weight', (SELECT SUM(weight) FROM vsc_app.get_members_at_block(l1_op.block_num-1)),
             'bv', encode(bk.bv, 'hex')
         ))
         FROM vsc_app.blocks bk
@@ -1051,7 +1052,7 @@ BEGIN
     END IF;
     RETURN (
         WITH epochs AS (
-            SELECT e.epoch, o.block_num, o.trx_in_block, o.ts, a.name, e.data_cid, e.sig, e.bv
+            SELECT e.epoch, o.block_num, o.trx_in_block, o.ts, a.name, e.data_cid, e.voted_weight, e.sig, e.bv
             FROM vsc_app.election_results e
             JOIN vsc_app.l1_operations o ON
                 o.id = e.proposed_in_op
@@ -1068,7 +1069,8 @@ BEGIN
             'ts', ts,
             'proposer', name,
             'data_cid', data_cid,
-            'weights', (SELECT jsonb_agg(weight) FROM vsc_app.get_election_at_epoch(epoch)),
+            'voted_weight', voted_weight,
+            'eligible_weight', (SELECT SUM(weight) FROM vsc_app.get_members_at_block(block_num-1)),
             'sig', encode(sig, 'hex'),
             'bv', encode(bv, 'hex')
         )) FROM epochs
@@ -1140,7 +1142,8 @@ BEGIN
             'data_cid', e.data_cid,
             'election', (SELECT vsc_api.get_election_at_epoch(epoch_num, FALSE)),
             'members_at_start', (SELECT vsc_api.get_members_at_block(o.block_num - (o.block_num % 7200), FALSE)),
-            'weights', (SELECT jsonb_agg(weight) FROM vsc_app.get_members_at_block(o.block_num)),
+            'voted_weight', voted_weight,
+            'eligible_weight', (SELECT SUM(weight) FROM vsc_app.get_members_at_block(o.block_num-1)),
             'sig', encode(e.sig, 'hex'),
             'bv', encode(e.bv, 'hex')
         )
@@ -1182,7 +1185,7 @@ BEGIN
 
     RETURN COALESCE((
         WITH blocks AS (
-            SELECT bk.id, l1_op.ts, bk.block_header_hash, a.name, bk.bv
+            SELECT bk.id, l1_op.block_num, l1_op.ts, bk.block_header_hash, a.name, bk.bv, bk.voted_weight
             FROM vsc_app.blocks bk
             JOIN vsc_app.l1_operations l1_op ON
                 bk.proposed_in_op = l1_op.id
@@ -1198,7 +1201,8 @@ BEGIN
             'block_hash', b.block_header_hash,
             'proposer', b.name,
             'txs', (SELECT COUNT(*) FROM vsc_app.l2_txs t WHERE t.block_num = b.id)+(SELECT COUNT(*) FROM vsc_app.anchor_refs ar WHERE ar.block_num = b.id),
-            'weights', (SELECT jsonb_agg(weight) FROM vsc_app.get_election_at_epoch(epoch_num)),
+            'voted_weight', b.voted_weight,
+            'eligible_weight', (SELECT SUM(weight) FROM vsc_app.get_members_at_block(block_num-1)),
             'bv', encode(b.bv, 'hex')
         )) FROM blocks b
     ), '[]'::jsonb);

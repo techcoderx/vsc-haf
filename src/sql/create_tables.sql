@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.blocks(
     br_start INTEGER NOT NULL,
     br_end INTEGER NOT NULL,
     merkle_root BYTEA NOT NULL,
+    voted_weight INTEGER NOT NULL,
     sig BYTEA NOT NULL,
     bv BYTEA NOT NULL
 );
@@ -128,7 +129,8 @@ CREATE TABLE IF NOT EXISTS vsc_app.election_results(
     proposed_in_op BIGINT NOT NULL,
     proposer INTEGER NOT NULL,
     data_cid VARCHAR(59) NOT NULL,
-    weight_total INTEGER NOT NULL,
+    voted_weight INTEGER NOT NULL, -- aggregated vote weight for the election result
+    weight_total INTEGER NOT NULL, -- new(!) total weight eligible for the next epoch and blocks
     sig BYTEA NOT NULL,
     bv BYTEA NOT NULL
 );

@@ -232,7 +232,7 @@ RETURNS SETOF vsc_app.last_election_info
 AS $function$
 BEGIN
     RETURN QUERY
-        SELECT e.epoch, o.block_num, e.total_weight
+        SELECT e.epoch, o.block_num, e.weight_total
             FROM vsc_app.election_results e
             JOIN vsc_app.l1_operations o ON
                 o.id = e.proposed_in_op

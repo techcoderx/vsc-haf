@@ -1140,7 +1140,7 @@ BEGIN
             'data_cid', e.data_cid,
             'election', (SELECT vsc_api.get_election_at_epoch(epoch_num, FALSE)),
             'members_at_start', (SELECT vsc_api.get_members_at_block(o.block_num - (o.block_num % 7200), FALSE)),
-            'weights', (SELECT jsonb_agg(weight) FROM vsc_app.get_members_at_block(blk_num)),
+            'weights', (SELECT jsonb_agg(weight) FROM vsc_app.get_members_at_block(o.block_num)),
             'sig', encode(e.sig, 'hex'),
             'bv', encode(e.bv, 'hex')
         )

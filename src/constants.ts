@@ -33,5 +33,6 @@ export const ROUND_LENGTH = 10
 export const EPOCH_LENGTH = 20 * 60 * 6
 export const SUPERMAJORITY = 2/3
 export const ELECTION_UPDATE_1_EPOCH = 123
+export const ELECTION_UPDATE_2_EPOCH = 125
 export const MIN_BLOCKS_SINCE_LAST_ELECTION = 1200 // 1 hour
 export const MAX_BLOCKS_SINCE_LAST_ELECTION = 403200 // 2 weeks

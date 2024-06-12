@@ -128,6 +128,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.election_results(
     proposed_in_op BIGINT NOT NULL,
     proposer INTEGER NOT NULL,
     data_cid VARCHAR(59) NOT NULL,
+    weight_total INTEGER NOT NULL,
     sig BYTEA NOT NULL,
     bv BYTEA NOT NULL
 );
@@ -137,6 +138,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.election_result_members(
     epoch INTEGER NOT NULL,
     witness_id INTEGER NOT NULL, -- hive user id, not vsc witness id
     consensus_did VARCHAR(78) NOT NULL,
+    weight INTEGER DEFAULT 1,
     idx SMALLINT NOT NULL,
     UNIQUE(epoch, witness_id)
 );

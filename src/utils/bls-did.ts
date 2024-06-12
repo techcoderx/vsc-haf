@@ -107,18 +107,26 @@ export class BlsCircuit {
     )
   }
 
-  static deserializeRaw(msg: any, signature: Buffer, bv: string | Buffer, keyset: Array<string>) {
+  static deserializeRaw(msg: any, signature: Buffer, bv: string | Buffer, keyset: Array<string>, weights?: number[]) {
+    if (weights && weights.length !== keyset.length)
+      throw new Error('weights must have the same array length as keyset')
     if (typeof bv !== 'string')
       bv = bv.toString('hex')
 
     const bs = BitSet.fromHexString(bv)
     const pubKeys = new Map();
     const pubKeyArray: string[] = []
+    let totalWeight = 0
+    let votedWeight = 0
     for(let keyIdx in keyset) {
       if(bs.get(Number(keyIdx)) === 1) {
         pubKeys.set(keyset[keyIdx], true)
         pubKeyArray.push(keyset[keyIdx])
+        if (weights)
+          votedWeight += weights[keyIdx]
       }
+      if (weights)
+        totalWeight += weights[keyIdx]
     }
 
     let circuit = new BlsCircuit(msg);
@@ -128,6 +136,8 @@ export class BlsCircuit {
 
     return {
       pubKeys: pubKeyArray,
+      totalWeight,
+      votedWeight,
       circuit,
       bs
     }

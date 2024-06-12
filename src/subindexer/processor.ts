@@ -1,6 +1,6 @@
 import logger from '../logger.js'
 import db from '../db.js'
-import { L2PayloadTypes, ParsedOp, VscOp, BlockOp, OpBody, BridgeRefPayload, CustomJsonPayloads, BridgeRefResult, ElectionOp, ElectionPayload, ElectionMember, ShuffledSchedule, UnsignedBlock, BlockPayload, L1CallTxOp, L1TxPayload, NewContractPayload, NewContractOp } from '../processor_types.js'
+import { L2PayloadTypes, ParsedOp, VscOp, BlockOp, OpBody, BridgeRefPayload, CustomJsonPayloads, BridgeRefResult, ElectionOp, ElectionPayload, ElectionMember, ElectionMemberWeighted, ShuffledSchedule, UnsignedBlock, BlockPayload, L1CallTxOp, L1TxPayload, NewContractPayload, NewContractOp } from '../processor_types.js'
 import { BlockScheduleParams, LastElectionDetail, WitnessConsensusDid } from '../psql_types.js'
 import ipfs from './ipfs.js'
 import { CID } from 'kubo-rpc-client'
@@ -9,7 +9,7 @@ import { createDag, isCID, encodePayload } from './ipfs_dag.js'
 import { BlsCircuit, initBls } from '../utils/bls-did.js'
 import op_type_map from '../operations.js'
 import { AnchorRefBody, AnchorRefHead, BlockBody, BridgeRef, ContractCallBody, ContractOutBody, ContractStorageProof } from './ipfs_payload.js'
-import { APP_CONTEXT, CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT, EPOCH_LENGTH, MIN_BLOCKS_SINCE_LAST_ELECTION, MAX_BLOCKS_SINCE_LAST_ELECTION, ROUND_LENGTH, SCHEMA_NAME, SUPERMAJORITY, ELECTION_UPDATE_1_EPOCH } from '../constants.js'
+import { APP_CONTEXT, CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT, EPOCH_LENGTH, MIN_BLOCKS_SINCE_LAST_ELECTION, MAX_BLOCKS_SINCE_LAST_ELECTION, ROUND_LENGTH, SCHEMA_NAME, SUPERMAJORITY, ELECTION_UPDATE_1_EPOCH, ELECTION_UPDATE_2_EPOCH } from '../constants.js'
 import { shuffle } from '../utils/shuffle-seed.js'
 
 await initBls()
@@ -94,7 +94,6 @@ const processor = {
                     bv = Buffer.from(payload.signed_block.signature.bv, 'base64url')
                     merkle = Buffer.from(payload.signed_block.merkle_root, 'base64url')
                     const witnessSet = await db.client.query<WitnessConsensusDid>(`SELECT * FROM ${SCHEMA_NAME}.get_members_at_block($1);`,[op.block_num])
-                    const witnessKeyset = witnessSet.rows.map(m => m.consensus_did)
                     const scheduleParams = (await db.client.query<BlockScheduleParams>(`SELECT * FROM ${SCHEMA_NAME}.get_block_schedule_params($1);`,[op.block_num])).rows[0]
                     if (!schedule.shuffled || schedule.height !== scheduleParams.past_rnd_height || schedule.epoch !== scheduleParams.epoch) {
                         const outSchedule: WitnessConsensusDid[] = []
@@ -123,11 +122,11 @@ const processor = {
                             block: CID.parse(payload.signed_block.block)
                         }
                         delete unsignedBlock.signature
-                        const {pubKeys, circuit, bs} = BlsCircuit.deserializeRaw(unsignedBlock, sig, bv, witnessKeyset)
+                        const {totalWeight, votedWeight, circuit, bs} = BlsCircuit.deserializeRaw(unsignedBlock, sig, bv, witnessSet.rows.map(m => m.consensus_did), witnessSet.rows.map(m => m.weight))
                         const isValid = await circuit.verify((await createDag(unsignedBlock)).bytes)
                         const blockCIDShort = `${payload.signed_block.block.substring(0,12)}...${payload.signed_block.block.slice(-6)}`
                         logger.debug(`Block ${blockCIDShort} by ${witnessSlot.name}: ${bs.toString(2)} ${isValid}`)
-                        if (isValid && pubKeys.length/witnessKeyset.length >= SUPERMAJORITY) {
+                        if (isValid && votedWeight/totalWeight >= SUPERMAJORITY) {
                             // vsc-node does not currently check previous block header when syncing
                             // if we do check here, as the testnet genesis block isn't valid (published way out of schedule)
                             // therefore every block thereafter would be invalid
@@ -326,23 +325,28 @@ const processor = {
                     const members = await db.client.query<WitnessConsensusDid>(`SELECT * FROM ${SCHEMA_NAME}.get_members_at_block($1);`,[op.block_num])
                     const membersAtSlotStart = await db.client.query<WitnessConsensusDid>(`SELECT * FROM ${SCHEMA_NAME}.get_members_at_block($1);`,[slotHeight])
                     const lastElection = await db.client.query<LastElectionDetail>(`SELECT * FROM ${SCHEMA_NAME}.get_last_election_at_block($1);`,[op.block_num])
+                    const keyWeights: {[key: string]: number} = {}
+                    members.rows.forEach(m => keyWeights[m.consensus_did] = m.weight)
                     const d = {
                         data: payload.data,
                         epoch: payload.epoch,
                         net_id: payload.net_id
                     }
-                    // logger.trace(membersAtSlotStart.rows)
-                    const oldElection = (lastElection.rows.length > 0 ? lastElection.rows[0].epoch+1 : 0) < ELECTION_UPDATE_1_EPOCH
-                    const keyset =  membersAtSlotStart.rows.map(m => m.consensus_did)
-                    const {pubKeys, circuit, bs} = BlsCircuit.deserializeRaw(d, sig, bv, keyset)
+                    const nextEpoch = lastElection.rows.length > 0 ? lastElection.rows[0].epoch+1 : 0
+                    const {pubKeys, circuit, bs} = BlsCircuit.deserializeRaw(d, sig, bv, membersAtSlotStart.rows.map(m => m.consensus_did))
                     const isValid = await circuit.verify((await createDag(d)).bytes)
                     logger.debug(`Epoch ${d.epoch} election: ${bs.toString(2)} ${isValid}`)
-                    const voteMajority = oldElection ? members.rowCount! * SUPERMAJORITY : minimalRequiredElectionVotes(op.block_num - lastElection.rows[0].bh, members.rowCount!)
-                    if (isValid && ((pubKeys.length >= voteMajority) || payload.epoch === 0)) {
-                        const electedMembers: { members: ElectionMember<string>[] } = (await ipfs.dag.get(CID.parse(payload.data))).value
+                    const votedWeight = pubKeys.reduce<number>((w: number, k) => w+(keyWeights[k] ?? 0), 0)
+                    const voteMajority = (nextEpoch < ELECTION_UPDATE_1_EPOCH) ? members.rowCount! * SUPERMAJORITY : minimalRequiredElectionVotes(op.block_num - lastElection.rows[0].bh, lastElection.rows[0].total_weight)
+                    if (isValid && ((votedWeight >= voteMajority) || payload.epoch === 0)) {
+                        const electedMembers: { members: ElectionMember<string>[], weights?: number[], weight_total?: number } = (await ipfs.dag.get(CID.parse(payload.data))).value
                         if (!Array.isArray(electedMembers.members))
                             return { valid: false }
-                        const validatedElectedMembers: ElectionMember<number>[] = []
+                        else if (nextEpoch >= ELECTION_UPDATE_2_EPOCH && (!Array.isArray(electedMembers.weights) || typeof electedMembers.weight_total !== 'number' || electedMembers.weights.length !== electedMembers.members.length)) {
+                            logger.warn(`Ignoring un-weighted or invalid-weighted election post-update 2`)
+                            return { valid: false }
+                        }
+                        const validatedElectedMembers: ElectionMemberWeighted<number>[] = []
                         for (let m in electedMembers.members) {
                             if (typeof electedMembers.members[m].account !== 'string' || typeof electedMembers.members[m].key !== 'string')
                                 continue
@@ -351,13 +355,15 @@ const processor = {
                                 continue
                             validatedElectedMembers.push({
                                 account: accountExists.rows[0].id as number,
-                                key: electedMembers.members[m].key
+                                key: electedMembers.members[m].key,
+                                weight: electedMembers.weights ? electedMembers.weights[m] : 1
                             })
                         }
                         details.payload = {
                             ...d,
                             signature: { sig, bv },
-                            members: validatedElectedMembers
+                            members: validatedElectedMembers,
+                            weight_total: electedMembers.weight_total ?? electedMembers.members.length
                         } as ElectionPayload
                     } else
                         return { valid: false }
@@ -444,15 +450,17 @@ const processor = {
                     break
                 case op_type_map.map.election_result:
                     result.payload = result.payload as ElectionPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_election_result($1,$2,$3,$4,$5,$6,$7,$8);`,[
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_election_result($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);`,[
                         op.id,
                         result.user,
                         result.payload.epoch,
                         result.payload.data,
                         result.payload.signature.sig,
                         result.payload.signature.bv,
-                        '{'+result.payload.members!.map(m => m.account).join(',')+'}',
-                        '{"'+result.payload.members!.map(m => m.key).join('","')+'"}'
+                        '{'+result.payload.members.map(m => m.account).join(',')+'}',
+                        '{"'+result.payload.members.map(m => m.key).join('","')+'"}',
+                        '{'+result.payload.members.map(m => m.weight).join(',')+'}',
+                        result.payload.weight_total
                     ])
                     break
                 case op_type_map.map.bridge_ref:

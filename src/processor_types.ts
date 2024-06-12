@@ -44,7 +44,8 @@ export interface UnsignedElection {
 
 export interface ElectionPayload extends UnsignedElection {
     signature: BLSAggSign<Buffer>
-    members?: ElectionMember<number>[]
+    members: ElectionMemberWeighted<number>[]
+    weight_total: number
 }
 
 export type NodeAnnouncePayload = {
@@ -145,6 +146,10 @@ export interface ElectionOp extends UnsignedElection {
 export interface ElectionMember<T> {
     account: T
     key: string
+}
+
+export interface ElectionMemberWeighted<T> extends ElectionMember<T> {
+    weight: number
 }
 
 export interface ShuffledSchedule extends WitnessConsensusDid {

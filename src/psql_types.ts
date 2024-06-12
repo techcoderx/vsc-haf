@@ -30,9 +30,11 @@ export type BlockScheduleParams = {
 export type WitnessConsensusDid = {
     name: string
     consensus_did: string
+    weight: number
 }
 
 export type LastElectionDetail = {
     epoch: number
     bh: number
+    total_weight: number
 }

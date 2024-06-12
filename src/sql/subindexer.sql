@@ -125,7 +125,8 @@ LANGUAGE plpgsql STABLE;
 DROP TYPE IF EXISTS vsc_app.witnesses_at_block CASCADE;
 CREATE TYPE vsc_app.witnesses_at_block AS (
     name TEXT,
-    consensus_did VARCHAR
+    consensus_did VARCHAR,
+    weight INTEGER
 );
 CREATE OR REPLACE FUNCTION vsc_app.get_active_witnesses_at_block(_block_num INTEGER)
 RETURNS SETOF vsc_app.witnesses_at_block
@@ -160,7 +161,8 @@ BEGIN
         )
         SELECT
             a.name,
-            ka.consensus_did
+            ka.consensus_did,
+            1
         FROM toggle_state l
         JOIN hive.vsc_app_accounts a ON
             a.id = l.witness_id
@@ -178,7 +180,7 @@ AS
 $function$
 BEGIN
     RETURN QUERY
-        SELECT a.name, em.consensus_did
+        SELECT a.name, em.consensus_did, em.weight
             FROM vsc_app.election_result_members em
             JOIN hive.vsc_app_accounts a ON
                 a.id = em.witness_id
@@ -221,7 +223,8 @@ LANGUAGE plpgsql STABLE;
 DROP TYPE IF EXISTS vsc_app.last_election_info CASCADE;
 CREATE TYPE vsc_app.last_election_info AS (
     epoch INTEGER,
-    bh INTEGER
+    bh INTEGER,
+    total_weight INTEGER
 );
 
 CREATE OR REPLACE FUNCTION vsc_app.get_last_election_at_block(_block_num INTEGER)
@@ -229,7 +232,7 @@ RETURNS SETOF vsc_app.last_election_info
 AS $function$
 BEGIN
     RETURN QUERY
-        SELECT e.epoch, o.block_num
+        SELECT e.epoch, o.block_num, e.total_weight
             FROM vsc_app.election_results e
             JOIN vsc_app.l1_operations o ON
                 o.id = e.proposed_in_op
@@ -508,7 +511,7 @@ END
 $function$
 LANGUAGE plpgsql VOLATILE;
 
-CREATE OR REPLACE FUNCTION vsc_app.insert_election_result(_proposed_in_op BIGINT, _proposer VARCHAR, _epoch INTEGER, _data_cid VARCHAR, _sig BYTEA, _bv BYTEA, _elected_members INTEGER[], _elected_keys VARCHAR[])
+CREATE OR REPLACE FUNCTION vsc_app.insert_election_result(_proposed_in_op BIGINT, _proposer VARCHAR, _epoch INTEGER, _data_cid VARCHAR, _sig BYTEA, _bv BYTEA, _elected_members INTEGER[], _elected_keys VARCHAR[], _weights INTEGER[], _weight_total INTEGER)
 RETURNS void
 AS
 $function$
@@ -522,17 +525,19 @@ BEGIN
         RETURN;
     END IF;
     SELECT id INTO _acc_id FROM hive.vsc_app_accounts WHERE name=_proposer;
-    INSERT INTO vsc_app.election_results(epoch, proposed_in_op, proposer, data_cid, sig, bv)
-        VALUES(_epoch, _proposed_in_op, _acc_id, _data_cid, _sig, _bv);
+    INSERT INTO vsc_app.election_results(epoch, proposed_in_op, proposer, data_cid, weight_total, sig, bv)
+        VALUES(_epoch, _proposed_in_op, _acc_id, _data_cid, _weight_total, _sig, _bv);
 
     IF (SELECT ARRAY_LENGTH(_elected_members, 1)) != (SELECT ARRAY_LENGTH(_elected_keys, 1)) THEN
         RAISE EXCEPTION 'elected members and keys must have the same array length';
+    ELSIF (SELECT ARRAY_LENGTH(_elected_members, 1)) != (SELECT ARRAY_LENGTH(_weights, 1)) THEN
+        RAISE EXCEPTION 'elected members and weights must have the same array length';
     END IF;
 
     FOR i IN array_lower(_elected_members, 1) .. array_upper(_elected_members, 1)
     LOOP
-        INSERT INTO vsc_app.election_result_members(epoch, witness_id, consensus_did, idx)
-            VALUES (_epoch, _elected_members[i], _elected_keys[i], i::SMALLINT);
+        INSERT INTO vsc_app.election_result_members(epoch, witness_id, consensus_did, weight, idx)
+            VALUES (_epoch, _elected_members[i], _elected_keys[i], _weights[i], i::SMALLINT);
     END LOOP;
 END
 $function$

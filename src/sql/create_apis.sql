@@ -1100,12 +1100,19 @@ BEGIN
         RETURN (
             SELECT jsonb_agg(jsonb_build_object(
                 'username', name,
-                'consensus_did', consensus_did
+                'consensus_did', consensus_did,
+                'weight', weight
             ))
             FROM vsc_app.get_members_at_block(blk_num)
         );
     ELSE
-        RETURN (SELECT jsonb_agg(name) FROM vsc_app.get_members_at_block(blk_num));
+        RETURN (
+            SELECT jsonb_agg(jsonb_build_object(
+                'username', name,
+                'weight', weight
+            ))
+            FROM vsc_app.get_members_at_block(blk_num)
+        );
     END IF;
 END $function$
 LANGUAGE plpgsql STABLE;

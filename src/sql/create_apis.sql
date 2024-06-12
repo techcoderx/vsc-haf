@@ -165,6 +165,7 @@ BEGIN
             'txs', (SELECT COUNT(*) FROM vsc_app.l2_txs t WHERE t.block_num = bk.id)+(SELECT COUNT(*) FROM vsc_app.anchor_refs ar WHERE ar.block_num = bk.id),
             'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(l1_op.block_num, l1_op.trx_in_block)),
             'l1_block', l1_op.block_num,
+            'weights', (SELECT jsonb_agg(weight) FROM vsc_app.get_election_at_block(l1_op.block_num)),
             'bv', encode(bk.bv, 'hex')
         ))
         FROM vsc_app.blocks bk
@@ -1067,6 +1068,7 @@ BEGIN
             'ts', ts,
             'proposer', name,
             'data_cid', data_cid,
+            'weights', (SELECT jsonb_agg(weight) FROM vsc_app.get_election_at_epoch(epoch)),
             'sig', encode(sig, 'hex'),
             'bv', encode(bv, 'hex')
         )) FROM epochs
@@ -1082,12 +1084,19 @@ BEGIN
         RETURN (
             SELECT jsonb_agg(jsonb_build_object(
                 'username', name,
-                'consensus_did', consensus_did
+                'consensus_did', consensus_did,
+                'weight', weight
             ))
             FROM vsc_app.get_election_at_epoch(epoch)
         );
     ELSE
-        RETURN (SELECT jsonb_agg(name) FROM vsc_app.get_election_at_epoch(epoch));
+        RETURN (
+            SELECT jsonb_agg(jsonb_build_object(
+                'username', name,
+                'weight', weight
+            ))
+            FROM vsc_app.get_election_at_epoch(epoch)
+        );
     END IF;
 END $function$
 LANGUAGE plpgsql STABLE;
@@ -1131,6 +1140,7 @@ BEGIN
             'data_cid', e.data_cid,
             'election', (SELECT vsc_api.get_election_at_epoch(epoch_num, FALSE)),
             'members_at_start', (SELECT vsc_api.get_members_at_block(o.block_num - (o.block_num % 7200), FALSE)),
+            'weights', (SELECT jsonb_agg(weight) FROM vsc_app.get_members_at_block(blk_num)),
             'sig', encode(e.sig, 'hex'),
             'bv', encode(e.bv, 'hex')
         )
@@ -1188,6 +1198,7 @@ BEGIN
             'block_hash', b.block_header_hash,
             'proposer', b.name,
             'txs', (SELECT COUNT(*) FROM vsc_app.l2_txs t WHERE t.block_num = b.id)+(SELECT COUNT(*) FROM vsc_app.anchor_refs ar WHERE ar.block_num = b.id),
+            'weights', (SELECT jsonb_agg(weight) FROM vsc_app.get_election_at_epoch(epoch_num)),
             'bv', encode(b.bv, 'hex')
         )) FROM blocks b
     ), '[]'::jsonb);

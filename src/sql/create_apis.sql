@@ -54,9 +54,10 @@ DECLARE
     _merkle BYTEA;
     _sig BYTEA;
     _bv BYTEA;
+    _vw INTEGER;
 BEGIN
-    SELECT b.id, b.block_header_hash, b.block_hash, o.block_num, o.trx_in_block, o.ts, a.name, b.merkle_root, b.sig, b.bv
-        INTO _block_id, _block_hash, _block_body_hash, _block_num, _tb, _ts, _proposer, _merkle, _sig, _bv
+    SELECT b.id, b.block_header_hash, b.block_hash, o.block_num, o.trx_in_block, o.ts, a.name, b.merkle_root, b.sig, b.bv, b.voted_weight
+        INTO _block_id, _block_hash, _block_body_hash, _block_num, _tb, _ts, _proposer, _merkle, _sig, _bv, _vw
         FROM vsc_app.blocks b
         JOIN vsc_app.l1_operations o ON
             o.id = b.proposed_in_op
@@ -83,6 +84,8 @@ BEGIN
         'l1_block', _block_num,
         'txs', (SELECT COUNT(*) FROM vsc_app.l2_txs t WHERE t.block_num = _block_id)+(SELECT COUNT(*) FROM vsc_app.anchor_refs ar WHERE ar.block_num = _block_id),
         'merkle_root', encode(_merkle, 'hex'),
+        'voted_weight', _vw,
+        'eligible_weight', (SELECT SUM(weight) FROM vsc_app.get_members_at_block(_block_num)),
         'signature', (jsonb_build_object(
             'sig', encode(_sig, 'hex'),
             'bv', encode(_bv, 'hex')
@@ -107,9 +110,10 @@ DECLARE
     _merkle BYTEA;
     _sig BYTEA;
     _bv BYTEA;
+    _vw INTEGER;
 BEGIN
-    SELECT b.block_header_hash, b.block_hash, o.block_num, o.trx_in_block, o.ts, a.name, b.merkle_root, b.sig, b.bv
-        INTO _block_hash, _block_body_hash, _block_num, _tb, _ts, _proposer, _merkle, _sig, _bv
+    SELECT b.block_header_hash, b.block_hash, o.block_num, o.trx_in_block, o.ts, a.name, b.merkle_root, b.sig, b.bv, b.voted_weight
+        INTO _block_hash, _block_body_hash, _block_num, _tb, _ts, _proposer, _merkle, _sig, _bv, _vw
         FROM vsc_app.blocks b
         JOIN vsc_app.l1_operations o ON
             o.id = b.proposed_in_op
@@ -136,6 +140,8 @@ BEGIN
         'l1_block', _block_num,
         'txs', (SELECT COUNT(*) FROM vsc_app.l2_txs t WHERE t.block_num = blk_id)+(SELECT COUNT(*) FROM vsc_app.anchor_refs ar WHERE ar.block_num = blk_id),
         'merkle_root', encode(_merkle, 'hex'),
+        'voted_weight', _vw,
+        'eligible_weight', (SELECT SUM(weight) FROM vsc_app.get_members_at_block(_block_num)),
         'signature', (jsonb_build_object(
             'sig', encode(_sig, 'hex'),
             'bv', encode(_bv, 'hex')

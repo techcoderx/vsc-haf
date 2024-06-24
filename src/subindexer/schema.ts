@@ -11,12 +11,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 // FK name: FKS_TYPE
 export const HAF_FKS: FKS_TYPE = {
     block_proposed_in_op_fk: {
-        table: SCHEMA_NAME+'.blocks',
+        table: SCHEMA_NAME+'.l2_blocks',
         fk: 'proposed_in_op',
         ref: SCHEMA_NAME+'.l1_operations(id)'
     },
     block_proposer_fk: {
-        table: SCHEMA_NAME+'.blocks',
+        table: SCHEMA_NAME+'.l2_blocks',
         fk: 'proposer',
         ref: `hive.${APP_CONTEXT}_accounts(id)`
     },
@@ -53,7 +53,7 @@ export const HAF_FKS: FKS_TYPE = {
     l1_txs_details_fk: {
         table: SCHEMA_NAME+'.l1_txs',
         fk: 'details',
-        ref: SCHEMA_NAME+'.transactions(id)'
+        ref: SCHEMA_NAME+'.contract_calls(id)'
     },
     l1_tx_multiauth_tx_id: {
         table: SCHEMA_NAME+'.l1_tx_multiauth',
@@ -68,12 +68,12 @@ export const HAF_FKS: FKS_TYPE = {
     l2_txs_block_num_fk: {
         table: SCHEMA_NAME+'.l2_txs',
         fk: 'block_num',
-        ref: SCHEMA_NAME+'.blocks(id)'
+        ref: SCHEMA_NAME+'.l2_blocks(id)'
     },
     l2_txs_details_fk: {
         table: SCHEMA_NAME+'.l2_txs',
         fk: 'details',
-        ref: SCHEMA_NAME+'.transactions(id)'
+        ref: SCHEMA_NAME+'.contract_calls(id)'
     },
     l2_tx_multiauth_tx_id: {
         table: SCHEMA_NAME+'.l2_tx_multiauth',
@@ -86,14 +86,14 @@ export const HAF_FKS: FKS_TYPE = {
         ref: SCHEMA_NAME+'.dids(id)'
     },
     contract_call_contract_id_fk: {
-        table: SCHEMA_NAME+'.transactions',
+        table: SCHEMA_NAME+'.contract_calls',
         fk: 'contract_id',
         ref: SCHEMA_NAME+'.contracts(contract_id)'
     },
     anchor_refs_block_num_fk: {
         table: SCHEMA_NAME+'.anchor_refs',
         fk: 'block_num',
-        ref: SCHEMA_NAME+'.blocks(id)'
+        ref: SCHEMA_NAME+'.l2_blocks(id)'
     },
     anchor_ref_txs_ref_id_fk: {
         table: SCHEMA_NAME+'.anchor_ref_txs',
@@ -109,15 +109,15 @@ export const INDEXES: INDEXES_TYPE = {
         columns: [{ col_name: 'cid', order: Ordering.ASC }]
     },
     block_hash_idx: {
-        table_name: SCHEMA_NAME+'.blocks',
+        table_name: SCHEMA_NAME+'.l2_blocks',
         columns: [{ col_name: 'block_hash', order: Ordering.ASC }]
     },
     block_header_hash_idx: {
-        table_name: SCHEMA_NAME+'.blocks',
+        table_name: SCHEMA_NAME+'.l2_blocks',
         columns: [{ col_name: 'block_header_hash', order: Ordering.ASC }]
     },
     block_proposed_in_op_idx: {
-        table_name: SCHEMA_NAME+'.blocks',
+        table_name: SCHEMA_NAME+'.l2_blocks',
         columns: [{ col_name: 'proposed_in_op', order: Ordering.ASC }]
     },
     contract_created_in_op_idx: {

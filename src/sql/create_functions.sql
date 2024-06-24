@@ -96,7 +96,7 @@ DECLARE
     _trx_in_block SMALLINT;
     _op_pos INTEGER;
 BEGIN
-    SELECT id INTO _hive_user_id FROM vsc_app.accounts WHERE name=_username;
+    SELECT id INTO _hive_user_id FROM hive.vsc_app_accounts WHERE name=_username;
     IF _hive_user_id IS NULL THEN
         RAISE EXCEPTION 'Could not process non-existent user %', _username;
     END IF;
@@ -153,7 +153,7 @@ DECLARE
     _current_sk_owner VARCHAR = NULL;
     _current_enabled BOOLEAN = NULL;
 BEGIN
-    SELECT id INTO _hive_user_id FROM vsc_app.accounts WHERE name=_username;
+    SELECT id INTO _hive_user_id FROM hive.vsc_app_accounts WHERE name=_username;
     IF _hive_user_id IS NULL THEN
         RAISE EXCEPTION 'Could not process non-existent user %', _username;
     END IF;
@@ -266,7 +266,7 @@ BEGIN
         INSERT INTO vsc_app.deposits_to_did(in_op, amount, asset, dest_did)
             VALUES(_in_op, _amount, _asset, _dest_id);
     ELSIF _dest_type = 'hive' THEN
-        SELECT id INTO _dest_id FROM vsc_app.accounts WHERE name=_dest;
+        SELECT id INTO _dest_id FROM hive.vsc_app_accounts WHERE name=_dest;
         IF _dest_id IS NULL THEN
             RAISE EXCEPTION 'hive username does not exist';
         END IF;
@@ -292,7 +292,7 @@ $function$
 DECLARE
     _dest_id INTEGER = NULL;
 BEGIN
-    SELECT id INTO _dest_id FROM vsc_app.accounts WHERE name=_dest;
+    SELECT id INTO _dest_id FROM hive.vsc_app_accounts WHERE name=_dest;
     IF _dest_id IS NULL THEN
         RAISE EXCEPTION 'hive username does not exist';
     END IF;
@@ -315,7 +315,7 @@ $function$
 DECLARE
     _dest_id INTEGER = NULL;
 BEGIN
-    SELECT id INTO _dest_id FROM vsc_app.accounts WHERE name=_dest;
+    SELECT id INTO _dest_id FROM hive.vsc_app_accounts WHERE name=_dest;
     IF _dest_id IS NULL THEN
         RAISE EXCEPTION 'hive username does not exist';
     END IF;

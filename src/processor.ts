@@ -1,7 +1,7 @@
 import { CID } from 'multiformats/cid'
 import { bech32 } from "bech32"
 import randomDID from './did.js'
-import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS, REQUIRES_ACTIVE, START_BLOCK, ANY_AUTH, CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT, MULTISIG_ACCOUNT_2 } from './constants.js'
+import { APP_CONTEXT, CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS, REQUIRES_ACTIVE, START_BLOCK, ANY_AUTH, CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT, MULTISIG_ACCOUNT_2 } from './constants.js'
 import db from './db.js'
 import logger from './logger.js'
 import { DepositPayload, MultisigTxRefPayload, NodeAnnouncePayload, Op, OpBody, ParsedOp, PayloadTypes, TxTypes } from './processor_types.js'
@@ -259,7 +259,7 @@ const processor = {
                             if (payload.to.startsWith('did:') && payload.to.length <= 78)
                                 payload.owner = payload.to
                             else if (payload.to.startsWith('@') && payload.to.length <= 17 &&
-                                (await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.accounts WHERE name=$1;`,[payload.to.replace('@','')])).rowCount! > 0)
+                                (await db.client.query(`SELECT * FROM hive.${APP_CONTEXT}_accounts WHERE name=$1;`,[payload.to.replace('@','')])).rowCount! > 0)
                                 payload.owner = payload.to.replace('@','')
                             else
                                 payload.owner = parsed.value.from

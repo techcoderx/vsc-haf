@@ -9,7 +9,7 @@ import { createDag, isCID, encodePayload } from './ipfs_dag.js'
 import { BlsCircuit, initBls } from '../utils/bls-did.js'
 import op_type_map from '../operations.js'
 import { AnchorRefBody, AnchorRefHead, BlockBody, BridgeRef, ContractCallBody, ContractOutBody, ContractStorageProof } from './ipfs_payload.js'
-import { CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT, EPOCH_LENGTH, MIN_BLOCKS_SINCE_LAST_ELECTION, MAX_BLOCKS_SINCE_LAST_ELECTION, ROUND_LENGTH, SCHEMA_NAME, SUPERMAJORITY, ELECTION_UPDATE_1_EPOCH, ELECTION_UPDATE_2_EPOCH } from '../constants.js'
+import { APP_CONTEXT, CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT, EPOCH_LENGTH, MIN_BLOCKS_SINCE_LAST_ELECTION, MAX_BLOCKS_SINCE_LAST_ELECTION, ROUND_LENGTH, SCHEMA_NAME, SUPERMAJORITY, ELECTION_UPDATE_1_EPOCH, ELECTION_UPDATE_2_EPOCH } from '../constants.js'
 import { shuffle } from '../utils/shuffle-seed.js'
 
 await initBls()
@@ -351,7 +351,7 @@ const processor = {
                         for (let m in electedMembers.members) {
                             if (typeof electedMembers.members[m].account !== 'string' || typeof electedMembers.members[m].key !== 'string')
                                 continue
-                            const accountExists = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}._accounts WHERE name=$1;`,[electedMembers.members[m].account])
+                            const accountExists = await db.client.query(`SELECT * FROM hive.${APP_CONTEXT}_accounts WHERE name=$1;`,[electedMembers.members[m].account])
                             if (accountExists.rows.length === 0)
                                 continue
                             validatedElectedMembers.push({

@@ -25,8 +25,8 @@ BEGIN
         'last_processed_subindexer_op', (SELECT last_processed_op FROM vsc_app.subindexer_state),
         'db_version', _db_version,
         'epoch', (SELECT epoch FROM vsc_app.election_results ORDER BY epoch DESC LIMIT 1),
-        'l2_block_height', (SELECT COUNT(*) FROM vsc_app.blocks),
-        'transactions', (SELECT COUNT(*) FROM vsc_app.transactions),
+        'l2_block_height', (SELECT COUNT(*) FROM vsc_app.l2_blocks),
+        'transactions', (SELECT COUNT(*) FROM vsc_app.contract_calls),
         'operations', (SELECT COUNT(*) FROM vsc_app.l1_operations),
         'contracts', (SELECT COUNT(*) FROM vsc_app.contracts),
         'witnesses', (SELECT COUNT(*) FROM vsc_app.witnesses),
@@ -58,7 +58,7 @@ DECLARE
 BEGIN
     SELECT b.id, b.block_header_hash, b.block_hash, o.block_num, o.trx_in_block, o.ts, a.name, b.merkle_root, b.sig, b.bv, b.voted_weight
         INTO _block_id, _block_hash, _block_body_hash, _block_num, _tb, _ts, _proposer, _merkle, _sig, _bv, _vw
-        FROM vsc_app.blocks b
+        FROM vsc_app.l2_blocks b
         JOIN vsc_app.l1_operations o ON
             o.id = b.proposed_in_op
         JOIN hive.vsc_app_accounts a ON
@@ -69,7 +69,7 @@ BEGIN
     END IF;
     IF _block_id > 1 THEN
         SELECT b.block_header_hash INTO _prev_block_hash
-            FROM vsc_app.blocks b
+            FROM vsc_app.l2_blocks b
             WHERE b.id = _block_id-1;
     END IF;
     
@@ -114,7 +114,7 @@ DECLARE
 BEGIN
     SELECT b.block_header_hash, b.block_hash, o.block_num, o.trx_in_block, o.ts, a.name, b.merkle_root, b.sig, b.bv, b.voted_weight
         INTO _block_hash, _block_body_hash, _block_num, _tb, _ts, _proposer, _merkle, _sig, _bv, _vw
-        FROM vsc_app.blocks b
+        FROM vsc_app.l2_blocks b
         JOIN vsc_app.l1_operations o ON
             o.id = b.proposed_in_op
         JOIN hive.vsc_app_accounts a ON
@@ -125,7 +125,7 @@ BEGIN
     END IF;
     IF blk_id > 1 THEN
         SELECT b.block_header_hash INTO _prev_block_hash
-            FROM vsc_app.blocks b
+            FROM vsc_app.l2_blocks b
             WHERE b.id = blk_id-1;
     END IF;
     
@@ -175,7 +175,7 @@ BEGIN
             'eligible_weight', (SELECT SUM(weight) FROM vsc_app.get_members_at_block(l1_op.block_num-1)),
             'bv', encode(bk.bv, 'hex')
         ))
-        FROM vsc_app.blocks bk
+        FROM vsc_app.l2_blocks bk
         JOIN vsc_app.l1_operations l1_op ON
             bk.proposed_in_op = l1_op.id
         JOIN hive.vsc_app_accounts a ON
@@ -263,7 +263,7 @@ BEGIN
             'contract_output', d.contract_output
         )
         FROM vsc_app.l1_txs t
-        JOIN vsc_app.transactions d ON
+        JOIN vsc_app.contract_calls d ON
             t.details = d.id
         WHERE t.id = l1_op_id
     );
@@ -344,9 +344,9 @@ BEGIN
     ), t.tx_type, d.id
     INTO _result, _tx_type, _tx_id
     FROM vsc_app.l2_txs t
-    JOIN vsc_app.transactions d ON
+    JOIN vsc_app.contract_calls d ON
         t.details = d.id
-    JOIN vsc_app.blocks b ON
+    JOIN vsc_app.l2_blocks b ON
         b.id = t.block_num
     JOIN vsc_app.l1_operations bo ON
         bo.id = b.proposed_in_op
@@ -423,7 +423,7 @@ BEGIN
     FROM vsc_app.l1_operations o
     JOIN vsc_app.l1_txs t ON
         t.id = o.id
-    JOIN vsc_app.transactions d ON
+    JOIN vsc_app.contract_calls d ON
         t.details = d.id
     WHERE o.block_num = _bn AND o.trx_in_block = _tb AND o.op_pos = _op_pos AND o.op_type = 5;
 
@@ -1192,7 +1192,7 @@ BEGIN
     RETURN COALESCE((
         WITH blocks AS (
             SELECT bk.id, l1_op.block_num, l1_op.ts, bk.block_header_hash, a.name, bk.bv, bk.voted_weight
-            FROM vsc_app.blocks bk
+            FROM vsc_app.l2_blocks bk
             JOIN vsc_app.l1_operations l1_op ON
                 bk.proposed_in_op = l1_op.id
             JOIN hive.vsc_app_accounts a ON
@@ -1234,7 +1234,7 @@ BEGIN
             'tx_root', encode(r.tx_root, 'hex')
         ))
         FROM vsc_app.anchor_refs r
-        JOIN vsc_app.blocks b ON
+        JOIN vsc_app.l2_blocks b ON
             b.id = r.block_num
         JOIN vsc_app.l1_operations bo ON
             bo.id = b.proposed_in_op
@@ -1260,7 +1260,7 @@ BEGIN
             'refs', (SELECT jsonb_agg(encode(tx_id, 'hex')) FROM vsc_app.anchor_ref_txs WHERE ref_id = r.id)
         )
         FROM vsc_app.anchor_refs r
-        JOIN vsc_app.blocks b ON
+        JOIN vsc_app.l2_blocks b ON
             b.id = r.block_num
         JOIN vsc_app.l1_operations bo ON
             bo.id = b.proposed_in_op
@@ -1286,7 +1286,7 @@ BEGIN
             'refs', (SELECT jsonb_agg(encode(tx_id, 'hex')) FROM vsc_app.anchor_ref_txs WHERE ref_id = r.id)
         )
         FROM vsc_app.anchor_refs r
-        JOIN vsc_app.blocks b ON
+        JOIN vsc_app.l2_blocks b ON
             b.id = r.block_num
         JOIN vsc_app.l1_operations bo ON
             bo.id = b.proposed_in_op
@@ -1306,7 +1306,7 @@ DECLARE
     _result_varchar VARCHAR;
 BEGIN
     -- Block search
-    SELECT id INTO _result_int FROM vsc_app.blocks WHERE block_hash = _cid OR block_header_hash = _cid;
+    SELECT id INTO _result_int FROM vsc_app.l2_blocks WHERE block_hash = _cid OR block_header_hash = _cid;
     IF _result_int IS NOT NULL THEN
         RETURN jsonb_build_object(
             'type', 'block',

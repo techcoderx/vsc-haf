@@ -316,7 +316,7 @@ DECLARE
     _tx jsonb;
 BEGIN
     SELECT id INTO _acc_id FROM hive.vsc_app_accounts WHERE name=_proposer;
-    INSERT INTO vsc_app.blocks(proposed_in_op, proposer, block_hash, block_header_hash, br_start, br_end, merkle_root, voted_weight, sig, bv)
+    INSERT INTO vsc_app.l2_blocks(proposed_in_op, proposer, block_hash, block_header_hash, br_start, br_end, merkle_root, voted_weight, sig, bv)
         VALUES(_proposed_in_op, _acc_id, _block_hash, _block_header_hash, _br_start, _br_end, _merkle, _voted_weight, _sig, _bv)
         RETURNING id INTO _new_block_id;
     
@@ -363,7 +363,7 @@ BEGIN
         RETURN;
     END IF;
 
-    INSERT INTO vsc_app.transactions(contract_id, contract_action, payload)
+    INSERT INTO vsc_app.contract_calls(contract_id, contract_action, payload)
         VALUES(_contract_id, _contract_action, _payload)
         RETURNING id INTO _new_l2_transaction_id;
 
@@ -427,7 +427,7 @@ BEGIN
         IF _input_tx_id IS NULL THEN
             CONTINUE;
         END IF;
-        UPDATE vsc_app.transactions SET
+        UPDATE vsc_app.contract_calls SET
             io_gas = _io_gas,
             contract_output = _results
         WHERE id = _input_tx_id;
@@ -488,7 +488,7 @@ BEGIN
         RAISE EXCEPTION 'callers and caller_auths must have the same array length';
     END IF;
 
-    INSERT INTO vsc_app.transactions(contract_id, contract_action, payload)
+    INSERT INTO vsc_app.contract_calls(contract_id, contract_action, payload)
         VALUES(_contract_id, _contract_action, _payload)
         RETURNING id INTO _new_l2_transaction_id;
 

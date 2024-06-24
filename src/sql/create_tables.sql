@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.l2_tx_multiauth(
     did INTEGER NOT NULL -- id from dids table
 );
 
-CREATE TABLE IF NOT EXISTS vsc_app.blocks(
+CREATE TABLE IF NOT EXISTS vsc_app.l2_blocks(
     id SERIAL PRIMARY KEY,
     proposed_in_op BIGINT NOT NULL,
     block_hash VARCHAR(59) NOT NULL,
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.blocks(
     bv BYTEA NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS vsc_app.transactions(
+CREATE TABLE IF NOT EXISTS vsc_app.contract_calls(
     id BIGSERIAL PRIMARY KEY,
     contract_id VARCHAR(68) NOT NULL,
     contract_action VARCHAR NOT NULL,

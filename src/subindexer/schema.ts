@@ -3,7 +3,7 @@ import { dirname } from 'path'
 import { fileURLToPath } from 'url'
 import db from '../db.js'
 import logger from '../logger.js'
-import { SCHEMA_NAME, APP_CONTEXT } from '../constants.js'
+import { SCHEMA_NAME } from '../constants.js'
 import { FKS_TYPE, INDEXES_TYPE, Ordering } from '../schema_types.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -18,7 +18,7 @@ export const HAF_FKS: FKS_TYPE = {
     block_proposer_fk: {
         table: SCHEMA_NAME+'.blocks',
         fk: 'proposer',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
+        ref: `${SCHEMA_NAME}._accounts(id)`
     },
     contract_created_in_op_fk: {
         table: SCHEMA_NAME+'.contracts',
@@ -33,7 +33,7 @@ export const HAF_FKS: FKS_TYPE = {
     election_proposer_fk: {
         table: SCHEMA_NAME+'.election_results',
         fk: 'proposer',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
+        ref: `${SCHEMA_NAME}._accounts(id)`
     },
     elected_members_epoch_fk: {
         table: SCHEMA_NAME+'.election_result_members',
@@ -43,7 +43,7 @@ export const HAF_FKS: FKS_TYPE = {
     elected_members_user_id_fk: {
         table: SCHEMA_NAME+'.election_result_members',
         fk: 'witness_id',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
+        ref: `${SCHEMA_NAME}._accounts(id)`
     },
     l1_txs_op_id_fk: {
         table: SCHEMA_NAME+'.l1_txs',
@@ -63,7 +63,7 @@ export const HAF_FKS: FKS_TYPE = {
     l1_tx_multiauth_user_id_fk: {
         table: SCHEMA_NAME+'.l1_tx_multiauth',
         fk: 'user_id',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
+        ref: `${SCHEMA_NAME}._accounts(id)`
     },
     l2_txs_block_num_fk: {
         table: SCHEMA_NAME+'.l2_txs',

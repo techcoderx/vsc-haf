@@ -17,7 +17,7 @@ const HAF_FKS: FKS_TYPE = {
     l1_op_user_id_fk: {
         table: SCHEMA_NAME+'.l1_operations',
         fk: 'user_id',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
+        ref: `${SCHEMA_NAME}.accounts(id)`
     },
     l1_op_type_fk: {
         table: SCHEMA_NAME+'.l1_operations',
@@ -27,12 +27,12 @@ const HAF_FKS: FKS_TYPE = {
     l1_users_fk: {
         table: SCHEMA_NAME+'.l1_users',
         fk: 'id',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
+        ref: `${SCHEMA_NAME}.accounts(id)`
     },
     witness_account_fk: {
         table: SCHEMA_NAME+'.witnesses',
         fk: 'id',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
+        ref: `${SCHEMA_NAME}.accounts(id)`
     },
     witness_enabled_at_fk: {
         table: SCHEMA_NAME+'.witnesses',
@@ -47,7 +47,7 @@ const HAF_FKS: FKS_TYPE = {
     witness_toggle_wid_fk: {
         table: SCHEMA_NAME+'.witness_toggle_archive',
         fk: 'witness_id',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
+        ref: `${SCHEMA_NAME}.accounts(id)`
     },
     witness_toggle_op_id_fk: {
         table: SCHEMA_NAME+'.witness_toggle_archive',
@@ -57,7 +57,7 @@ const HAF_FKS: FKS_TYPE = {
     keyauths_uid_fk: {
         table: SCHEMA_NAME+'.keyauths_archive',
         fk: 'user_id',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
+        ref: `${SCHEMA_NAME}.accounts(id)`
     },
     keyauths_op_id_fk: {
         table: SCHEMA_NAME+'.keyauths_archive',
@@ -77,7 +77,7 @@ const HAF_FKS: FKS_TYPE = {
     deposits_to_hive_dest_acc_fk: {
         table: SCHEMA_NAME+'.deposits_to_hive',
         fk: 'dest_acc',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
+        ref: `${SCHEMA_NAME}.accounts(id)`
     },
     deposits_to_did_in_op_fk: {
         table: SCHEMA_NAME+'.deposits_to_did',
@@ -97,7 +97,7 @@ const HAF_FKS: FKS_TYPE = {
     withdrawal_request_dest_acc_fk: {
         table: SCHEMA_NAME+'.withdrawal_request',
         fk: 'dest_acc',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
+        ref: `${SCHEMA_NAME}.accounts(id)`
     },
     withdrawal_request_status_fk: {
         table: SCHEMA_NAME+'.withdrawal_request',
@@ -112,7 +112,7 @@ const HAF_FKS: FKS_TYPE = {
     withdrawals_dest_acc_fk: {
         table: SCHEMA_NAME+'.withdrawals',
         fk: 'dest_acc',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
+        ref: `${SCHEMA_NAME}.accounts(id)`
     }
 }
 

@@ -1,4 +1,4 @@
-import { APP_CONTEXT } from './constants.js'
+import { APP_CONTEXT, SCHEMA_NAME } from './constants.js'
 import logger from './logger.js'
 import db from './db.js'
 import { AppNextBlock } from './psql_types.js'
@@ -11,7 +11,7 @@ const context = {
     create: async () => {
         if (await context.exists())
             return logger.info('App context already exists, skipping app context creation')
-        await db.client.query('SELECT hive.app_create_context($1,$2);',[APP_CONTEXT,false])
+        await db.client.query('SELECT hive.app_create_context($1,$2,$3);',[APP_CONTEXT,SCHEMA_NAME,false])
         logger.info('Created app context',APP_CONTEXT)
     },
     attach: async () => {

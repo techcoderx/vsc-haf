@@ -164,7 +164,7 @@ BEGIN
             ka.consensus_did,
             1
         FROM toggle_state l
-        JOIN hive.vsc_app_accounts a ON
+        JOIN vsc_app.accounts a ON
             a.id = l.witness_id
         JOIN keyauths_state ka ON
             ka.user_id = l.witness_id
@@ -182,7 +182,7 @@ BEGIN
     RETURN QUERY
         SELECT a.name, em.consensus_did, em.weight
             FROM vsc_app.election_result_members em
-            JOIN hive.vsc_app_accounts a ON
+            JOIN vsc_app.accounts a ON
                 a.id = em.witness_id
             WHERE epoch = _epoch
             ORDER BY em.idx ASC;
@@ -286,7 +286,7 @@ DECLARE
     block_id VARCHAR;
     epoch INTEGER;
 BEGIN
-    SELECT encode(hash, 'hex') INTO block_id FROM hive.vsc_app_blocks_view WHERE num = past_rnd_height-1;
+    SELECT encode(hash, 'hex') INTO block_id FROM vsc_app.blocks_view WHERE num = past_rnd_height-1;
     SELECT vsc_app.get_epoch_at_block(_block_num) INTO epoch;
 
     RETURN QUERY SELECT rnd_length, total_rnds, mod_length, mod3, past_rnd_height, next_rnd_height, block_id, epoch;
@@ -315,7 +315,7 @@ DECLARE
     _new_block_id INTEGER;
     _tx jsonb;
 BEGIN
-    SELECT id INTO _acc_id FROM hive.vsc_app_accounts WHERE name=_proposer;
+    SELECT id INTO _acc_id FROM vsc_app.accounts WHERE name=_proposer;
     INSERT INTO vsc_app.l2_blocks(proposed_in_op, proposer, block_hash, block_header_hash, br_start, br_end, merkle_root, voted_weight, sig, bv)
         VALUES(_proposed_in_op, _acc_id, _block_hash, _block_header_hash, _br_start, _br_end, _merkle, _voted_weight, _sig, _bv)
         RETURNING id INTO _new_block_id;
@@ -411,7 +411,7 @@ BEGIN
     LOOP
         IF LENGTH(_input) = 40 THEN
             SELECT block_num, trx_in_block INTO _bn, _tb
-                FROM hive.vsc_app_transactions_view
+                FROM vsc_app.transactions_view
                 WHERE trx_hash = decode(_input, 'hex');
             SELECT details INTO _input_tx_id FROM vsc_app.l1_txs WHERE id = (
                 SELECT id
@@ -501,7 +501,7 @@ BEGIN
             RAISE EXCEPTION 'caller auths must be either 1s or 2s.';
         END IF;
         _caller_id := NULL;
-        SELECT id INTO _caller_id FROM hive.vsc_app_accounts WHERE name=_callers[i];
+        SELECT id INTO _caller_id FROM vsc_app.accounts WHERE name=_callers[i];
         IF _caller_id IS NULL THEN
             RAISE EXCEPTION 'hive username % does not exist', _callers[i];
         END IF;
@@ -537,7 +537,7 @@ BEGIN
     IF (SELECT EXISTS (SELECT 1 FROM vsc_app.election_results WHERE epoch=_epoch)) THEN
         RETURN;
     END IF;
-    SELECT id INTO _acc_id FROM hive.vsc_app_accounts WHERE name=_proposer;
+    SELECT id INTO _acc_id FROM vsc_app.accounts WHERE name=_proposer;
     INSERT INTO vsc_app.election_results(epoch, proposed_in_op, proposer, data_cid, voted_weight, weight_total, sig, bv)
         VALUES(_epoch, _proposed_in_op, _acc_id, _data_cid, _voted_weight, _weight_total, _sig, _bv);
 

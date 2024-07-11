@@ -400,6 +400,9 @@ DECLARE
     _input VARCHAR;
     _input_tx_id BIGINT;
 
+    _i1 VARCHAR; -- parsed l1 tx hash
+    _i2 VARCHAR; -- parsed l1 op_pos in string
+    _i3 INTEGER; -- parsed l1 op_pos in integer
     _bn INTEGER;
     _tb SMALLINT;
 BEGIN
@@ -409,17 +412,21 @@ BEGIN
 
     FOREACH _input IN ARRAY _inputs
     LOOP
-        IF LENGTH(_input) = 40 THEN
+        IF LENGTH(_input) < 59 THEN
+            SELECT SPLIT_PART(_input, '-', 1) INTO _i1;
+            SELECT SPLIT_PART(_input, '-', 2) INTO _i2;
+            IF LENGTH(_i2) > 0 THEN
+                _i3 := _i2::INTEGER;
+            ELSE
+                _i3 := 0;
+            END IF;
             SELECT block_num, trx_in_block INTO _bn, _tb
                 FROM vsc_app.transactions_view
-                WHERE trx_hash = decode(_input, 'hex');
+                WHERE trx_hash = decode(_i1, 'hex');
             SELECT details INTO _input_tx_id FROM vsc_app.l1_txs WHERE id = (
                 SELECT id
                 FROM vsc_app.l1_operations
-                WHERE block_num = _bn AND trx_in_block = _tb AND op_type = 5
-                LIMIT 1
-                -- which one if there are multiple contract calls in the same l1 tx???
-                -- op_pos is currently not provided in contract output on IPFS
+                WHERE block_num = _bn AND trx_in_block = _tb AND op_pos = _i3 AND op_type = 5;
             );
         ELSE
             SELECT details INTO _input_tx_id FROM vsc_app.l2_txs WHERE id = _input;

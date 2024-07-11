@@ -416,7 +416,7 @@ BEGIN
             SELECT SPLIT_PART(_input, '-', 1) INTO _i1;
             SELECT SPLIT_PART(_input, '-', 2) INTO _i2;
             IF LENGTH(_i2) > 0 THEN
-                _i3 := _i2::INTEGER;
+                _i3 := (_i2::INTEGER);
             ELSE
                 _i3 := 0;
             END IF;
@@ -426,7 +426,7 @@ BEGIN
             SELECT details INTO _input_tx_id FROM vsc_app.l1_txs WHERE id = (
                 SELECT id
                 FROM vsc_app.l1_operations
-                WHERE block_num = _bn AND trx_in_block = _tb AND op_pos = _i3 AND op_type = 5;
+                WHERE block_num = _bn AND trx_in_block = _tb AND op_pos = _i3 AND op_type = 5
             );
         ELSE
             SELECT details INTO _input_tx_id FROM vsc_app.l2_txs WHERE id = _input;

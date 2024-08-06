@@ -2,6 +2,7 @@ import logger from '../logger.js'
 import db from '../db.js'
 import { L2PayloadTypes, ParsedOp, VscOp, BlockOp, OpBody, BridgeRefPayload, CustomJsonPayloads, BridgeRefResult, ElectionOp, ElectionPayload2, ElectionMember, ElectionMemberWeighted, ShuffledSchedule, UnsignedBlock, BlockPayload, L1CallTxOp, L1TxPayload, NewContractPayload, NewContractOp } from '../processor_types.js'
 import { BlockScheduleParams, LastElectionDetail, WitnessConsensusDid } from '../psql_types.js'
+import { QueryResult } from 'pg'
 import ipfs from './ipfs.js'
 import { CID } from 'kubo-rpc-client'
 import { bech32 } from 'bech32'
@@ -11,6 +12,7 @@ import op_type_map from '../operations.js'
 import { AnchorRefBody, AnchorRefHead, BlockBody, BridgeRef, ContractCallBody, ContractOutBody, ContractStorageProof } from './ipfs_payload.js'
 import { APP_CONTEXT, CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT, EPOCH_LENGTH, MIN_BLOCKS_SINCE_LAST_ELECTION, MAX_BLOCKS_SINCE_LAST_ELECTION, ROUND_LENGTH, SCHEMA_NAME, SUPERMAJORITY, ELECTION_UPDATE_1_EPOCH, ELECTION_UPDATE_2_EPOCH } from '../constants.js'
 import { shuffle } from '../utils/shuffle-seed.js'
+import BitSet from 'bitset'
 
 await initBls()
 
@@ -68,6 +70,18 @@ const minimalRequiredElectionVotes = (blocksSinceLastElection: number, memberCou
     return Math.round(Range.from([0, 1]).map(drift, Range.from([minMembers, maxMembers])));
 }
 
+const verifyStorageProof = async (block_num: number, proofCID: CID, sig: string | Buffer, bv: string | Buffer): Promise<{isValid: boolean, circuit: BlsCircuit, bs: BitSet}> => {
+    if (typeof sig === 'string')
+        sig = Buffer.from(sig, 'base64url')
+    if (typeof bv === 'string')
+        bv = Buffer.from(bv, 'base64url')
+    const members = await db.client.query<WitnessConsensusDid>(`SELECT * FROM ${SCHEMA_NAME}.get_members_at_block($1);`,[block_num])
+    const keyset = members.rows.map(m => m.consensus_did)
+    const {circuit, bs} = BlsCircuit.deserializeRaw({ hash: proofCID.bytes }, sig, bv, keyset)
+    const isValid = await circuit.verify(proofCID.bytes)
+    return {isValid, circuit, bs}
+}
+
 const processor = {
     validateAndParse: async (op: VscOp): Promise<ParsedOp<L2PayloadTypes>> => {
         // we know at this point that the operation looks valid as it has
@@ -85,7 +99,7 @@ const processor = {
         }
         try {
             let payload: CustomJsonPayloads = JSON.parse(parsed.value.json)
-            let sig: Buffer, bv: Buffer, merkle: Buffer
+            let sig: Buffer, bv: Buffer, merkle: Buffer //, members: QueryResult<WitnessConsensusDid>
             switch (op.op_type) {
                 case op_type_map.map.propose_block:
                     // propose block
@@ -216,6 +230,10 @@ const processor = {
                                             }
                                         if (invalidInputs)
                                             continue
+                                        if (txBody.inputs.length !== txBody.results.length) {
+                                            logger.warn(`Ignoring contract output due to non-equal array length of inputs and results, index ${t} in block ${blockCIDShort}`)
+                                            continue
+                                        }
                                         details.payload.txs.push({
                                             id: blockTxs.txs[t].id,
                                             type: 2,
@@ -285,10 +303,7 @@ const processor = {
                             return { valid: false }
                         sig = Buffer.from(payload.storage_proof!.signature.sig, 'base64url')
                         bv = Buffer.from(payload.storage_proof!.signature.bv, 'base64url')
-                        const members = await db.client.query<WitnessConsensusDid>(`SELECT * FROM ${SCHEMA_NAME}.get_members_at_block($1);`,[op.block_num])
-                        const keyset = members.rows.map(m => m.consensus_did)
-                        const {circuit, bs} = BlsCircuit.deserializeRaw({ hash: proofCID.bytes }, sig, bv, keyset)
-                        const isValid = await circuit.verify(proofCID.bytes)
+                        const { isValid, bs } = await verifyStorageProof(op.block_num, proofCID, sig, bv)
                         logger.debug(`New contract at op ${op.id} storage proof: ${bs.toString(2)} ${isValid}`)
                         if (!isValid)
                             return { valid: false }
@@ -299,6 +314,32 @@ const processor = {
                                 bv: bv
                             }
                         }
+                    }
+                    break
+                case op_type_map.map.update_contract:
+                    payload = payload as NewContractOp
+                    details.payload = {
+                        contract_id: payload.id,
+                        code: payload.code
+                    }
+                    const proofCID = CID.parse(payload.storage_proof!.hash)
+                    const proof: ContractStorageProof = (await ipfs.dag.get(proofCID)).value
+                    if (proof.cid !== payload.code || proof.type !== 'data-availability')
+                        return { valid: false }
+                    sig = Buffer.from(payload.storage_proof!.signature.sig, 'base64url')
+                    bv = Buffer.from(payload.storage_proof!.signature.bv, 'base64url')
+                    {
+                    const { isValid, bs } = await verifyStorageProof(op.block_num, proofCID, sig, bv)
+                    logger.debug(`Update contract at op ${op.id} storage proof: ${bs.toString(2)} ${isValid}`)
+                    if (!isValid)
+                        return { valid: false }
+                    details.payload.storage_proof = {
+                        hash: payload.storage_proof!.hash,
+                        signature: {
+                            sig: sig,
+                            bv: bv
+                        }
+                    }
                     }
                     break
                 case op_type_map.map.tx:
@@ -334,6 +375,7 @@ const processor = {
                         net_id: payload.net_id
                     }
                     const nextEpoch = lastElection.rows.length > 0 ? lastElection.rows[0].epoch+1 : 0
+                    {
                     const {pubKeys, circuit, bs} = BlsCircuit.deserializeRaw(d, sig, bv, membersAtSlotStart.rows.map(m => m.consensus_did))
                     const isValid = await circuit.verify((await createDag(d)).bytes)
                     logger.debug(`Epoch ${d.epoch} election: ${bs.toString(2)} ${isValid}`)
@@ -369,6 +411,7 @@ const processor = {
                         } as ElectionPayload2
                     } else
                         return { valid: false }
+                    }
                     break
                 case op_type_map.map.bridge_ref:
                     // bridge ref
@@ -438,6 +481,17 @@ const processor = {
                             result.payload.storage_proof.signature.sig,
                             result.payload.storage_proof.signature.bv
                         ]: [null, null, null])
+                    ])
+                    break
+                case op_type_map.map.update_contract:
+                    result.payload = result.payload as NewContractPayload
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_contract($1,$2,$3,$4,$5,$6);`,[
+                        op.id,
+                        result.payload.contract_id,
+                        result.payload.code,
+                        result.payload.storage_proof!.hash,
+                        result.payload.storage_proof!.signature.sig,
+                        result.payload.storage_proof!.signature.bv
                     ])
                     break
                 case op_type_map.map.tx:

@@ -163,6 +163,11 @@ export interface ShuffledSchedule extends WitnessConsensusDid {
     in_past: boolean
 }
 
+type StorageProof<T> = {
+    hash: string
+    signature: BLSAggSign<T>
+}
+
 export interface NewContract {
     name?: string
     description?: string
@@ -171,18 +176,13 @@ export interface NewContract {
 
 export interface NewContractOp extends NewContract {
     net_id: string
-    storage_proof?: {
-        hash: string
-        signature: BLSAggSign<string>
-    }
+    id: string
+    storage_proof?: StorageProof<string>
 }
 
 export interface NewContractPayload extends NewContract {
     contract_id: string
-    storage_proof?: {
-        hash: string
-        signature: BLSAggSign<Buffer>
-    }
+    storage_proof?: StorageProof<Buffer>
 }
 
 export interface L1CallTxOp {

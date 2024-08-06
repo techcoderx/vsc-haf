@@ -173,6 +173,27 @@ const processor = {
                             ref_id: payload.ref_id
                         }
                         break
+                    case 7:
+                        // update_contract
+                        if (!isCID(payload.code) || typeof payload.id !== 'string')
+                            return { valid: false }
+                        const updatedCode = CID.parse(payload.code)
+                        if (updatedCode.code !== 0x71)
+                            return { valid: false }
+                        if (typeof payload.storage_proof !== 'object' ||
+                            typeof payload.storage_proof.hash !== 'string' ||
+                            typeof payload.storage_proof.signature !== 'object' ||
+                            typeof payload.storage_proof.signature.sig !== 'string' ||
+                            typeof payload.storage_proof.signature.bv !== 'string' ||
+                            !isCID(payload.storage_proof.hash))
+                            return { valid: false }
+                        const proofCID = CID.parse(payload.storage_proof.hash)
+                        if (proofCID.code !== 0x71)
+                            return { valid: false }
+                        sig = Buffer.from(payload.storage_proof.signature.sig, 'base64url')
+                        bv = Buffer.from(payload.storage_proof.signature.bv, 'base64url')
+                        if (sig.length !== 96)
+                            return { valid: false }
                     default:
                         break
                 }

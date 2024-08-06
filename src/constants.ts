@@ -8,7 +8,8 @@ export const CUSTOM_JSON_IDS = [
     'vsc.tx',
     'vsc.election_result',
     'vsc.multisig_txref',
-    'vsc.bridge_ref'
+    'vsc.bridge_ref',
+    'vsc.update_contract'
 ]
 export const CUSTOM_JSON_ALIAS: { [alias: string]: string } = {
     'vsc.announce_tx': 'vsc.tx'

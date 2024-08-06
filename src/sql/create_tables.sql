@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.l2_txs(
     idx_in_block SMALLINT NOT NULL, -- position in l2 block, max 32767
     tx_type SMALLINT NOT NULL, -- 1 for call_contract, 2 for contract_output
     nonce INTEGER, -- currently not enforced
-    details BIGINT NOT NULL -- transaction details from transactions table
+    details BIGINT -- transaction details from transactions table
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.l2_tx_multiauth(
@@ -71,12 +71,14 @@ CREATE TABLE IF NOT EXISTS vsc_app.contract_calls(
     contract_action VARCHAR NOT NULL,
     payload jsonb NOT NULL,
     io_gas INTEGER,
+    contract_output_tx_id VARCHAR(59),
     contract_output jsonb
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.contracts(
     contract_id VARCHAR(68) PRIMARY KEY,
     created_in_op BIGINT NOT NULL,
+    last_updated_in_op BIGINT,
     name VARCHAR,
     description VARCHAR,
     code VARCHAR(59) NOT NULL,

@@ -614,3 +614,27 @@ BEGIN
 END
 $function$
 LANGUAGE plpgsql VOLATILE;
+
+CREATE OR REPLACE FUNCTION vsc_app.update_contract(
+    _updated_in_op BIGINT,
+    _contract_id VARCHAR,
+    _code_hash VARCHAR,
+    _proof_hash VARCHAR,
+    _proof_sig BYTEA,
+    _proof_bv BYTEA)
+RETURNS void
+AS
+$function$
+BEGIN
+    IF (SELECT EXISTS (SELECT 1 FROM vsc_app.contracts WHERE contract_id=_contract_id)) THEN
+        UPDATE vsc_app.contracts SET
+            last_updated_in_op = _updated_in_op,
+            code = _code_hash,
+            proof_hash = _proof_hash,
+            proof_sig = _proof_sig,
+            proof_bv = _proof_bv
+        WHERE contract_id = _contract_id;
+    END IF;
+END
+$function$
+LANGUAGE plpgsql VOLATILE;

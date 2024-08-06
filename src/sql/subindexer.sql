@@ -330,7 +330,11 @@ BEGIN
     FOR _tx IN SELECT * FROM jsonb_array_elements(_txs)
     LOOP
         IF (_tx->>'type')::INT = 1 THEN
-            PERFORM vsc_app.push_l2_contract_call_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, _tx->>'contract_id', _tx->>'action', (_tx->'payload')::jsonb, (SELECT ARRAY(SELECT jsonb_array_elements_text(_tx->'callers'))), (_tx->>'nonce')::INT);
+            IF _tx->>'op' = 'call_contract' THEN
+                PERFORM vsc_app.push_l2_contract_call_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, _tx->>'contract_id', _tx->>'action', (_tx->'payload')::jsonb, (SELECT ARRAY(SELECT jsonb_array_elements_text(_tx->'callers'))), (_tx->>'nonce')::INT);
+            ELSIF _tx->>'op' = 'transfer' THEN
+                PERFORM vsc_app.push_transfer_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT);
+            END IF;
         ELSIF (_tx->>'type')::INT = 2 THEN
             PERFORM vsc_app.push_l2_contract_output_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, _tx->>'contract_id', (SELECT ARRAY(SELECT jsonb_array_elements_text(_tx->'inputs'))), (_tx->>'io_gas')::INT, (_tx->'results')::jsonb);
         ELSIF (_tx->>'type')::INT = 5 THEN
@@ -399,6 +403,8 @@ $function$
 DECLARE
     _input VARCHAR;
     _input_tx_id BIGINT;
+    _input_tx_ids BIGINT[] = '{}';
+    _input_pos INTEGER = 0;
 
     _i1 VARCHAR; -- parsed l1 tx hash
     _i2 VARCHAR; -- parsed l1 op_pos in string
@@ -436,13 +442,17 @@ BEGIN
         END IF;
         UPDATE vsc_app.contract_calls SET
             io_gas = _io_gas,
-            contract_output = _results
+            contract_output_tx_id = _id,
+            contract_output = (_results -> _input_pos)
         WHERE id = _input_tx_id;
+        SELECT ARRAY_APPEND(_input_tx_ids, _input_tx_id) INTO _input_tx_ids;
+        _input_pos := _input_pos+1;
     END LOOP;
 
+    -- If we processed any input txs, insert the corresponding output tx into l2_txs
     IF _input_tx_id IS NOT NULL THEN
-        INSERT INTO vsc_app.l2_txs(id, block_num, idx_in_block, tx_type, details)
-            VALUES(_id, _l2_block_num, _index, 2, _input_tx_id);
+        INSERT INTO vsc_app.l2_txs(id, block_num, idx_in_block, tx_type)
+            VALUES(_id, _l2_block_num, _index, 2);
     END IF;
 END
 $function$

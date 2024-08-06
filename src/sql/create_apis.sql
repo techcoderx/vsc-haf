@@ -218,6 +218,7 @@ BEGIN
 END $function$
 LANGUAGE plpgsql STABLE;
 
+-- Called by vsc_api.get_l1_tx_all_outputs
 CREATE OR REPLACE FUNCTION vsc_api.get_l1_tx(trx_id VARCHAR, op_pos INTEGER)
 RETURNS jsonb
 AS $function$
@@ -247,7 +248,7 @@ BEGIN
             'id', trx_id || '-' || op_pos::VARCHAR,
             'input', trx_id || '-' || op_pos::VARCHAR,
             'input_src', 'hive',
-            'output', (SELECT id FROM vsc_app.l2_txs t2 WHERE details = d.id AND t2.tx_type = 2 LIMIT 1),
+            'output', d.contract_output_tx_id,
             'block_num', _bn,
             'idx_in_block', _tb,
             'ts', _ts,
@@ -341,7 +342,7 @@ BEGIN
         'payload', (d.payload->0),
         'io_gas', d.io_gas,
         'contract_output', d.contract_output
-    ), t.tx_type, d.id
+    ), t.tx_type, t.details
     INTO _result, _tx_type, _tx_id
     FROM vsc_app.l2_txs t
     JOIN vsc_app.contract_calls d ON
@@ -357,8 +358,10 @@ BEGIN
     END IF;
 
     IF _tx_type = 1 THEN
-        _result := _result || jsonb_build_object('input', trx_id, 'input_src', _input_src, 'output', (
-            SELECT id FROM vsc_app.l2_txs WHERE details = _tx_id AND tx_type = 2 LIMIT 1
+        _result := _result || (SELECT jsonb_build_object(
+            'input', trx_id,
+            'input_src', _input_src,
+            'output', (SELECT id FROM vsc_app.l2_txs WHERE details = _tx_id AND tx_type = 2 LIMIT 1)
         ));
     ELSIF _tx_type = 2 THEN
         SELECT id INTO _input FROM vsc_app.l2_txs WHERE details = _tx_id AND tx_type = 1;
@@ -408,7 +411,7 @@ BEGIN
         'nonce', o.nonce,
         'input', trx_id,
         'input_src', 'hive',
-        'output', (SELECT id FROM vsc_app.l2_txs WHERE details = d.id AND tx_type = 2 LIMIT 1),
+        'output', d.contract_output_tx_id,
         'signers', jsonb_build_object(
             'active', _ra,
             'posting', _rpa

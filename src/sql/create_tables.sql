@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.l1_users(
 
 CREATE TABLE IF NOT EXISTS vsc_app.l1_txs(
     id BIGINT PRIMARY KEY, -- id from l1_operations table
-    details BIGINT NOT NULL -- id from transactions table
+    details BIGINT NOT NULL -- id from contract_calls table
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.l1_tx_multiauth(

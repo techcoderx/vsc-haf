@@ -16,6 +16,7 @@ ALTER TABLE vsc_app.l2_tx_multiauth DROP CONSTRAINT IF EXISTS l2_tx_multiauth_di
 ALTER TABLE vsc_app.contract_calls DROP CONSTRAINT IF EXISTS contract_call_contract_id_fk;
 ALTER TABLE vsc_app.anchor_refs DROP CONSTRAINT IF EXISTS anchor_refs_block_num_fk;
 ALTER TABLE vsc_app.anchor_ref_txs DROP CONSTRAINT IF EXISTS anchor_ref_txs_ref_id_fk;
+ALTER TABLE vsc_app.events DROP CONSTRAINT IF EXISTS events_block_num_fk;
 
 TRUNCATE TABLE vsc_app.subindexer_state;
 TRUNCATE TABLE vsc_app.election_result_members;
@@ -30,13 +31,16 @@ TRUNCATE TABLE vsc_app.transfers;
 TRUNCATE TABLE vsc_app.l2_withdrawals;
 TRUNCATE TABLE vsc_app.events;
 TRUNCATE TABLE vsc_app.contract_calls;
+TRUNCATE TABLE vsc_app.contract_outputs;
 TRUNCATE TABLE vsc_app.anchor_refs;
 TRUNCATE TABLE vsc_app.anchor_ref_txs;
 
 SELECT setval(pg_get_serial_sequence('vsc_app.l2_blocks', 'id'), 1, false);
 SELECT setval(pg_get_serial_sequence('vsc_app.contract_calls', 'id'), 1, false);
+SELECT setval(pg_get_serial_sequence('vsc_app.contract_outputs', 'id'), 1, false);
 SELECT setval(pg_get_serial_sequence('vsc_app.transfers', 'id'), 1, false);
 SELECT setval(pg_get_serial_sequence('vsc_app.anchor_refs', 'id'), 1, false);
+SELECT setval(pg_get_serial_sequence('vsc_app.events', 'id'), 1, false);
 
 UPDATE vsc_app.withdrawal_request SET
     status = 1;

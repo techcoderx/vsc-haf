@@ -168,7 +168,6 @@ BEGIN
             'block_hash', bk.block_header_hash,
             'block_body_hash', bk.block_hash,
             'proposer', a.name,
-            'txs', (SELECT COUNT(*) FROM vsc_app.l2_txs t WHERE t.block_num = bk.id)+(SELECT COUNT(*) FROM vsc_app.anchor_refs ar WHERE ar.block_num = bk.id),
             'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(l1_op.block_num, l1_op.trx_in_block)),
             'l1_block', l1_op.block_num,
             'voted_weight', bk.voted_weight,
@@ -200,10 +199,18 @@ BEGIN
             WHERE t.block_num = blk_id
             GROUP BY t.id
         UNION ALL
+        SELECT o.cid AS id, o.block_num, o.idx_in_block, 2, NULL, 0
+            FROM vsc_app.contract_outputs o
+            WHERE e.block_num = blk_id
+        UNION ALL
+        SELECT e.cid AS id, e.block_num, e.idx_in_block, 6, NULL, 0
+            FROM vsc_app.events e
+            WHERE e.block_num = blk_id
+        UNION ALL
         SELECT r.cid AS id, r.block_num, r.idx_in_block, 5, NULL, 0
             FROM vsc_app.anchor_refs r
             WHERE r.block_num = blk_id
-            ORDER BY idx_in_block ASC
+        ORDER BY idx_in_block ASC
     )
     SELECT COALESCE(jsonb_agg(
         jsonb_build_object(

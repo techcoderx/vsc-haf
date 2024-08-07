@@ -79,6 +79,8 @@ BEGIN
         RETURN 'withdraw';
     ELSIF id = 5 THEN
         RETURN 'anchor_ref';
+    ELSIF id = 6 THEN
+        RETURN 'event';
     ELSE
         RETURN '';
     END IF;

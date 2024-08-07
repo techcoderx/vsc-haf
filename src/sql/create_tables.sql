@@ -76,6 +76,15 @@ CREATE TABLE IF NOT EXISTS vsc_app.contract_calls(
     contract_output jsonb
 );
 
+CREATE TABLE IF NOT EXISTS vsc_app.contract_outputs(
+    id SERIAL PRIMARY KEY,
+    cid VARCHAR(59) NOT NULL,
+    block_num INTEGER NOT NULL,
+    idx_in_block SMALLINT NOT NULL,
+    contract_id VARCHAR(68) NOT NULL,
+    total_io_gas INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS vsc_app.transfers(
     id BIGSERIAL PRIMARY KEY,
     from_acctype SMALLINT NOT NULL, -- from account type, 1 for hive, 2 for did

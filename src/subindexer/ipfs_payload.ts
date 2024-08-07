@@ -1,15 +1,19 @@
+export type Coin = 'HIVE' | 'HBD'
+
 export interface BridgeRef {
     withdrawals: {
         amount: number,
         dest: string,
         id: string,
-        unit: 'HIVE' | 'HBD'
+        unit: Coin
     }[]
 }
 
+export type InputType = 'call_contract' | 'transfer'
+
 interface ContractCallHead {
     id: string
-    op: string
+    op: InputType
     type: 1
 }
 
@@ -19,7 +23,12 @@ interface ContractOutHead {
     type: 2
 }
 
-type BlockBodyTx = ContractCallHead | ContractOutHead | AnchorRefHead
+interface EventsOutHead {
+    id: string
+    type: 6
+}
+
+type BlockBodyTx = ContractCallHead | ContractOutHead | AnchorRefHead | EventsOutHead
 
 export interface BlockBody {
     __t: 'vsc-block'
@@ -32,21 +41,46 @@ export interface BlockBody {
     txs: BlockBodyTx[]
 }
 
-export interface ContractCallBody {
+interface InputBodyBase {
     __t: 'vsc-tx'
     __v: '0.2'
     headers: {
         nonce: number
         required_auths: string[]
-        type: 1
+        type: number
+        payer?: string
+        lock_block?: string
+        intents?: null | string[]
     }
     tx: {
-        action: string
-        contract_id: string
+        op: InputType
+        payload: any
+    }
+}
+
+export interface ContractCallBody extends InputBodyBase {
+    tx: {
+        action?: string
+        contract_id?: string
         op: 'call_contract'
         payload: any
     }
 }
+
+export interface TransferBody extends InputBodyBase {
+    tx: {
+        op: 'transfer'
+        payload: {
+            amount: number,
+            from: string,
+            memo?: string,
+            tk: Coin,
+            to: string
+        }
+    }
+}
+
+export type InputBody = ContractCallBody | TransferBody
 
 export interface ContractOutBody {
     __t: 'vsc-output'
@@ -56,6 +90,36 @@ export interface ContractOutBody {
     io_gas: number
     results: any[]
     state_merkle: string
+}
+
+export enum EventOpType {
+    'ledger:transfer' = 110_001,
+    'ledger:withdraw' = 110_002,
+    'ledger:deposit' = 110_003,
+  
+    //Reserved for future, DO NOT USE
+    'ledger:stake_hbd' = 110_004,
+    'ledger:unstake_hbd' = 110_005,
+    'ledger:claim_hbd' = 110_006,
+    
+    //Reserved for future, DO NOT USE
+    'consensus:stake' = 100_001,
+    'consensus:unstake' = 100_002
+}
+
+export interface EventOp {
+    owner: string
+    tk: Coin
+    t: EventOpType
+    amt: number
+    memo?: string
+}
+
+export interface EventOutBody {
+    __t: 'vsc-events'
+    txs: Array<string>
+    txs_map: Array<Array<number>>
+    events: Array<EventOp>
 }
 
 export interface AnchorRefHead {

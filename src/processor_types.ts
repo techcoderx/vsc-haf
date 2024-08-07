@@ -1,4 +1,4 @@
-import { AnchorRefPayload } from './subindexer/ipfs_payload.js'
+import { AnchorRefPayload, EventOutBody, InputType, Coin } from './subindexer/ipfs_payload.js'
 import { WitnessConsensusDid } from './psql_types.js'
 
 export interface Op {
@@ -87,7 +87,7 @@ export interface VscOp extends Op {
 export type CustomJsonPayloads = BlockOp | NewContractOp | ElectionOp | BridgeRefPayload | L1CallTxOp
 export type BridgeRefResult = bigint[]
 export type L2PayloadTypes = BridgeRefResult | ElectionPayload2 | BlockPayload | L1TxPayload | NewContractPayload
-export type L2Tx = L2ContractCallPayload | L2ContractOutPayload | AnchorRefPayload
+export type L2Tx = L2ContractCallPayload | L2ContractOutPayload | AnchorRefPayload | TransferPayload | EventsPayload
 export interface BlockOp {
     net_id: string
     replay_id: number
@@ -132,6 +132,7 @@ export interface L2TxPayload {
 
 export interface L2ContractCallPayload extends ContractCallPayload, L2TxPayload {
     type: 1
+    op: 'call_contract'
     callers: string[]
     nonce: number
 }
@@ -142,6 +143,21 @@ export interface L2ContractOutPayload extends L2TxPayload {
     contract_id: string
     io_gas: number
     results: any[]
+}
+
+export interface TransferPayload extends L2TxPayload {
+    type: 1
+    op: 'transfer'
+    amount: number
+    from: string
+    to: string
+    memo?: string
+    tk: Coin
+}
+
+interface EventsPayload extends L2TxPayload {
+    type: 6
+    body: EventOutBody
 }
 
 export interface ElectionOp extends UnsignedElection {

@@ -41,9 +41,10 @@ CREATE TABLE IF NOT EXISTS vsc_app.l2_txs(
     id VARCHAR(59) PRIMARY KEY, -- call_contract transaction CID
     block_num INTEGER NOT NULL, -- included in l2 block number from blocks table
     idx_in_block SMALLINT NOT NULL, -- position in l2 block, max 32767
-    tx_type SMALLINT NOT NULL, -- 1 for call_contract, 2 for contract_output
+    tx_type SMALLINT NOT NULL, -- 1 for call_contract, 2 for contract_output, 3 for transfer
     nonce INTEGER, -- currently not enforced
-    details BIGINT -- transaction details from transactions table
+    details BIGINT, -- transaction details from contract_calls/transfers table. this should not be fk
+    events jsonb
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.l2_tx_multiauth(
@@ -73,6 +74,22 @@ CREATE TABLE IF NOT EXISTS vsc_app.contract_calls(
     io_gas INTEGER,
     contract_output_tx_id VARCHAR(59),
     contract_output jsonb
+);
+
+CREATE TABLE IF NOT EXISTS vsc_app.transfers(
+    id BIGSERIAL PRIMARY KEY,
+    from_acctype SMALLINT NOT NULL, -- from account type, 1 for hive, 2 for did
+    from_id INTEGER NOT NULL, -- from account id referencing dids/hive.vsc_app_accounts table
+    to_acctype SMALLINT NOT NULL, -- to account type, 1 for hive, 2 for did
+    to_id INTEGER NOT NULL, -- to account id referencing dids/hive.vsc_app_accounts table
+    amount INTEGER NOT NULL, -- amount in mHIVE/mHBD
+    coin SMALLINT NOT NULL, -- 1 for HIVE, 2 for HBD
+    memo VARCHAR
+);
+
+CREATE TABLE IF NOT EXISTS vsc_app.events(
+    id VARCHAR(59) PRIMARY KEY,
+    tx_ids VARCHAR(59)[]
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.contracts(

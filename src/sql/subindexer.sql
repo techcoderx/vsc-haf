@@ -339,10 +339,33 @@ BEGIN
             PERFORM vsc_app.push_l2_contract_output_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, _tx->>'contract_id', (SELECT ARRAY(SELECT jsonb_array_elements_text(_tx->'inputs'))), (_tx->>'io_gas')::INT, (_tx->'results')::jsonb);
         ELSIF (_tx->>'type')::INT = 5 THEN
             PERFORM vsc_app.push_anchor_ref(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, _tx->>'data', (SELECT ARRAY(SELECT jsonb_array_elements_text(_tx->'txs'))));
+        ELSIF (_tx->>'type')::INT = 6 THEN
+            PERFORM vsc_app.push_events(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, (_tx->'body')::jsonb);
         END IF;
     END LOOP;
 END
 $function$
+LANGUAGE plpgsql VOLATILE;
+
+CREATE OR REPLACE FUNCTION vsc_app.insert_tx_auth_did(
+    _id VARCHAR,
+    _did VARCHAR
+)
+RETURNS INTEGER
+AS $function$
+DECLARE
+    _did_id INTEGER = NULL;
+BEGIN
+    SELECT id INTO _did_id FROM vsc_app.dids WHERE did=_did;
+    IF _did_id IS NULL THEN
+        INSERT INTO vsc_app.dids(did) VALUES(_did) RETURNING id INTO _did_id;
+    END IF;
+    IF _id IS NOT NULL THEN
+        INSERT INTO vsc_app.l2_tx_multiauth(id, did)
+            VALUES(_id, _did_id);
+    END IF;
+    RETURN _did_id;
+END $function$
 LANGUAGE plpgsql VOLATILE;
 
 CREATE OR REPLACE FUNCTION vsc_app.push_l2_contract_call_tx(
@@ -361,7 +384,6 @@ $function$
 DECLARE
     _new_l2_transaction_id BIGINT;
     _caller VARCHAR;
-    _caller_id INTEGER;
 BEGIN
     IF (SELECT EXISTS (SELECT 1 FROM vsc_app.l2_txs WHERE id=_id)) THEN
         RETURN;
@@ -376,13 +398,7 @@ BEGIN
 
     FOREACH _caller IN ARRAY _callers
     LOOP
-        _caller_id := NULL;
-        SELECT id INTO _caller_id FROM vsc_app.dids WHERE did=_caller;
-        IF _caller_id IS NULL THEN
-            INSERT INTO vsc_app.dids(did) VALUES(_caller) RETURNING id INTO _caller_id;
-        END IF;
-        INSERT INTO vsc_app.l2_tx_multiauth(id, did)
-            VALUES(_id, _caller_id);
+        PERFORM vsc_app.insert_tx_auth_did(_id, _caller);
     END LOOP;
 END
 $function$
@@ -458,6 +474,73 @@ END
 $function$
 LANGUAGE plpgsql VOLATILE;
 
+CREATE OR REPLACE FUNCTION vsc_app.push_transfer_tx(
+    _id VARCHAR,
+    _l2_block_num INTEGER,
+    _index SMALLINT,
+    _amount INTEGER,
+    _from VARCHAR,
+    _to VARCHAR,
+    _tk VARCHAR,
+    _memo VARCHAR = NULL
+)
+RETURNS void
+AS $function$
+DECLARE
+    _coin SMALLINT;
+    _xfer_id BIGINT;
+    _from_acctype SMALLINT;
+    _from_id INTEGER = NULL;
+    _to_acctype SMALLINT;
+    _to_id INTEGER = NULL;
+BEGIN
+    IF (SELECT EXISTS (SELECT 1 FROM vsc_app.l2_txs WHERE id=_id)) THEN
+        RETURN;
+    END IF;
+
+    IF _tk = 'HIVE' THEN
+        _coin := 1::SMALLINT;
+    ELSIF _tk = 'HBD' THEN
+        _coin := 2::SMALLINT;
+    ELSE
+        RAISE EXCEPTION '_tk must be HIVE or HBD';
+    END IF;
+
+    -- prepare from id
+    IF (SELECT starts_with(_from, 'did:')) THEN
+        SELECT vsc_app.insert_tx_auth_did(_id, _from) INTO _from_id;
+        _from_acctype := 2::SMALLINT;
+    ELSIF (SELECT starts_with(_from, 'hive:')) THEN
+        SELECT id INTO _from_id FROM hive.vsc_app_accounts WHERE name=(SELECT SPLIT_PART(_from, ':', 2));
+        _from_acctype := 1::SMALLINT;
+
+        IF _from_id IS NULL THEN
+            RAISE EXCEPTION 'sending from non-existent hive user'; -- this should never happen
+        END IF;
+    END IF;
+
+    -- prepare to id
+    IF (SELECT starts_with(_to, 'did:')) THEN
+        SELECT vsc_app.insert_tx_auth_did(NULL, _to) INTO _to_id;
+        _to_acctype := 2::SMALLINT;
+    ELSIF (SELECT starts_with(_to, 'hive:')) THEN
+        SELECT id INTO _to_id FROM hive.vsc_app_accounts WHERE name=(SELECT SPLIT_PART(_to, ':', 2));
+        _to_acctype := 1::SMALLINT;
+
+        IF _to_id IS NULL THEN
+            RETURN; -- todo: handle sending to non-existent hive username
+        END IF;
+    END IF;
+
+    INSERT INTO vsc_app.transfers(from_acctype, from_id, to_acctype, to_id, amount, coin, memo)
+        VALUES(_from_acctype, _from_id, _to_acctype, _to_id, _amount, _coin, _memo)
+        RETURNING id INTO _xfer_id;
+
+    INSERT INTO vsc_app.l2_txs(id, block_num, idx_in_block, tx_type, details)
+        VALUES(_id, _l2_block_num, _index, 3, _xfer_id);
+END $function$
+LANGUAGE plpgsql VOLATILE;
+
 CREATE OR REPLACE FUNCTION vsc_app.push_anchor_ref(
     _id VARCHAR,
     _l2_block_num INTEGER,
@@ -483,6 +566,36 @@ BEGIN
     END LOOP;
 END
 $function$
+LANGUAGE plpgsql VOLATILE;
+
+CREATE OR REPLACE FUNCTION vsc_app.push_events(
+    _id VARCHAR,
+    _l2_block_num INTEGER,
+    _index SMALLINT,
+    _body jsonb
+)
+RETURNS void
+AS $function$
+DECLARE
+    i INTEGER = 0;
+    e jsonb = '[]'::jsonb;
+    e2 INTEGER;
+BEGIN
+    IF (SELECT jsonb_array_length(_body->>'txs')) != (SELECT jsonb_array_length(_body->>'txs_map')) THEN
+        RETURN; -- txs must have the same array length as txs_map
+    END IF;
+    FOR e in SELECT * FROM jsonb_array_elements(_body->'txs_map')
+    LOOP
+        FOR e2 in SELECT val::INTEGER FROM jsonb_array_elements(e)
+        LOOP
+            e := jsonb_set(jsonb_data, '{}', (e || (_body->>'events'->e2)::jsonb));
+        END LOOP;
+        UPDATE vsc_app.l2_txs SET events = e WHERE id = (_body->'txs'->>i);
+        e := '[]'::jsonb;
+        i := i+1;
+    END LOOP;
+    INSERT INTO vsc_app.events(id, tx_ids) VALUES(_id, jsonb_array_elements_text(_body->'txs'));
+END $function$
 LANGUAGE plpgsql VOLATILE;
 
 CREATE OR REPLACE FUNCTION vsc_app.insert_l1_call_tx(

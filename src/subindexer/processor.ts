@@ -9,7 +9,7 @@ import { bech32 } from 'bech32'
 import { createDag, isCID, encodePayload } from './ipfs_dag.js'
 import { BlsCircuit, initBls } from '../utils/bls-did.js'
 import op_type_map from '../operations.js'
-import { AnchorRefBody, AnchorRefHead, BlockBody, BridgeRef, ContractCallBody, ContractOutBody, ContractStorageProof } from './ipfs_payload.js'
+import { AnchorRefBody, AnchorRefHead, BlockBody, BridgeRef, ContractCallBody, ContractOutBody, ContractStorageProof, EventOutBody, InputBody, TransferBody } from './ipfs_payload.js'
 import { APP_CONTEXT, CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT, EPOCH_LENGTH, MIN_BLOCKS_SINCE_LAST_ELECTION, MAX_BLOCKS_SINCE_LAST_ELECTION, ROUND_LENGTH, SCHEMA_NAME, SUPERMAJORITY, ELECTION_UPDATE_1_EPOCH, ELECTION_UPDATE_2_EPOCH } from '../constants.js'
 import { shuffle } from '../utils/shuffle-seed.js'
 import BitSet from 'bitset'
@@ -169,43 +169,69 @@ const processor = {
                                 }
                                 try {
                                     if (blockTxs.txs[t].type === 1) {
-                                        const txBody: ContractCallBody = (await ipfs.dag.get(CID.parse(blockTxs.txs[t].id))).value
-                                        // contract call
+                                        const txBody: InputBody = (await ipfs.dag.get(CID.parse(blockTxs.txs[t].id))).value
                                         if (typeof txBody.headers !== 'object' ||
                                             typeof txBody.headers.nonce !== 'number' ||
                                             !Array.isArray(txBody.headers.required_auths) ||
-                                            typeof txBody.tx !== 'object' ||
-                                            typeof txBody.tx.action !== 'string' ||
-                                            typeof txBody.tx.contract_id !== 'string') {
-                                            logger.warn(`Ignoring malformed contract call tx at index ${t} in block ${blockCIDShort}`)
+                                            typeof txBody.tx !== 'object') {
+                                            logger.warn(`Ignoring malformed input tx at index ${t} in block ${blockCIDShort}`)
                                             continue
                                         }
-                                        const contractExists = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.contracts WHERE contract_id=$1;`,[txBody.tx.contract_id])
-                                        if (contractExists.rowCount! === 0) {
-                                            logger.warn(`Ignoring contract call to non-existent contract at index ${t} in block ${blockCIDShort}`)
-                                            continue
-                                        }
-                                        let invalidAuths = false
-                                        for (let i in txBody.headers.required_auths)
-                                            if (typeof txBody.headers.required_auths[i] !== 'string' ||
-                                                txBody.headers.required_auths[i].length > 78 ||
-                                                !txBody.headers.required_auths[i].startsWith('did:')) {
-                                                logger.warn(`Ignoring tx with invalid auth at index ${t} in block ${blockCIDShort}`)
-                                                invalidAuths = true
-                                                break
+                                        if (txBody.tx.op === 'call_contract') {
+                                            // contract call
+                                            if (typeof txBody.tx.action !== 'string' ||
+                                                typeof txBody.tx.contract_id !== 'string') {
+                                                logger.warn(`Invalid action/contract_id at index ${t} in block ${blockCIDShort}`)
+                                                continue
                                             }
-                                        if (invalidAuths)
-                                            continue
-                                        details.payload.txs.push({
-                                            id: blockTxs.txs[t].id,
-                                            type: 1,
-                                            index: parseInt(t),
-                                            contract_id: txBody.tx.contract_id,
-                                            action: txBody.tx.action,
-                                            payload: [txBody.tx.payload],
-                                            callers: txBody.headers.required_auths,
-                                            nonce: txBody.headers.nonce
-                                        })
+                                            const contractExists = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.contracts WHERE contract_id=$1;`,[txBody.tx.contract_id])
+                                            if (contractExists.rowCount! === 0) {
+                                                logger.warn(`Ignoring contract call to non-existent contract at index ${t} in block ${blockCIDShort}`)
+                                                continue
+                                            }
+                                            let invalidAuths = false
+                                            for (let i in txBody.headers.required_auths)
+                                                if (typeof txBody.headers.required_auths[i] !== 'string' ||
+                                                    txBody.headers.required_auths[i].length > 78 ||
+                                                    !txBody.headers.required_auths[i].startsWith('did:')) {
+                                                    logger.warn(`Ignoring tx with invalid auth at index ${t} in block ${blockCIDShort}`)
+                                                    invalidAuths = true
+                                                    break
+                                                }
+                                            if (invalidAuths)
+                                                continue
+                                            details.payload.txs.push({
+                                                id: blockTxs.txs[t].id,
+                                                type: 1,
+                                                op: 'call_contract',
+                                                index: parseInt(t),
+                                                contract_id: txBody.tx.contract_id,
+                                                action: txBody.tx.action,
+                                                payload: [txBody.tx.payload],
+                                                callers: txBody.headers.required_auths,
+                                                nonce: txBody.headers.nonce
+                                            })
+                                        } else if (txBody.tx.op === 'transfer') {
+                                            if (typeof txBody.tx.payload !== 'object' ||
+                                                typeof txBody.tx.payload.amount !== 'number' ||
+                                                txBody.tx.payload.amount < 0 ||
+                                                typeof txBody.tx.payload.from !== 'string' ||
+                                                typeof txBody.tx.payload.to !== 'string' ||
+                                                (txBody.tx.payload.tk !== 'HIVE' && txBody.tx.payload.tk !== 'HBD')
+                                            )
+                                                return { valid: false }
+                                            details.payload.txs.push({
+                                                id: blockTxs.txs[t].id,
+                                                type: 1,
+                                                op: 'transfer',
+                                                index: parseInt(t),
+                                                amount: txBody.tx.payload.amount,
+                                                from: txBody.tx.payload.from,
+                                                to: txBody.tx.payload.to,
+                                                tk: txBody.tx.payload.tk,
+                                                memo: txBody.tx.payload.memo
+                                            })
+                                        }
                                     } else if (blockTxs.txs[t].type === 2) {
                                         const txBody: ContractOutBody = (await ipfs.dag.get(CID.parse(blockTxs.txs[t].id))).value
                                         // contract output
@@ -267,6 +293,15 @@ const processor = {
                                             chain: 'hive',
                                             data: txroot.toString('hex'),
                                             txs: txBody.txs.map(b => Buffer.from(b).toString('hex')) // buffer cannot be serialized into json
+                                        })
+                                    } else if (blockTxs.txs[t].type === 6) {
+                                        const eventBody: EventOutBody = (await ipfs.dag.get(CID.parse(blockTxs.txs[t].id))).value
+                                        // for events we let pgsql to handle validation
+                                        details.payload.txs.push({
+                                            id: blockTxs.txs[t].id,
+                                            type: 6,
+                                            index: parseInt(t),
+                                            body: eventBody
                                         })
                                     }
                                 } catch (e) {

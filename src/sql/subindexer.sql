@@ -469,7 +469,7 @@ BEGIN
 
     -- If we processed any input txs, insert the corresponding output tx into l2_txs
     IF _input_tx_id IS NOT NULL THEN
-        INSERT INTO vsc_app.contract_outputs(cid, block_num, idx_in_block, contract_id, total_io_gas)
+        INSERT INTO vsc_app.contract_outputs(id, block_num, idx_in_block, contract_id, total_io_gas)
             VALUES(_id, _l2_block_num, _index, _contract_id, _io_gas);
     END IF;
 END

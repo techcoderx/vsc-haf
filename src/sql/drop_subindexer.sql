@@ -37,7 +37,6 @@ TRUNCATE TABLE vsc_app.anchor_ref_txs;
 
 SELECT setval(pg_get_serial_sequence('vsc_app.l2_blocks', 'id'), 1, false);
 SELECT setval(pg_get_serial_sequence('vsc_app.contract_calls', 'id'), 1, false);
-SELECT setval(pg_get_serial_sequence('vsc_app.contract_outputs', 'id'), 1, false);
 SELECT setval(pg_get_serial_sequence('vsc_app.transfers', 'id'), 1, false);
 SELECT setval(pg_get_serial_sequence('vsc_app.anchor_refs', 'id'), 1, false);
 SELECT setval(pg_get_serial_sequence('vsc_app.events', 'id'), 1, false);

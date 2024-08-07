@@ -27,6 +27,7 @@ TRUNCATE TABLE vsc_app.l1_tx_multiauth;
 TRUNCATE TABLE vsc_app.l2_txs;
 TRUNCATE TABLE vsc_app.l2_tx_multiauth;
 TRUNCATE TABLE vsc_app.transfers;
+TRUNCATE TABLE vsc_app.l2_withdrawals;
 TRUNCATE TABLE vsc_app.events;
 TRUNCATE TABLE vsc_app.contract_calls;
 TRUNCATE TABLE vsc_app.anchor_refs;

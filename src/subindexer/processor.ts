@@ -231,6 +231,26 @@ const processor = {
                                                 tk: txBody.tx.payload.tk,
                                                 memo: txBody.tx.payload.memo
                                             })
+                                        } else if (txBody.tx.op === 'withdraw') {
+                                            if (typeof txBody.tx.payload !== 'object' ||
+                                                typeof txBody.tx.payload.amount !== 'number' ||
+                                                txBody.tx.payload.amount < 0 ||
+                                                typeof txBody.tx.payload.from !== 'string' ||
+                                                typeof txBody.tx.payload.to !== 'string' ||
+                                                (txBody.tx.payload.tk !== 'HIVE' && txBody.tx.payload.tk !== 'HBD')
+                                            )
+                                                return { valid: false }
+                                            details.payload.txs.push({
+                                                id: blockTxs.txs[t].id,
+                                                type: 1,
+                                                op: 'withdraw',
+                                                index: parseInt(t),
+                                                amount: txBody.tx.payload.amount,
+                                                from: txBody.tx.payload.from,
+                                                to: txBody.tx.payload.to,
+                                                tk: txBody.tx.payload.tk,
+                                                memo: txBody.tx.payload.memo
+                                            })
                                         }
                                     } else if (blockTxs.txs[t].type === 2) {
                                         const txBody: ContractOutBody = (await ipfs.dag.get(CID.parse(blockTxs.txs[t].id))).value

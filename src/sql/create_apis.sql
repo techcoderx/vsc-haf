@@ -1330,6 +1330,16 @@ BEGIN
                 'type', 'contract_output',
                 'result', _cid
             );
+        ELSIF _result_int = 3 THEN
+            RETURN jsonb_build_object(
+                'type', 'transfer',
+                'result', _cid
+            );
+        ELSIF _result_int = 4 THEN
+            RETURN jsonb_build_object(
+                'type', 'withdraw',
+                'result', _cid
+            );
         END IF;
     END IF;
 

@@ -334,6 +334,8 @@ BEGIN
                 PERFORM vsc_app.push_l2_contract_call_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, _tx->>'contract_id', _tx->>'action', (_tx->'payload')::jsonb, (SELECT ARRAY(SELECT jsonb_array_elements_text(_tx->'callers'))), (_tx->>'nonce')::INT);
             ELSIF _tx->>'op' = 'transfer' THEN
                 PERFORM vsc_app.push_transfer_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, (_tx->>'amount')::INTEGER, _tx->>'from', _tx->>'to', _tx->>'tk', _tx->>'memo');
+            ELSIF _tx->>'op' = 'withdraw' THEN
+                PERFORM vsc_app.push_l2_withdraw_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, (_tx->>'amount')::INTEGER, _tx->>'from', _tx->>'to', _tx->>'tk', _tx->>'memo');
             END IF;
         ELSIF (_tx->>'type')::INT = 2 THEN
             PERFORM vsc_app.push_l2_contract_output_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, _tx->>'contract_id', (SELECT ARRAY(SELECT jsonb_array_elements_text(_tx->'inputs'))), (_tx->>'io_gas')::INT, (_tx->'results')::jsonb);
@@ -538,6 +540,65 @@ BEGIN
 
     INSERT INTO vsc_app.l2_txs(id, block_num, idx_in_block, tx_type, details)
         VALUES(_id, _l2_block_num, _index, 3, _xfer_id);
+END $function$
+LANGUAGE plpgsql VOLATILE;
+
+CREATE OR REPLACE FUNCTION vsc_app.push_l2_withdraw_tx(
+    _id VARCHAR,
+    _l2_block_num INTEGER,
+    _index SMALLINT,
+    _amount INTEGER,
+    _from VARCHAR,
+    _to VARCHAR,
+    _tk VARCHAR,
+    _memo VARCHAR = NULL
+)
+RETURNS void
+AS $function$
+DECLARE
+    _coin SMALLINT;
+    _xfer_id BIGINT;
+    _from_acctype SMALLINT;
+    _from_id INTEGER = NULL;
+    _to_id INTEGER = NULL;
+BEGIN
+    IF (SELECT EXISTS (SELECT 1 FROM vsc_app.l2_txs WHERE id=_id)) THEN
+        RETURN;
+    END IF;
+
+    IF _tk = 'HIVE' THEN
+        _coin := 1::SMALLINT;
+    ELSIF _tk = 'HBD' THEN
+        _coin := 2::SMALLINT;
+    ELSE
+        RAISE EXCEPTION '_tk must be HIVE or HBD';
+    END IF;
+
+    -- prepare from id
+    IF (SELECT starts_with(_from, 'did:')) THEN
+        SELECT vsc_app.insert_tx_auth_did(_id, _from) INTO _from_id;
+        _from_acctype := 2::SMALLINT;
+    ELSIF (SELECT starts_with(_from, 'hive:')) THEN
+        SELECT id INTO _from_id FROM hive.vsc_app_accounts WHERE name=(SELECT SPLIT_PART(_from, ':', 2));
+        _from_acctype := 1::SMALLINT;
+
+        IF _from_id IS NULL THEN
+            RAISE EXCEPTION 'sending from non-existent hive user'; -- this should never happen
+        END IF;
+    END IF;
+
+    -- prepare to id
+    SELECT id INTO _to_id FROM hive.vsc_app_accounts WHERE name=_to;
+    IF _to_id IS NULL THEN
+        RETURN; -- todo: handle sending to non-existent hive username
+    END IF;
+
+    INSERT INTO vsc_app.l2_withdrawals(from_acctype, from_id, to_id, amount, asset, memo)
+        VALUES(_from_acctype, _from_id, _to_id, _amount, _coin, _memo)
+        RETURNING id INTO _xfer_id;
+
+    INSERT INTO vsc_app.l2_txs(id, block_num, idx_in_block, tx_type, details)
+        VALUES(_id, _l2_block_num, _index, 4, _xfer_id);
 END $function$
 LANGUAGE plpgsql VOLATILE;
 

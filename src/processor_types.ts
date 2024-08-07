@@ -87,7 +87,7 @@ export interface VscOp extends Op {
 export type CustomJsonPayloads = BlockOp | NewContractOp | ElectionOp | BridgeRefPayload | L1CallTxOp
 export type BridgeRefResult = bigint[]
 export type L2PayloadTypes = BridgeRefResult | ElectionPayload2 | BlockPayload | L1TxPayload | NewContractPayload
-export type L2Tx = L2ContractCallPayload | L2ContractOutPayload | AnchorRefPayload | TransferPayload | EventsPayload
+export type L2Tx = L2ContractCallPayload | L2ContractOutPayload | AnchorRefPayload | TransferPayload | WithdrawPayload | EventsPayload
 export interface BlockOp {
     net_id: string
     replay_id: number
@@ -148,6 +148,16 @@ export interface L2ContractOutPayload extends L2TxPayload {
 export interface TransferPayload extends L2TxPayload {
     type: 1
     op: 'transfer'
+    amount: number
+    from: string
+    to: string
+    memo?: string
+    tk: Coin
+}
+
+export interface WithdrawPayload extends L2TxPayload {
+    type: 1
+    op: 'withdraw'
     amount: number
     from: string
     to: string

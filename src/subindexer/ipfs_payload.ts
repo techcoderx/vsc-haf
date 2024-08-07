@@ -9,7 +9,7 @@ export interface BridgeRef {
     }[]
 }
 
-export type InputType = 'call_contract' | 'transfer'
+export type InputType = 'call_contract' | 'transfer' | 'withdraw'
 
 interface ContractCallHead {
     id: string
@@ -80,7 +80,20 @@ export interface TransferBody extends InputBodyBase {
     }
 }
 
-export type InputBody = ContractCallBody | TransferBody
+export interface WithdrawBody extends InputBodyBase {
+    tx: {
+        op: 'withdraw',
+        payload: {
+            amount: number,
+            from: string,
+            memo?: string,
+            tk: Coin,
+            to: string
+        }
+    }
+}
+
+export type InputBody = ContractCallBody | TransferBody | WithdrawBody
 
 export interface ContractOutBody {
     __t: 'vsc-output'

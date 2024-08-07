@@ -583,7 +583,7 @@ BEGIN
         _from_acctype := 1::SMALLINT;
 
         IF _from_id IS NULL THEN
-            RAISE EXCEPTION 'sending from non-existent hive user'; -- this should never happen
+            RAISE EXCEPTION 'sending from non-existent hive user, %', _from; -- this should never happen
         END IF;
     END IF;
 
@@ -593,7 +593,7 @@ BEGIN
     END IF;
     SELECT id INTO _to_id FROM hive.vsc_app_accounts WHERE name=_to;
     IF _to_id IS NULL THEN
-        RETURN; -- todo: handle sending to non-existent hive username
+        RAISE EXCEPTION 'sending to non-existent hive user %', _to; -- this shouldn't happen either unless vsc-node doesn't check this properly
     END IF;
 
     INSERT INTO vsc_app.l2_withdrawals(from_acctype, from_id, to_id, amount, asset, memo)
@@ -659,7 +659,8 @@ BEGIN
         e := '{}';
         i := i+1;
     END LOOP;
-    INSERT INTO vsc_app.events(id, tx_ids) VALUES(_id, (SELECT ARRAY(SELECT jsonb_array_elements_text(_body->'txs'))));
+    INSERT INTO vsc_app.events(id, block_num, idx_in_block, tx_ids)
+        VALUES(_id, _l2_block_num, _index, (SELECT ARRAY(SELECT jsonb_array_elements_text(_body->'txs'))));
 END $function$
 LANGUAGE plpgsql VOLATILE;
 

@@ -581,20 +581,20 @@ DECLARE
     e jsonb = '[]'::jsonb;
     e2 INTEGER;
 BEGIN
-    IF (SELECT jsonb_array_length(_body->>'txs')) != (SELECT jsonb_array_length(_body->>'txs_map')) THEN
+    IF (SELECT jsonb_array_length(_body->'txs')) != (SELECT jsonb_array_length(_body->'txs_map')) THEN
         RETURN; -- txs must have the same array length as txs_map
     END IF;
     FOR e in SELECT * FROM jsonb_array_elements(_body->'txs_map')
     LOOP
-        FOR e2 in SELECT val::INTEGER FROM jsonb_array_elements(e)
+        FOR e2 in SELECT value::INTEGER FROM jsonb_array_elements(e)
         LOOP
-            e := jsonb_set(jsonb_data, '{}', (e || (_body->>'events'->e2)::jsonb));
+            e := jsonb_set(e, '{}', (e || ((_body->'events')->e2)::jsonb));
         END LOOP;
-        UPDATE vsc_app.l2_txs SET events = e WHERE id = (_body->'txs'->>i);
+        UPDATE vsc_app.l2_txs SET events = e WHERE id = ((_body->'txs')->>i);
         e := '[]'::jsonb;
         i := i+1;
     END LOOP;
-    INSERT INTO vsc_app.events(id, tx_ids) VALUES(_id, jsonb_array_elements_text(_body->'txs'));
+    INSERT INTO vsc_app.events(id, tx_ids) VALUES(_id, (SELECT ARRAY(SELECT jsonb_array_elements_text(_body->'txs'))));
 END $function$
 LANGUAGE plpgsql VOLATILE;
 

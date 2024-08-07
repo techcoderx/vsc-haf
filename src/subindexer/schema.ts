@@ -99,6 +99,11 @@ export const HAF_FKS: FKS_TYPE = {
         table: SCHEMA_NAME+'.anchor_ref_txs',
         fk: 'ref_id',
         ref: SCHEMA_NAME+'.anchor_refs(id)'
+    },
+    events_block_num_fk: {
+        table: SCHEMA_NAME+'.events',
+        fk: 'block_num',
+        ref: SCHEMA_NAME+'.l2_blocks(id)'
     }
 }
 
@@ -127,6 +132,10 @@ export const INDEXES: INDEXES_TYPE = {
     election_results_data_cid_idx: {
         table_name: SCHEMA_NAME+'.election_results',
         columns: [{ col_name: 'data_cid', order: Ordering.ASC }]
+    },
+    events_cid_idx: {
+        table_name: SCHEMA_NAME+'.events',
+        columns: [{ col_name: 'cid', order: Ordering.ASC }]
     }
 }
 

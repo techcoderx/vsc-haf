@@ -588,6 +588,9 @@ BEGIN
     END IF;
 
     -- prepare to id
+    IF (SELECT starts_with(_to, 'hive:')) THEN
+        _to := (SELECT SPLIT_PART(_to, ':', 2));
+    END IF;
     SELECT id INTO _to_id FROM hive.vsc_app_accounts WHERE name=_to;
     IF _to_id IS NULL THEN
         RETURN; -- todo: handle sending to non-existent hive username

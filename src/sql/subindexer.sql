@@ -333,7 +333,7 @@ BEGIN
             IF _tx->>'op' = 'call_contract' THEN
                 PERFORM vsc_app.push_l2_contract_call_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, _tx->>'contract_id', _tx->>'action', (_tx->'payload')::jsonb, (SELECT ARRAY(SELECT jsonb_array_elements_text(_tx->'callers'))), (_tx->>'nonce')::INT);
             ELSIF _tx->>'op' = 'transfer' THEN
-                PERFORM vsc_app.push_transfer_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT);
+                PERFORM vsc_app.push_transfer_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, (_tx->>'amount')::INTEGER, _tx->>'from', _tx->>'to', _tx->>'tk', _tx->>'memo');
             END IF;
         ELSIF (_tx->>'type')::INT = 2 THEN
             PERFORM vsc_app.push_l2_contract_output_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, _tx->>'contract_id', (SELECT ARRAY(SELECT jsonb_array_elements_text(_tx->'inputs'))), (_tx->>'io_gas')::INT, (_tx->'results')::jsonb);

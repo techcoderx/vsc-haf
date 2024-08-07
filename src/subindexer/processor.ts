@@ -163,7 +163,7 @@ const processor = {
                                     !isCID(blockTxs.txs[t].id) ||
                                     CID.parse(blockTxs.txs[t].id).code !== 0x71 ||
                                     typeof blockTxs.txs[t].type !== 'number' ||
-                                    ![1,2,5].includes(blockTxs.txs[t].type)) {
+                                    ![1,2,5,6].includes(blockTxs.txs[t].type)) {
                                     logger.warn(`Ignoring invalid tx at index ${t} in block ${blockCIDShort}`)
                                     continue
                                 }

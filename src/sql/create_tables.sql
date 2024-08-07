@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.transfers(
     to_acctype SMALLINT NOT NULL, -- to account type, 1 for hive, 2 for did
     to_id INTEGER NOT NULL, -- to account id referencing dids/hive.vsc_app_accounts table
     amount INTEGER NOT NULL, -- amount in mHIVE/mHBD
-    coin SMALLINT NOT NULL, -- 1 for HIVE, 2 for HBD
+    coin SMALLINT NOT NULL, -- 0 for HIVE, 1 for HBD
     memo VARCHAR
 );
 
@@ -247,7 +247,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.l2_withdrawals(
     from_id INTEGER NOT NULL, -- from account id referencing dids/hive.vsc_app_accounts table
     to_id INTEGER NOT NULL, -- to account id referencing dids/hive.vsc_app_accounts table
     amount INTEGER NOT NULL, -- amount in mHIVE/mHBD
-    asset SMALLINT NOT NULL, -- 1 for HIVE, 2 for HBD
+    asset SMALLINT NOT NULL, -- 0 for HIVE, 1 for HBD
     memo VARCHAR
 );
 

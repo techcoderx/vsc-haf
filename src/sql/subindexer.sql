@@ -501,9 +501,9 @@ BEGIN
     END IF;
 
     IF _tk = 'HIVE' THEN
-        _coin := 1::SMALLINT;
+        _coin := 0::SMALLINT;
     ELSIF _tk = 'HBD' THEN
-        _coin := 2::SMALLINT;
+        _coin := 1::SMALLINT;
     ELSE
         RAISE EXCEPTION '_tk must be HIVE or HBD';
     END IF;
@@ -567,9 +567,9 @@ BEGIN
     END IF;
 
     IF _tk = 'HIVE' THEN
-        _coin := 1::SMALLINT;
+        _coin := 0::SMALLINT;
     ELSIF _tk = 'HBD' THEN
-        _coin := 2::SMALLINT;
+        _coin := 1::SMALLINT;
     ELSE
         RAISE EXCEPTION '_tk must be HIVE or HBD';
     END IF;
@@ -639,20 +639,21 @@ RETURNS void
 AS $function$
 DECLARE
     i INTEGER = 0;
-    e jsonb = '[]'::jsonb;
-    e2 INTEGER;
+    e jsonb[] = '{}'; -- events for the tx
+    e1 jsonb; -- txs map array used in first loop
+    e2 INTEGER; -- event array position used in second loop
 BEGIN
     IF (SELECT jsonb_array_length(_body->'txs')) != (SELECT jsonb_array_length(_body->'txs_map')) THEN
         RETURN; -- txs must have the same array length as txs_map
     END IF;
-    FOR e in SELECT * FROM jsonb_array_elements(_body->'txs_map')
+    FOR e1 in SELECT * FROM jsonb_array_elements(_body->'txs_map')
     LOOP
-        FOR e2 in SELECT value::INTEGER FROM jsonb_array_elements(e)
+        FOR e2 in SELECT value::INTEGER FROM jsonb_array_elements(e1)
         LOOP
-            e := jsonb_set(e, '{}', (e || ((_body->'events')->e2)::jsonb));
+            e := array_append(e, (_body->'events')->e2);
         END LOOP;
-        UPDATE vsc_app.l2_txs SET events = e WHERE id = ((_body->'txs')->>i);
-        e := '[]'::jsonb;
+        UPDATE vsc_app.l2_txs SET events = array_to_json(e) WHERE id = ((_body->'txs')->>i);
+        e := '{}';
         i := i+1;
     END LOOP;
     INSERT INTO vsc_app.events(id, tx_ids) VALUES(_id, (SELECT ARRAY(SELECT jsonb_array_elements_text(_body->'txs'))));

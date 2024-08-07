@@ -337,16 +337,10 @@ BEGIN
                 ma.did = k.id
             WHERE ma.id = t.id
         ),
-        'contract_id', d.contract_id,
-        'contract_action', d.contract_action,
-        'payload', (d.payload->0),
-        'io_gas', d.io_gas,
-        'contract_output', d.contract_output
+        'events', t.events
     ), t.tx_type, t.details
     INTO _result, _tx_type, _tx_id
     FROM vsc_app.l2_txs t
-    JOIN vsc_app.contract_calls d ON
-        t.details = d.id
     JOIN vsc_app.l2_blocks b ON
         b.id = t.block_num
     JOIN vsc_app.l1_operations bo ON
@@ -358,11 +352,20 @@ BEGIN
     END IF;
 
     IF _tx_type = 1 THEN
-        _result := _result || (SELECT jsonb_build_object(
-            'input', trx_id,
-            'input_src', _input_src,
-            'output', (SELECT id FROM vsc_app.l2_txs WHERE details = _tx_id AND tx_type = 2 LIMIT 1)
-        ));
+        _result := _result || (
+            SELECT jsonb_build_object(
+                'input', trx_id,
+                'input_src', _input_src,
+                'output', (SELECT id FROM vsc_app.l2_txs WHERE details = _tx_id AND tx_type = 2 LIMIT 1),
+                'contract_id', d.contract_id,
+                'contract_action', d.contract_action,
+                'payload', (d.payload->0),
+                'io_gas', d.io_gas,
+                'contract_output', d.contract_output
+            )
+            FROM vsc_app.contract_calls d
+            WHERE d.id = _tx_id
+        );
     ELSIF _tx_type = 2 THEN
         SELECT id INTO _input FROM vsc_app.l2_txs WHERE details = _tx_id AND tx_type = 1;
         IF _input IS NULL THEN
@@ -375,7 +378,32 @@ BEGIN
                 WHERE details = _tx_id;
             _input_src := 'hive';
         END IF;
-        _result := _result || jsonb_build_object('input', _input, 'input_src', _input_src, 'output', trx_id);
+        _result := _result || (
+            SELECT jsonb_build_object(
+                'input', _input,
+                'input_src', _input_src,
+                'output', trx_id,
+                'contract_id', d.contract_id,
+                'contract_action', d.contract_action,
+                'payload', (d.payload->0),
+                'io_gas', d.io_gas,
+                'contract_output', d.contract_output
+            )
+            FROM vsc_app.contract_calls d
+            WHERE d.id = _tx_id
+        );
+    ELSIF _tx_type = 3 THEN
+        _result := _result || (
+            SELECT jsonb_build_object(
+                'from', (SELECT vsc_app.l2_account_id_to_str(d.from_id, d.from_acctype)),
+                'to', (SELECT vsc_app.l2_account_id_to_str(d.to_id, d.to_acctype)),
+                'amount', d.amount,
+                'asset', (SELECT vsc_app.asset_by_id(d.coin)),
+                'memo', d.memo
+            )
+            FROM vsc_app.transfers d
+            WHERE d.id = _tx_id
+        );
     END IF;
 
     RETURN _result;

@@ -64,7 +64,7 @@ END
 $function$
 LANGUAGE plpgsql IMMUTABLE;
 
--- SMALLINT to L2 tx type string mapping
+-- SMALLINT to L2 tx type string mapping for API use
 CREATE OR REPLACE FUNCTION vsc_app.l2_tx_type_by_id(id SMALLINT = -1)
 RETURNS VARCHAR
 AS $function$
@@ -73,6 +73,10 @@ BEGIN
         RETURN 'call_contract';
     ELSIF id = 2 THEN
         RETURN 'contract_output';
+    ELSIF id = 3 THEN
+        RETURN 'transfer';
+    ELSIF id = 4 THEN
+        RETURN 'withdraw';
     ELSIF id = 5 THEN
         RETURN 'anchor_ref';
     ELSE
@@ -80,6 +84,21 @@ BEGIN
     END IF;
 END $function$
 LANGUAGE plpgsql IMMUTABLE;
+
+-- L2 Account ID to string
+CREATE OR REPLACE FUNCTION vsc_app.l2_account_id_to_str(_id INTEGER, _acctype SMALLINT)
+RETURNS VARCHAR
+AS $function$
+BEGIN
+    IF _acctype = 1 THEN
+        RETURN 'hive:' || (SELECT name FROM hive.vsc_app_accounts WHERE id=_id);
+    ELSIF _acctype = 2 THEN
+        RETURN (SELECT did from vsc_app.dids WHERE id=_id);
+    ELSE
+        RETURN '';
+    END IF;
+END $function$
+LANGUAGE plpgsql STABLE;
 
 -- Process transactions
 CREATE OR REPLACE FUNCTION vsc_app.process_operation(_username VARCHAR, _op_id BIGINT, _op_type INTEGER, _ts TIMESTAMP)

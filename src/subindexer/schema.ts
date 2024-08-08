@@ -129,13 +129,13 @@ export const INDEXES: INDEXES_TYPE = {
         table_name: SCHEMA_NAME+'.contracts',
         columns: [{ col_name: 'created_in_op', order: Ordering.DESC }]
     },
+    contract_calls_output_cid_idx: {
+        table_name: SCHEMA_NAME+'.contract_calls',
+        columns: [{ col_name: 'contract_output_tx_id', order: Ordering.ASC }]
+    },
     election_results_data_cid_idx: {
         table_name: SCHEMA_NAME+'.election_results',
         columns: [{ col_name: 'data_cid', order: Ordering.ASC }]
-    },
-    events_cid_idx: {
-        table_name: SCHEMA_NAME+'.events',
-        columns: [{ col_name: 'cid', order: Ordering.ASC }]
     }
 }
 

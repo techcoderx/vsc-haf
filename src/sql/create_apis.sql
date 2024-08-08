@@ -82,7 +82,7 @@ BEGIN
         'ts', _ts,
         'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(_block_num, _tb)),
         'l1_block', _block_num,
-        'txs', (SELECT COUNT(*) FROM vsc_app.l2_txs t WHERE t.block_num = _block_id)+(SELECT COUNT(*) FROM vsc_app.anchor_refs ar WHERE ar.block_num = _block_id),
+        'txs', (SELECT vsc_app.get_l2_operation_count_in_block(_block_id)),
         'merkle_root', encode(_merkle, 'hex'),
         'voted_weight', _vw,
         'eligible_weight', (SELECT SUM(weight) FROM vsc_app.get_members_at_block(_block_num)),
@@ -138,7 +138,7 @@ BEGIN
         'ts', _ts,
         'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(_block_num, _tb)),
         'l1_block', _block_num,
-        'txs', (SELECT COUNT(*) FROM vsc_app.l2_txs t WHERE t.block_num = blk_id)+(SELECT COUNT(*) FROM vsc_app.anchor_refs ar WHERE ar.block_num = blk_id),
+        'txs', (SELECT vsc_app.get_l2_operation_count_in_block(blk_id)),
         'merkle_root', encode(_merkle, 'hex'),
         'voted_weight', _vw,
         'eligible_weight', (SELECT SUM(weight) FROM vsc_app.get_members_at_block(_block_num)),
@@ -168,6 +168,7 @@ BEGIN
             'block_hash', bk.block_header_hash,
             'block_body_hash', bk.block_hash,
             'proposer', a.name,
+            'txs', (SELECT vsc_app.get_l2_operation_count_in_block(bk.id)),
             'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(l1_op.block_num, l1_op.trx_in_block)),
             'l1_block', l1_op.block_num,
             'voted_weight', bk.voted_weight,
@@ -199,9 +200,9 @@ BEGIN
             WHERE t.block_num = blk_id
             GROUP BY t.id
         UNION ALL
-        SELECT o.cid AS id, o.block_num, o.idx_in_block, 2, NULL, 0
+        SELECT o.id, o.block_num, o.idx_in_block, 2, NULL, 0
             FROM vsc_app.contract_outputs o
-            WHERE e.block_num = blk_id
+            WHERE o.block_num = blk_id
         UNION ALL
         SELECT e.cid AS id, e.block_num, e.idx_in_block, 6, NULL, 0
             FROM vsc_app.events e
@@ -363,33 +364,7 @@ BEGIN
             SELECT jsonb_build_object(
                 'input', trx_id,
                 'input_src', _input_src,
-                'output', (SELECT id FROM vsc_app.l2_txs WHERE details = _tx_id AND tx_type = 2 LIMIT 1),
-                'contract_id', d.contract_id,
-                'contract_action', d.contract_action,
-                'payload', (d.payload->0),
-                'io_gas', d.io_gas,
-                'contract_output', d.contract_output
-            )
-            FROM vsc_app.contract_calls d
-            WHERE d.id = _tx_id
-        );
-    ELSIF _tx_type = 2 THEN
-        SELECT id INTO _input FROM vsc_app.l2_txs WHERE details = _tx_id AND tx_type = 1;
-        IF _input IS NULL THEN
-            SELECT encode(ht.trx_hash, 'hex') INTO _input
-                FROM vsc_app.l1_txs t
-                JOIN vsc_app.l1_operations o ON
-                    o.id = t.id
-                JOIN hive.transactions_view ht ON
-                    ht.block_num = o.block_num AND ht.trx_in_block = o.trx_in_block
-                WHERE details = _tx_id;
-            _input_src := 'hive';
-        END IF;
-        _result := _result || (
-            SELECT jsonb_build_object(
-                'input', _input,
-                'input_src', _input_src,
-                'output', trx_id,
+                'output', d.contract_output_tx_id,
                 'contract_id', d.contract_id,
                 'contract_action', d.contract_action,
                 'payload', (d.payload->0),
@@ -400,7 +375,7 @@ BEGIN
             WHERE d.id = _tx_id
         );
     ELSIF _tx_type = 3 THEN
-        _result := _result || (
+        _result := jsonb_set(_result, '{payload}', (
             SELECT jsonb_build_object(
                 'from', (SELECT vsc_app.l2_account_id_to_str(d.from_id, d.from_acctype)),
                 'to', (SELECT vsc_app.l2_account_id_to_str(d.to_id, d.to_acctype)),
@@ -410,7 +385,19 @@ BEGIN
             )
             FROM vsc_app.transfers d
             WHERE d.id = _tx_id
-        );
+        ));
+    ELSIF _tx_type = 4 THEN
+        _result := jsonb_set(_result, '{payload}', (
+            SELECT jsonb_build_object(
+                'from', (SELECT vsc_app.l2_account_id_to_str(d.from_id, d.from_acctype)),
+                'to', (SELECT vsc_app.l2_account_id_to_str(d.to_id, 1::SMALLINT)),
+                'amount', d.amount,
+                'asset', (SELECT vsc_app.asset_by_id(d.asset)),
+                'memo', d.memo
+            )
+            FROM vsc_app.l2_withdrawals d
+            WHERE d.id = _tx_id
+        ));
     END IF;
 
     RETURN _result;
@@ -466,6 +453,41 @@ BEGIN
     WHERE o.block_num = _bn AND o.trx_in_block = _tb AND o.op_pos = _op_pos AND o.op_type = 5;
 
     RETURN COALESCE(_result, jsonb_build_object('error', 'could not find contract call operation in L1 transaction'));
+END $function$
+LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION vsc_api.get_contract_output(cid VARCHAR)
+RETURNS jsonb
+AS $function$
+DECLARE
+    co_cid ALIAS FOR cid;
+BEGIN
+    RETURN COALESCE((
+        SELECT jsonb_build_object(
+            'id', co_cid,
+            'block_num', co.block_num,
+            'idx_in_block', co.idx_in_block,
+            'ts', bo.ts,
+            'contract_id', co.contract_id,
+            'total_io_gas', co.total_io_gas,
+            'outputs', (
+                SELECT json_agg(jsonb_build_object(
+                    'tx_id', t.id,
+                    'output', c.contract_output
+                ))
+                FROM vsc_app.l2_txs t
+                JOIN vsc_app.contract_calls c ON
+                    c.id = t.details
+                WHERE t.tx_type = 1 AND c.contract_output_tx_id = co_cid
+            )
+        )
+        FROM vsc_app.contract_outputs co
+        JOIN vsc_app.l2_blocks b ON
+            b.id = co.block_num
+        JOIN vsc_app.l1_operations bo ON
+            bo.id = b.proposed_in_op
+        WHERE co.id = co_cid
+    ), jsonb_build_object('error', 'contract output not found'));
 END $function$
 LANGUAGE plpgsql STABLE;
 
@@ -1244,7 +1266,7 @@ BEGIN
             'ts', b.ts,
             'block_hash', b.block_header_hash,
             'proposer', b.name,
-            'txs', (SELECT COUNT(*) FROM vsc_app.l2_txs t WHERE t.block_num = b.id)+(SELECT COUNT(*) FROM vsc_app.anchor_refs ar WHERE ar.block_num = b.id),
+            'txs', (SELECT vsc_app.get_l2_operation_count_in_block(b.id)),
             'voted_weight', b.voted_weight,
             'eligible_weight', (SELECT SUM(weight) FROM vsc_app.get_members_at_block(block_num-1)),
             'bv', encode(b.bv, 'hex')
@@ -1360,11 +1382,6 @@ BEGIN
                 'type', 'call_contract',
                 'result', _cid
             );
-        ELSIF _result_int = 2 THEN
-            RETURN jsonb_build_object(
-                'type', 'contract_output',
-                'result', _cid
-            );
         ELSIF _result_int = 3 THEN
             RETURN jsonb_build_object(
                 'type', 'transfer',
@@ -1376,6 +1393,15 @@ BEGIN
                 'result', _cid
             );
         END IF;
+    END IF;
+
+    -- Contract output search
+    SELECT id INTO _result_varchar FROM vsc_app.contract_outputs WHERE id = _cid;
+    IF _result_varchar IS NOT NULL THEN
+        RETURN jsonb_build_object(
+            'type', 'contract_output',
+            'result', _result_varchar
+        );
     END IF;
 
     -- Contract search

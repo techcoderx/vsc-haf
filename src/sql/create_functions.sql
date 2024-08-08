@@ -390,3 +390,12 @@ BEGIN
 END
 $function$
 LANGUAGE plpgsql STABLE;
+
+-- Get total L2 block operations count
+CREATE OR REPLACE FUNCTION vsc_app.get_l2_operation_count_in_block(_block_num INTEGER)
+RETURNS INTEGER
+AS $function$
+BEGIN
+    RETURN (SELECT COUNT(*) FROM vsc_app.l2_txs t WHERE t.block_num = bk.id)+(SELECT COUNT(*) FROM vsc_app.contract_outputs co WHERE co.block_num = bk.id)+(SELECT COUNT(*) FROM vsc_app.events e WHERE e.block_num = bk.id)+(SELECT COUNT(*) FROM vsc_app.anchor_refs ar WHERE ar.block_num = bk.id);
+END $function$
+LANGUAGE plpgsql STABLE;

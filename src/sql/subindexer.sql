@@ -659,7 +659,7 @@ BEGIN
         e := '{}';
         i := i+1;
     END LOOP;
-    INSERT INTO vsc_app.events(cid, block_num, idx_in_block, tx_ids)
+    INSERT INTO vsc_app.events(id, block_num, idx_in_block, tx_ids)
         VALUES(_id, _l2_block_num, _index, (SELECT ARRAY(SELECT jsonb_array_elements_text(_body->'txs'))));
 END $function$
 LANGUAGE plpgsql VOLATILE;

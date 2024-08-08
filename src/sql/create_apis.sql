@@ -204,7 +204,7 @@ BEGIN
             FROM vsc_app.contract_outputs o
             WHERE o.block_num = blk_id
         UNION ALL
-        SELECT e.cid AS id, e.block_num, e.idx_in_block, 6, NULL, 0
+        SELECT e.id, e.block_num, e.idx_in_block, 6, NULL, 0
             FROM vsc_app.events e
             WHERE e.block_num = blk_id
         UNION ALL

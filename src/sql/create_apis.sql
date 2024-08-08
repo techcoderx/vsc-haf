@@ -491,6 +491,37 @@ BEGIN
 END $function$
 LANGUAGE plpgsql STABLE;
 
+CREATE OR REPLACE FUNCTION vsc_api.get_event(cid VARCHAR)
+RETURNS jsonb
+AS $function$
+DECLARE
+    event_cid ALIAS FOR cid;
+BEGIN
+    RETURN COALESCE((
+        SELECT jsonb_build_object(
+            'id', event_cid,
+            'block_num', ev.block_num,
+            'idx_in_block', ev.idx_in_block,
+            'ts', bo.ts,
+            'events', (
+                SELECT json_agg(jsonb_build_object(
+                    'tx_id', t.id,
+                    'events', t.events
+                ))
+                FROM vsc_app.l2_txs t
+                WHERE t.id = ANY(ev.tx_ids)
+            )
+        )
+        FROM vsc_app.events ev
+        JOIN vsc_app.l2_blocks b ON
+            b.id = ev.block_num
+        JOIN vsc_app.l1_operations bo ON
+            bo.id = b.proposed_in_op
+        WHERE ev.id = event_cid
+    ), jsonb_build_object('error', 'event not found'));
+END $function$
+LANGUAGE plpgsql STABLE;
+
 DROP TYPE IF EXISTS vsc_api.l1_op_type CASCADE;
 CREATE TYPE vsc_api.l1_op_type AS (
     id BIGINT,

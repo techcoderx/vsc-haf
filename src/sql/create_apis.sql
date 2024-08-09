@@ -506,6 +506,7 @@ BEGIN
             'events', (
                 SELECT json_agg(jsonb_build_object(
                     'tx_id', t.id,
+                    'tx_type', (SELECT vsc_app.l2_tx_type_by_id(t.tx_type)),
                     'events', t.events
                 ))
                 FROM vsc_app.l2_txs t
@@ -1431,6 +1432,15 @@ BEGIN
     IF _result_varchar IS NOT NULL THEN
         RETURN jsonb_build_object(
             'type', 'contract_output',
+            'result', _result_varchar
+        );
+    END IF;
+
+    -- Event search
+    SELECT id INTO _result_varchar FROM vsc_app.events WHERE id = _cid;
+    IF _result_varchar IS NOT NULL THEN
+        RETURN jsonb_build_object(
+            'type', 'event',
             'result', _result_varchar
         );
     END IF;

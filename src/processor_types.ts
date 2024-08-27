@@ -6,8 +6,12 @@ export interface Op {
     block_num: number
     trx_in_block: number
     op_pos: number
-    timestamp: Date
     body: string
+}
+
+export interface EnumBlock {
+    num: number
+    created_at: Date
 }
 
 export interface OpBody {

@@ -5,7 +5,7 @@ import logger from './logger.js'
 import processor from './processor.js'
 import { APP_CONTEXT, SCHEMA_NAME } from './constants.js'
 import op_type_map from './operations.js'
-import { Op } from './processor_types.js'
+import { EnumBlock, Op } from './processor_types.js'
 
 const MASSIVE_SYNC_THRESHOLD = 100
 const MASSIVE_SYNC_BATCH = 1000
@@ -54,10 +54,11 @@ const sync = {
         let start = new Date().getTime()
         await db.client.query('START TRANSACTION;')
         await db.client.query('SELECT hive.app_state_providers_update($1,$2,$3);',[firstBlock,lastBlock,APP_CONTEXT])
+        let blocks = await db.client.query<EnumBlock>(`SELECT * FROM ${SCHEMA_NAME}.enum_block($1,$2);`,[firstBlock,lastBlock])
         let ops = await db.client.query<Op>(`SELECT * FROM ${SCHEMA_NAME}.enum_op($1,$2);`,[firstBlock,lastBlock])
         let count = 0
         for (let op in ops.rows) {
-            let processed = await processor.process(ops.rows[op])
+            let processed = await processor.process(ops.rows[op], blocks.rows[ops.rows[op].block_num-firstBlock].created_at)
             if (processed)
                 count++
         }
@@ -95,10 +96,11 @@ const sync = {
 
         let start = new Date().getTime()
         await db.client.query('SELECT hive.app_state_providers_update($1,$2,$3);',[nextBlock,nextBlock,APP_CONTEXT])
+        let blocks = await db.client.query<EnumBlock>(`SELECT * FROM ${SCHEMA_NAME}.enum_block($1,$2);`,[nextBlock,nextBlock])
         let ops = await db.client.query<Op>(`SELECT * FROM ${SCHEMA_NAME}.enum_op($1,$2);`,[nextBlock,nextBlock])
         let count = 0
         for (let op in ops.rows) {
-            let processed = await processor.process(ops.rows[op])
+            let processed = await processor.process(ops.rows[op], blocks.rows[0].created_at)
             if (processed)
                 count++
         }

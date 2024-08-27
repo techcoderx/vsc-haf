@@ -18,18 +18,38 @@ BEGIN
     -- Fetch transfer, custom_json and account_update operations
     RETURN QUERY
         SELECT
-            vo.id,
-            vo.block_num,
-            vo.trx_in_block,
-            vo.op_pos,
-            vb.created_at,
-            vo.body::TEXT
-        FROM vsc_app.operations_view vo
-        JOIN vsc_app.blocks_view vb ON
-            vb.num = vo.block_num
-        WHERE vo.block_num >= _first_block AND vo.block_num <= _last_block AND
-            (vo.op_type_id=2 OR (vo.op_type_id=18 AND (vo.body::jsonb)->'value'->>'id' LIKE 'vsc.%') OR vo.op_type_id=10)
-        ORDER BY vo.block_num, vo.id;
+            id,
+            block_num,
+            trx_in_block,
+            op_pos,
+            body::TEXT
+        FROM vsc_app.operations_view
+        WHERE block_num >= _first_block AND block_num <= _last_block AND
+            (op_type_id=2 OR (op_type_id=18 AND (body::jsonb)->'value'->>'id' LIKE 'vsc.%') OR op_type_id=10)
+        ORDER BY block_num, id;
+END
+$function$
+LANGUAGE plpgsql STABLE;
+
+DROP TYPE IF EXISTS vsc_app.block_type CASCADE;
+CREATE TYPE vsc_app.block_type AS (
+    num INTEGER,
+    created_at TIMESTAMP
+);
+
+CREATE OR REPLACE FUNCTION vsc_app.enum_block(IN _first_block INT, IN _last_block INT)
+RETURNS SETOF vsc_app.block_type
+AS
+$function$
+BEGIN
+    -- Fetch block headers
+    RETURN QUERY
+        SELECT
+            num,
+            created_at
+        FROM vsc_app.blocks_view
+        WHERE num >= _first_block AND num <= _last_block
+        ORDER BY num;
 END
 $function$
 LANGUAGE plpgsql STABLE;

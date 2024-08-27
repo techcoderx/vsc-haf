@@ -17,7 +17,7 @@ const getMultisigAccount = (block_num: number) => {
 }
 
 const processor = {
-    validateAndParse: async (op: Op): Promise<ParsedOp<PayloadTypes>> => {
+    validateAndParse: async (op: Op, ts: Date): Promise<ParsedOp<PayloadTypes>> => {
         try {
             let parsed: OpBody = JSON.parse(op.body)
             const msAcc = getMultisigAccount(op.block_num)
@@ -52,7 +52,7 @@ const processor = {
                 let details: ParsedOp<PayloadTypes> = {
                     valid: true,
                     id: op.id,
-                    ts: op.timestamp,
+                    ts,
                     user: user,
                     block_num: op.block_num,
                     trx_in_block: op.trx_in_block,
@@ -203,7 +203,7 @@ const processor = {
                     return {
                         valid: true,
                         id: op.id,
-                        ts: op.timestamp,
+                        ts,
                         user: parsed.value.account,
                         block_num: op.block_num,
                         tx_type: TxTypes.AccountUpdate
@@ -213,7 +213,7 @@ const processor = {
                 let details: ParsedOp<NodeAnnouncePayload> = {
                     valid: true,
                     id: op.id,
-                    ts: op.timestamp,
+                    ts,
                     user: parsed.value.account,
                     block_num: op.block_num,
                     tx_type: TxTypes.AccountUpdate
@@ -249,7 +249,7 @@ const processor = {
                 let details: ParsedOp<DepositPayload> = {
                     valid: true,
                     id: op.id,
-                    ts: op.timestamp,
+                    ts,
                     block_num: op.block_num,
                     tx_type: TxTypes.Transfer
                 }
@@ -319,8 +319,8 @@ const processor = {
             return { valid: false }
         }
     },
-    process: async (op: Op): Promise<boolean> => {
-        let result = await processor.validateAndParse(op)
+    process: async (op: Op, ts: Date): Promise<boolean> => {
+        let result = await processor.validateAndParse(op, ts)
         if (result.valid) {
             logger.trace('Processing op',result)
             let pl, op_number = op_type_map.translate(result.tx_type!, result.op_type!, result.user === getMultisigAccount(op.block_num))

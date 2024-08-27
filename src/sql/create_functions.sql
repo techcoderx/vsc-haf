@@ -18,16 +18,18 @@ BEGIN
     -- Fetch transfer, custom_json and account_update operations
     RETURN QUERY
         SELECT
-            id,
-            block_num,
-            trx_in_block,
-            op_pos,
-            timestamp,
-            body::TEXT
-        FROM vsc_app.operations_view
-        WHERE block_num >= _first_block AND block_num <= _last_block AND
-            (op_type_id=2 OR op_type_id=18 OR op_type_id=10)
-        ORDER BY block_num, id;
+            vo.id,
+            vo.block_num,
+            vo.trx_in_block,
+            vo.op_pos,
+            vb.created_at,
+            vo.body::TEXT
+        FROM vsc_app.operations_view vo
+        JOIN vsc_app.blocks_view vb ON
+            vb.num = vo.block_num
+        WHERE vo.block_num >= _first_block AND vo.block_num <= _last_block AND
+            (vo.op_type_id=2 OR vo.op_type_id=18 OR vo.op_type_id=10)
+        ORDER BY vo.block_num, vo.id;
 END
 $function$
 LANGUAGE plpgsql STABLE;

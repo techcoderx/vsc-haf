@@ -821,10 +821,12 @@ DECLARE
     results_arr jsonb[] DEFAULT '{}';
 BEGIN
     SELECT ARRAY(
-        SELECT ROW(ho.id, ho.block_num, ho.trx_in_block, ho.op_pos, ho.timestamp, ho.body::TEXT)
+        SELECT ROW(ho.id, ho.block_num, ho.trx_in_block, ho.op_pos, hb.created_at, ho.body::TEXT)
             FROM hive.transactions_view ht
             JOIN hive.operations_view ho ON
                 ho.block_num = ht.block_num AND ho.trx_in_block = ht.trx_in_block
+            JOIN hive.blocks_view hb ON
+                hb.num = ht.block_num
             WHERE trx_hash = decode(trx_id, 'hex')
     ) INTO _trxs;
 

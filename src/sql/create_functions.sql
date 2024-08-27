@@ -28,7 +28,7 @@ BEGIN
         JOIN vsc_app.blocks_view vb ON
             vb.num = vo.block_num
         WHERE vo.block_num >= _first_block AND vo.block_num <= _last_block AND
-            (vo.op_type_id=2 OR vo.op_type_id=18 OR vo.op_type_id=10)
+            (vo.op_type_id=2 OR (vo.op_type_id=18 AND (vo.body::jsonb)->'value'->>'id' LIKE 'vsc.%') OR vo.op_type_id=10)
         ORDER BY vo.block_num, vo.id;
 END
 $function$

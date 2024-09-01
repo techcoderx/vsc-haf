@@ -532,6 +532,14 @@ BEGIN
         IF _to_id IS NULL THEN
             RETURN; -- todo: handle sending to non-existent hive username
         END IF;
+    ELSE
+        -- assume hive account otherwise?
+        SELECT id INTO _to_id FROM hive.vsc_app_accounts WHERE name=_to;
+        _to_acctype := 1::SMALLINT;
+
+        IF _to_id IS NULL THEN
+            RETURN; -- todo: handle sending to non-existent hive username
+        END IF;
     END IF;
 
     INSERT INTO vsc_app.transfers(from_acctype, from_id, to_acctype, to_id, amount, coin, memo)

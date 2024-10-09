@@ -236,46 +236,101 @@ DECLARE
     _bn INTEGER;
     _tb SMALLINT;
     _ts TIMESTAMP;
+    _op_name VARCHAR;
     _auth_active jsonb;
     _auth_posting jsonb;
 BEGIN
-    SELECT o.id, ht.block_num, ht.trx_in_block, o.ts INTO l1_op_id, _bn, _tb, _ts
+    SELECT o.id, ht.block_num, ht.trx_in_block, o.ts, ot.op_name INTO l1_op_id, _bn, _tb, _ts, _op_name
         FROM vsc_app.transactions_view ht
         JOIN vsc_app.l1_operations o ON
             o.block_num = ht.block_num AND o.trx_in_block = ht.trx_in_block
-        WHERE ht.trx_hash = decode(trx_id, 'hex')::BYTEA AND o.op_pos = op_position AND o.op_type = (SELECT ot.id FROM vsc_app.l1_operation_types ot WHERE ot.op_name = 'tx');
+        JOIN vsc_app.l1_operation_types ot ON
+            ot.id = o.op_type
+        WHERE ht.trx_hash = decode(trx_id, 'hex')::BYTEA AND o.op_pos = op_position;
     IF l1_op_id IS NULL THEN
-        RETURN jsonb_build_object('error', 'could not find contract call transaction');
+        RETURN jsonb_build_object('error', 'could not find transaction');
     END IF;
     SELECT (ho.body::jsonb->'value')->'required_auths', (ho.body::jsonb->'value')->'required_posting_auths'
         INTO _auth_active, _auth_posting
         FROM vsc_app.operations_view ho
         WHERE ho.block_num = _bn AND ho.trx_in_block = _tb AND ho.op_pos = op_position;
-    RETURN (
-        SELECT jsonb_build_object(
-            'id', trx_id || '-' || op_pos::VARCHAR,
-            'input', trx_id || '-' || op_pos::VARCHAR,
-            'input_src', 'hive',
-            'output', d.contract_output_tx_id,
-            'block_num', _bn,
-            'idx_in_block', _tb,
-            'ts', _ts,
-            'tx_type', 'call_contract',
-            'signers', jsonb_build_object(
-                'active', _auth_active,
-                'posting', _auth_posting
-            ),
-            'contract_id', d.contract_id,
-            'contract_action', d.contract_action,
-            'payload', (d.payload->0),
-            'io_gas', d.io_gas,
-            'contract_output', d.contract_output
-        )
-        FROM vsc_app.l1_txs t
-        JOIN vsc_app.contract_calls d ON
-            t.details = d.id
-        WHERE t.id = l1_op_id
-    );
+    IF _op_name = 'tx' THEN
+        RETURN (
+            SELECT (jsonb_build_object(
+                'id', trx_id || '-' || op_pos::VARCHAR,
+                'input', trx_id || '-' || op_pos::VARCHAR,
+                'input_src', 'hive',
+                'output', d.contract_output_tx_id,
+                'block_num', _bn,
+                'idx_in_block', _tb,
+                'ts', _ts,
+                'tx_type', 'call_contract',
+                'signers', jsonb_build_object(
+                    'active', _auth_active,
+                    'posting', _auth_posting
+                ),
+                'contract_id', d.contract_id,
+                'contract_action', d.contract_action,
+                'payload', (d.payload->0),
+                'io_gas', d.io_gas,
+                'contract_output', d.contract_output
+            ))
+            FROM vsc_app.l1_txs t
+            JOIN vsc_app.contract_calls d ON
+                t.details = d.id
+            WHERE t.id = l1_op_id
+        );
+    ELSIF _op_name = 'election_result' THEN
+        RETURN (
+            SELECT (jsonb_build_object(
+                'epoch', e.epoch,
+                'l1_block_num', _bn,
+                'l1_tx', trx_id,
+                'ts', _ts,
+                'proposer', a.name,
+                'data_cid', e.data_cid,
+                'voted_weight', e.voted_weight,
+                'eligible_weight', (SELECT SUM(me.weight) FROM vsc_app.get_members_at_block(_bn-1) me),
+                'sig', encode(e.sig, 'hex'),
+                'bv', encode(e.bv, 'hex')
+            ))
+            FROM vsc_app.election_results e
+            JOIN hive.vsc_app_accounts a ON
+                a.id = e.proposer
+            WHERE e.proposed_in_op = l1_op_id
+        );
+    ELSIF _op_name = 'propose_block' THEN
+        RETURN (
+            SELECT (jsonb_build_object(
+                'id', b.id,
+                'prev_block_hash', (
+                    SELECT pb.block_header_hash
+                    FROM vsc_app.l2_blocks pb
+                    WHERE pb.id = b.id-1
+                ),
+                'block_hash', b.block_header_hash,
+                'block_body_hash', b.block_hash,
+                'proposer', (
+                    SELECT bp.name FROM hive.vsc_app_accounts bp WHERE bp.id = b.proposer
+                ),
+                'ts', _ts,
+                'l1_tx', trx_id,
+                'l1_block', _bn,
+                'txs', (SELECT vsc_app.get_l2_operation_count_in_block(b.id)),
+                'merkle_root', encode(b.merkle_root, 'hex'),
+                'voted_weight', b.voted_weight,
+                'eligible_weight', (SELECT SUM(mb.weight) FROM vsc_app.get_members_at_block(_bn) mb),
+                'signature', (jsonb_build_object(
+                    'sig', encode(b.sig, 'hex'),
+                    'bv', encode(b.bv, 'hex')
+                ))
+            ))
+            FROM vsc_app.l2_blocks b
+            WHERE b.proposed_in_op = l1_op_id
+        );
+    ELSE
+        RETURN jsonb_build_object('error', 'unsupported operation type');
+    END IF;
 END $function$
 LANGUAGE plpgsql STABLE;
 

@@ -429,6 +429,7 @@ DECLARE
     _i3 INTEGER; -- parsed l1 op_pos in integer
     _bn INTEGER;
     _tb SMALLINT;
+    _g2 jsonb; -- unparsed io_gas for the specific call
 BEGIN
     IF (SELECT EXISTS (SELECT 1 FROM vsc_app.l2_txs WHERE id=_id)) THEN
         RETURN;
@@ -458,8 +459,9 @@ BEGIN
         IF _input_tx_id IS NULL THEN
             CONTINUE;
         END IF;
+        _g2 := (_results -> _input_pos) -> 'IOGas';
         UPDATE vsc_app.contract_calls SET
-            io_gas = _io_gas,
+            io_gas = (SELECT CASE WHEN jsonb_typeof(_g2) = 'number' THEN _g2::INTEGER ELSE 0 END),
             contract_output_tx_id = _id,
             contract_output = (_results -> _input_pos)
         WHERE id = _input_tx_id;

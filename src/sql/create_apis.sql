@@ -1060,6 +1060,72 @@ END
 $function$
 LANGUAGE plpgsql STABLE;
 
+CREATE OR REPLACE FUNCTION vsc_api.list_contract_calls_by_contract_id(contract_id VARCHAR, count INTEGER = 100, last_id BIGINT = NULL)
+RETURNS jsonb
+AS $function$
+DECLARE
+    _contract_id ALIAS FOR contract_id;
+BEGIN
+    IF count <= 0 OR count > 100 THEN
+        RETURN jsonb_build_object(
+            'error', 'count must be between 1 and 100'
+        );
+    END IF;
+
+    RETURN (
+        WITH calls AS (
+            SELECT 
+                c.id,
+                COALESCE(l2t.id, (SELECT vsc_app.get_tx_hash_by_op(l1o.block_num, l1o.trx_in_block))) AS input,
+                (SELECT CASE WHEN l2t.id IS NULL THEN 'hive' ELSE 'vsc' END) AS input_src,
+                COALESCE(l2bp.ts, l1o.ts) AS ts,
+                COALESCE((
+                    SELECT jsonb_agg(k.did)
+                    FROM vsc_app.l2_tx_multiauth ma
+                    JOIN vsc_app.dids k ON
+                        ma.did = k.id
+                    WHERE ma.id = l2t.id
+                ), (
+                    SELECT jsonb_build_object(
+                        'active', (ho.body::jsonb->'value')->'required_auths',
+                        'posting', (ho.body::jsonb->'value')->'required_posting_auths'
+                    )
+                    FROM vsc_app.operations_view ho
+                    WHERE ho.block_num = l1o.block_num AND ho.trx_in_block = l1o.trx_in_block AND ho.op_pos = l1o.op_pos
+                )) AS signers,
+                c.contract_action,
+                c.io_gas,
+                c.contract_output_tx_id AS output
+            FROM vsc_app.contract_calls c
+            LEFT JOIN vsc_app.l2_txs l2t ON
+                c.id = l2t.details
+            LEFT JOIN vsc_app.l1_txs l1t ON
+                c.id = l1t.details
+            LEFT JOIN vsc_app.l1_operations l1o ON
+                l1t.id = l1o.id
+            LEFT JOIN vsc_app.l2_blocks l2b ON
+                l2t.block_num = l2b.id
+            LEFT JOIN vsc_app.l1_operations l2bp ON
+                l2b.proposed_in_op = l2bp.id
+            WHERE c.contract_id=_contract_id AND c.id <= COALESCE(last_id, (SELECT c2.id FROM vsc_app.contract_calls c2 ORDER BY c2.id DESC LIMIT 1))
+            ORDER BY c.id DESC
+            LIMIT count
+        )
+        SELECT jsonb_agg(jsonb_build_object(
+            'id', c.id,
+            'input', c.input,
+            'input_src', c.input_src,
+            'ts', c.ts,
+            'signers', c.signers,
+            'contract_action', c.contract_action,
+            'io_gas', c.io_gas,
+            'output', c.output
+        ))
+        FROM calls c
+    );
+END $function$
+LANGUAGE plpgsql STABLE;
+
 CREATE OR REPLACE FUNCTION vsc_api.get_l1_accounts_by_pubkeys(pubkeys VARCHAR[], key_type VARCHAR = 'sk_owner')
 RETURNS jsonb 
 AS

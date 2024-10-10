@@ -328,6 +328,12 @@ BEGIN
             FROM vsc_app.l2_blocks b
             WHERE b.proposed_in_op = l1_op_id
         );
+    ELSIF _op_name = 'create_contract' THEN
+        RETURN (
+            SELECT jsonb_build_object('contract_id', c.contract_id)
+            FROM vsc_app.contracts c
+            WHERE c.created_in_op = l1_op_id
+        );
     ELSE
         RETURN jsonb_build_object('error', 'unsupported operation type');
     END IF;

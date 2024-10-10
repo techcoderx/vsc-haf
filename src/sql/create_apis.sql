@@ -1111,7 +1111,7 @@ BEGIN
             ORDER BY c.id DESC
             LIMIT count
         )
-        SELECT jsonb_agg(jsonb_build_object(
+        SELECT COALESCE(jsonb_agg(jsonb_build_object(
             'id', c.id,
             'input', c.input,
             'input_src', c.input_src,
@@ -1120,7 +1120,7 @@ BEGIN
             'contract_action', c.contract_action,
             'io_gas', c.io_gas,
             'output', c.output
-        ))
+        )), '[]'::jsonb)
         FROM calls c
     );
 END $function$

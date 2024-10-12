@@ -17,14 +17,14 @@ AS
 $function$
 BEGIN
     RETURN (
-    WITH s1 AS (SELECT * FROM vsc_app.state)
-    WITH s2 AS (SELECT * FROM vsc_app.subindexer_state)
+    WITH s1 AS (SELECT * FROM vsc_app.state),
+        s2 AS (SELECT * FROM vsc_app.subindexer_state)
     SELECT jsonb_build_object(
         'last_processed_block', s1.last_processed_block,
         'last_processed_subindexer_op', s2.last_processed_op,
         'db_version', s1.db_version,
         'epoch', (SELECT epoch FROM vsc_app.election_results ORDER BY epoch DESC LIMIT 1),
-        'l2_block_height', s2.l2_block_height,
+        'l2_block_height', s2.l2_head_block,
         'transactions', (SELECT COUNT(*) FROM vsc_app.contract_calls),
         'operations', (SELECT COUNT(*) FROM vsc_app.l1_operations),
         'contracts', (SELECT COUNT(*) FROM vsc_app.contracts),

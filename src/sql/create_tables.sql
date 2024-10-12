@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.l2_tx_multiauth(
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.l2_blocks(
-    id SERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     proposed_in_op BIGINT NOT NULL,
     block_hash VARCHAR(59) NOT NULL,
     block_header_hash VARCHAR(59) NOT NULL,
@@ -187,7 +187,8 @@ CREATE TABLE IF NOT EXISTS vsc_app.state(
 
 CREATE TABLE IF NOT EXISTS vsc_app.subindexer_state(
     id SERIAL PRIMARY KEY,
-    last_processed_op BIGINT NOT NULL DEFAULT 0
+    last_processed_op BIGINT NOT NULL DEFAULT 0,
+    l2_head_block INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.anchor_refs(

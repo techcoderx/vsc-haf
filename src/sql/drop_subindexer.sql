@@ -35,10 +35,10 @@ TRUNCATE TABLE vsc_app.contract_outputs;
 TRUNCATE TABLE vsc_app.anchor_refs;
 TRUNCATE TABLE vsc_app.anchor_ref_txs;
 
-SELECT setval(pg_get_serial_sequence('vsc_app.l2_blocks', 'id'), 1, false);
 SELECT setval(pg_get_serial_sequence('vsc_app.contract_calls', 'id'), 1, false);
 SELECT setval(pg_get_serial_sequence('vsc_app.transfers', 'id'), 1, false);
 SELECT setval(pg_get_serial_sequence('vsc_app.anchor_refs', 'id'), 1, false);
+SELECT setval(pg_get_serial_sequence('vsc_app.election_result_members', 'id'), 1, false);
 
 UPDATE vsc_app.withdrawal_request SET
     status = 1;

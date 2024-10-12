@@ -316,10 +316,12 @@ DECLARE
     _tx jsonb;
 BEGIN
     SELECT id INTO _acc_id FROM hive.vsc_app_accounts WHERE name=_proposer;
-    INSERT INTO vsc_app.l2_blocks(proposed_in_op, proposer, block_hash, block_header_hash, br_start, br_end, merkle_root, voted_weight, sig, bv)
-        VALUES(_proposed_in_op, _acc_id, _block_hash, _block_header_hash, _br_start, _br_end, _merkle, _voted_weight, _sig, _bv)
-        RETURNING id INTO _new_block_id;
-    
+    SELECT l2_head_block+1 INTO _new_block_id FROM vsc_app.subindexer_state LIMIT 1;
+    INSERT INTO vsc_app.l2_blocks(id, proposed_in_op, proposer, block_hash, block_header_hash, br_start, br_end, merkle_root, voted_weight, sig, bv)
+        VALUES(_new_block_id, _proposed_in_op, _acc_id, _block_hash, _block_header_hash, _br_start, _br_end, _merkle, _voted_weight, _sig, _bv);
+    UPDATE vsc_app.subindexer_state SET
+        l2_head_block=_new_block_id;
+
     IF EXISTS (SELECT 1 FROM vsc_app.witnesses w WHERE w.id=_acc_id) THEN
         UPDATE vsc_app.witnesses SET
             last_block=_new_block_id,

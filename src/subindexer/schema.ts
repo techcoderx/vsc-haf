@@ -140,6 +140,10 @@ export const INDEXES: INDEXES_TYPE = {
     election_results_proposed_in_op_idx: {
         table_name: SCHEMA_NAME+'.election_results',
         columns: [{ col_name: 'proposed_in_op', order: Ordering.ASC }]
+    },
+    events_cid_idx: {
+        table_name: SCHEMA_NAME+'.events',
+        columns: [{ col_name: 'cid', order: Ordering.ASC }]
     }
 }
 

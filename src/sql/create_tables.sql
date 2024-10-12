@@ -96,7 +96,8 @@ CREATE TABLE IF NOT EXISTS vsc_app.transfers(
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.events(
-    id VARCHAR(59) PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
+    cid VARCHAR(59) NOT NULL,
     block_num INTEGER NOT NULL,
     idx_in_block SMALLINT NOT NULL,
     tx_ids VARCHAR(59)[]

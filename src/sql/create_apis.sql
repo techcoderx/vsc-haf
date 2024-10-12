@@ -203,7 +203,7 @@ BEGIN
             FROM vsc_app.contract_outputs o
             WHERE o.block_num = blk_id
         UNION ALL
-        SELECT e.id, e.block_num, e.idx_in_block, 6, NULL, 0
+        SELECT e.cid, e.block_num, e.idx_in_block, 6, NULL, 0
             FROM vsc_app.events e
             WHERE e.block_num = blk_id
         UNION ALL
@@ -578,7 +578,7 @@ BEGIN
             b.id = ev.block_num
         JOIN vsc_app.l1_operations bo ON
             bo.id = b.proposed_in_op
-        WHERE ev.id = event_cid
+        WHERE ev.cid = event_cid
     ), jsonb_build_object('error', 'event not found'));
 END $function$
 LANGUAGE plpgsql STABLE;
@@ -1565,7 +1565,7 @@ BEGIN
     END IF;
 
     -- Event search
-    SELECT id INTO _result_varchar FROM vsc_app.events WHERE id = _cid;
+    SELECT cid INTO _result_varchar FROM vsc_app.events WHERE cid = _cid;
     IF _result_varchar IS NOT NULL THEN
         RETURN jsonb_build_object(
             'type', 'event',

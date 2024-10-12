@@ -15,17 +15,16 @@ CREATE OR REPLACE FUNCTION vsc_api.home()
 RETURNS jsonb
 AS
 $function$
-DECLARE
-    _last_processed_block INTEGER;
-    _db_version INTEGER;
 BEGIN
-    SELECT last_processed_block, db_version INTO _last_processed_block, _db_version FROM vsc_app.state;
-    RETURN jsonb_build_object(
-        'last_processed_block', _last_processed_block,
-        'last_processed_subindexer_op', (SELECT last_processed_op FROM vsc_app.subindexer_state),
-        'db_version', _db_version,
+    RETURN (
+    WITH s1 AS (SELECT * FROM vsc_app.state)
+    WITH s2 AS (SELECT * FROM vsc_app.subindexer_state)
+    SELECT jsonb_build_object(
+        'last_processed_block', s1.last_processed_block,
+        'last_processed_subindexer_op', s2.last_processed_op,
+        'db_version', s1.db_version,
         'epoch', (SELECT epoch FROM vsc_app.election_results ORDER BY epoch DESC LIMIT 1),
-        'l2_block_height', (SELECT COUNT(*) FROM vsc_app.l2_blocks),
+        'l2_block_height', s2.l2_block_height,
         'transactions', (SELECT COUNT(*) FROM vsc_app.contract_calls),
         'operations', (SELECT COUNT(*) FROM vsc_app.l1_operations),
         'contracts', (SELECT COUNT(*) FROM vsc_app.contracts),
@@ -33,7 +32,7 @@ BEGIN
         'bridge_txs', (SELECT COUNT(*) FROM vsc_app.deposits_to_hive)+(SELECT COUNT(*) FROM vsc_app.deposits_to_did)+(SELECT COUNT(*) FROM vsc_app.withdrawals),
         'anchor_refs', (SELECT COUNT(*) FROM vsc_app.anchor_refs),
         'txrefs', (SELECT COUNT(*) FROM vsc_app.multisig_txrefs)
-    );
+    ) FROM s1, s2);
 END
 $function$
 LANGUAGE plpgsql STABLE;

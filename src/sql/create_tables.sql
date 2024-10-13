@@ -38,17 +38,19 @@ CREATE TABLE IF NOT EXISTS vsc_app.l1_tx_multiauth(
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.l2_txs(
-    id VARCHAR(59) PRIMARY KEY, -- call_contract transaction CID
+    id SERIAL PRIMARY KEY,
+    cid VARCHAR(59) NOT NULL, -- call_contract transaction CID
     block_num INTEGER NOT NULL, -- included in l2 block number from blocks table
     idx_in_block SMALLINT NOT NULL, -- position in l2 block, max 32767
     tx_type SMALLINT NOT NULL, -- 1 for call_contract, 2 for contract_output, 3 for transfer, 4 for withdraw
     nonce INTEGER, -- currently not enforced
     details BIGINT, -- transaction details from contract_calls/transfers table. this should not be fk
-    events jsonb
+    events jsonb,
+    UNIQUE(cid)
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.l2_tx_multiauth(
-    id VARCHAR(59) PRIMARY KEY, -- id from l2_txs table
+    id SERIAL PRIMARY KEY, -- id from l2_txs table
     did INTEGER NOT NULL -- id from dids table
 );
 

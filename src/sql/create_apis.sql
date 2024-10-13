@@ -190,14 +190,14 @@ RETURNS jsonb
 AS $function$
 BEGIN
     RETURN (WITH result AS (
-        SELECT t.id, t.block_num, t.idx_in_block, t.tx_type, MIN(d.did) did, COUNT(a.id) auth_count
+        SELECT t.cid, t.block_num, t.idx_in_block, t.tx_type, MIN(d.did) did, COUNT(a.id) auth_count
             FROM vsc_app.l2_txs t
             LEFT JOIN vsc_app.l2_tx_multiauth a ON
                 a.id = t.id
             LEFT JOIN vsc_app.dids d ON
                 a.did = d.id
             WHERE t.block_num = blk_id
-            GROUP BY t.id
+            GROUP BY t.cid
         UNION ALL
         SELECT o.id, o.block_num, o.idx_in_block, 2, NULL, 0
             FROM vsc_app.contract_outputs o
@@ -392,7 +392,7 @@ DECLARE
     _tx_id BIGINT;
 BEGIN
     SELECT jsonb_build_object(
-        'id', t.id,
+        'id', t.cid,
         'block_num', t.block_num,
         'idx_in_block', t.idx_in_block,
         'ts', bo.ts,
@@ -413,7 +413,7 @@ BEGIN
         b.id = t.block_num
     JOIN vsc_app.l1_operations bo ON
         bo.id = b.proposed_in_op
-    WHERE t.id = trx_id;
+    WHERE t.cid = trx_id;
 
     IF _result IS NULL THEN
         RETURN jsonb_build_object('error', 'transaction not found');
@@ -532,7 +532,7 @@ BEGIN
             'total_io_gas', co.total_io_gas,
             'outputs', (
                 SELECT json_agg(jsonb_build_object(
-                    'tx_id', t.id,
+                    'tx_id', t.cid,
                     'output', c.contract_output
                 ))
                 FROM vsc_app.l2_txs t
@@ -565,12 +565,12 @@ BEGIN
             'ts', bo.ts,
             'events', (
                 SELECT json_agg(jsonb_build_object(
-                    'tx_id', t.id,
+                    'tx_id', t.cid,
                     'tx_type', (SELECT vsc_app.l2_tx_type_by_id(t.tx_type)),
                     'events', t.events
                 ))
                 FROM vsc_app.l2_txs t
-                WHERE t.id = ANY(ev.tx_ids)
+                WHERE t.cid = ANY(ev.tx_ids)
             )
         )
         FROM vsc_app.events ev
@@ -1081,7 +1081,7 @@ BEGIN
         WITH calls AS (
             SELECT 
                 c.id,
-                COALESCE(l2t.id, (SELECT vsc_app.get_tx_hash_by_op(l1o.block_num, l1o.trx_in_block))) AS input,
+                COALESCE(l2t.cid, (SELECT vsc_app.get_tx_hash_by_op(l1o.block_num, l1o.trx_in_block))) AS input,
                 (SELECT CASE WHEN l2t.id IS NULL THEN 'hive' ELSE 'vsc' END) AS input_src,
                 COALESCE(l2bp.ts, l1o.ts) AS ts,
                 COALESCE((
@@ -1535,7 +1535,7 @@ BEGIN
     END IF;
 
     -- Transaction search
-    SELECT tx_type::INTEGER INTO _result_int FROM vsc_app.l2_txs WHERE id = _cid;
+    SELECT tx_type::INTEGER INTO _result_int FROM vsc_app.l2_txs WHERE cid = _cid;
     IF _result_int IS NOT NULL THEN
         IF _result_int = 1 THEN
             RETURN jsonb_build_object(

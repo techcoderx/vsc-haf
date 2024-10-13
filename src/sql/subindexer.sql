@@ -352,7 +352,7 @@ $function$
 LANGUAGE plpgsql VOLATILE;
 
 CREATE OR REPLACE FUNCTION vsc_app.insert_tx_auth_did(
-    _id VARCHAR,
+    _id INTEGER,
     _did VARCHAR
 )
 RETURNS INTEGER
@@ -386,23 +386,25 @@ RETURNS void
 AS
 $function$
 DECLARE
-    _new_l2_transaction_id BIGINT;
+    _new_call_id BIGINT;
+    _new_l2_tx_id INTEGER;
     _caller VARCHAR;
 BEGIN
-    IF (SELECT EXISTS (SELECT 1 FROM vsc_app.l2_txs WHERE id=_id)) THEN
+    IF (SELECT EXISTS (SELECT 1 FROM vsc_app.l2_txs WHERE cid=_id)) THEN
         RETURN;
     END IF;
 
     INSERT INTO vsc_app.contract_calls(contract_id, contract_action, payload)
         VALUES(_contract_id, _contract_action, _payload)
-        RETURNING id INTO _new_l2_transaction_id;
+        RETURNING id INTO _new_call_id;
 
-    INSERT INTO vsc_app.l2_txs(id, block_num, idx_in_block, tx_type, nonce, details)
-        VALUES(_id, _l2_block_num, _index, 1, _nonce, _new_l2_transaction_id);
+    INSERT INTO vsc_app.l2_txs(cid, block_num, idx_in_block, tx_type, nonce, details)
+        VALUES(_id, _l2_block_num, _index, 1, _nonce, _new_call_id)
+        RETURNING id INTO _new_l2_tx_id;
 
     FOREACH _caller IN ARRAY _callers
     LOOP
-        PERFORM vsc_app.insert_tx_auth_did(_id, _caller);
+        PERFORM vsc_app.insert_tx_auth_did(_new_l2_tx_id, _caller);
     END LOOP;
 END
 $function$
@@ -433,7 +435,7 @@ DECLARE
     _tb SMALLINT;
     _g2 jsonb; -- unparsed io_gas for the specific call
 BEGIN
-    IF (SELECT EXISTS (SELECT 1 FROM vsc_app.l2_txs WHERE id=_id)) THEN
+    IF (SELECT EXISTS (SELECT 1 FROM vsc_app.contract_outputs WHERE id=_id)) THEN
         RETURN;
     END IF;
 
@@ -456,7 +458,7 @@ BEGIN
                 WHERE block_num = _bn AND trx_in_block = _tb AND op_pos = _i3 AND op_type = 5
             );
         ELSE
-            SELECT details INTO _input_tx_id FROM vsc_app.l2_txs WHERE id = _input;
+            SELECT details INTO _input_tx_id FROM vsc_app.l2_txs WHERE cid = _input;
         END IF;
         IF _input_tx_id IS NULL THEN
             CONTINUE;
@@ -499,8 +501,9 @@ DECLARE
     _from_id INTEGER = NULL;
     _to_acctype SMALLINT;
     _to_id INTEGER = NULL;
+    _new_l2_tx_id INTEGER;
 BEGIN
-    IF (SELECT EXISTS (SELECT 1 FROM vsc_app.l2_txs WHERE id=_id)) THEN
+    IF (SELECT EXISTS (SELECT 1 FROM vsc_app.l2_txs WHERE cid=_id)) THEN
         RETURN;
     END IF;
 
@@ -514,7 +517,7 @@ BEGIN
 
     -- prepare from id
     IF (SELECT starts_with(_from, 'did:')) THEN
-        SELECT vsc_app.insert_tx_auth_did(_id, _from) INTO _from_id;
+        SELECT vsc_app.insert_tx_auth_did(NULL, _from) INTO _from_id;
         _from_acctype := 2::SMALLINT;
     ELSIF (SELECT starts_with(_from, 'hive:')) THEN
         SELECT id INTO _from_id FROM hive.vsc_app_accounts WHERE name=(SELECT SPLIT_PART(_from, ':', 2));
@@ -550,8 +553,11 @@ BEGIN
         VALUES(_from_acctype, _from_id, _to_acctype, _to_id, _amount, _coin, _memo)
         RETURNING id INTO _xfer_id;
 
-    INSERT INTO vsc_app.l2_txs(id, block_num, idx_in_block, tx_type, details)
-        VALUES(_id, _l2_block_num, _index, 3, _xfer_id);
+    INSERT INTO vsc_app.l2_txs(cid, block_num, idx_in_block, tx_type, details)
+        VALUES(_id, _l2_block_num, _index, 3, _xfer_id)
+        RETURNING id INTO _new_l2_tx_id;
+
+    PERFORM vsc_app.insert_tx_auth_did(_new_l2_tx_id, _from);
 END $function$
 LANGUAGE plpgsql VOLATILE;
 
@@ -573,8 +579,9 @@ DECLARE
     _from_acctype SMALLINT;
     _from_id INTEGER = NULL;
     _to_id INTEGER = NULL;
+    _new_l2_tx_id INTEGER;
 BEGIN
-    IF (SELECT EXISTS (SELECT 1 FROM vsc_app.l2_txs WHERE id=_id)) THEN
+    IF (SELECT EXISTS (SELECT 1 FROM vsc_app.l2_txs WHERE cid=_id)) THEN
         RETURN;
     END IF;
 
@@ -588,7 +595,7 @@ BEGIN
 
     -- prepare from id
     IF (SELECT starts_with(_from, 'did:')) THEN
-        SELECT vsc_app.insert_tx_auth_did(_id, _from) INTO _from_id;
+        SELECT vsc_app.insert_tx_auth_did(NULL, _from) INTO _from_id;
         _from_acctype := 2::SMALLINT;
     ELSIF (SELECT starts_with(_from, 'hive:')) THEN
         SELECT id INTO _from_id FROM hive.vsc_app_accounts WHERE name=(SELECT SPLIT_PART(_from, ':', 2));
@@ -612,8 +619,11 @@ BEGIN
         VALUES(_from_acctype, _from_id, _to_id, _amount, _coin, _memo)
         RETURNING id INTO _xfer_id;
 
-    INSERT INTO vsc_app.l2_txs(id, block_num, idx_in_block, tx_type, details)
-        VALUES(_id, _l2_block_num, _index, 4, _xfer_id);
+    INSERT INTO vsc_app.l2_txs(cid, block_num, idx_in_block, tx_type, details)
+        VALUES(_id, _l2_block_num, _index, 4, _xfer_id)
+        RETURNING id INTO _new_l2_tx_id;
+
+    PERFORM vsc_app.insert_tx_auth_did(_new_l2_tx_id, _from);
 END $function$
 LANGUAGE plpgsql VOLATILE;
 
@@ -667,7 +677,7 @@ BEGIN
         LOOP
             e := array_append(e, (_body->'events')->e2);
         END LOOP;
-        UPDATE vsc_app.l2_txs SET events = array_to_json(e) WHERE id = ((_body->'txs')->>i);
+        UPDATE vsc_app.l2_txs SET events = array_to_json(e) WHERE cid = ((_body->'txs')->>i);
         e := '{}';
         i := i+1;
     END LOOP;

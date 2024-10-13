@@ -405,18 +405,7 @@ BEGIN
                 ma.did = k.id
             WHERE ma.id = t.id
         ),
-        'events', (
-            SELECT jsonb_agg(jsonb_build_object(
-                't', te2.evt_type,
-                'tk', te2.token,
-                'amt', te2.amount,
-                'memo', te2.memo,
-                'owner', te2.owner_name
-            ))
-            FROM vsc_app.l2_tx_events te2
-            WHERE te2.l2_tx_id = t.id
-            ORDER BY te2.evt_pos
-        )
+        'events', (SELECT vsc_app.get_events_in_tx_by_id(t.id))
     ), t.tx_type, t.details
     INTO _result, _tx_type, _tx_id
     FROM vsc_app.l2_txs t
@@ -574,25 +563,7 @@ BEGIN
             'block_num', ev.block_num,
             'idx_in_block', ev.idx_in_block,
             'ts', bo.ts,
-            'events', (
-                SELECT json_agg(jsonb_build_object(
-                    'tx_id', t.cid,
-                    'tx_type', (SELECT vsc_app.l2_tx_type_by_id(t.tx_type)),
-                    'events', jsonb_agg(jsonb_build_object(
-                        't', te.evt_type,
-                        'tk', te.token,
-                        'amt', te.amount,
-                        'memo', te.memo,
-                        'owner', te.owner_name
-                    ))
-                ))
-                FROM vsc_app.l2_tx_events te
-                JOIN vsc_app.l2_txs t ON
-                    t.id = te.l2_tx_id
-                WHERE te.event_id = ev.id
-                GROUP BY te.l2_tx_id
-                ORDER BY te.tx_pos ASC, te.evt_pos ASC
-            )
+            'events', (SELECT vsc_app.get_event_details(ev.id))
         )
         FROM vsc_app.events ev
         JOIN vsc_app.l2_blocks b ON

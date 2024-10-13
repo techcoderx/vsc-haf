@@ -434,3 +434,46 @@ BEGIN
     RETURN (SELECT COUNT(*) FROM vsc_app.l2_txs t WHERE t.block_num = _block_num)+(SELECT COUNT(*) FROM vsc_app.contract_outputs co WHERE co.block_num = _block_num)+(SELECT COUNT(*) FROM vsc_app.events e WHERE e.block_num = _block_num)+(SELECT COUNT(*) FROM vsc_app.anchor_refs ar WHERE ar.block_num = _block_num);
 END $function$
 LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION vsc_app.get_events_in_tx_by_id(id INTEGER)
+RETURNS jsonb AS $$
+BEGIN
+    RETURN COALESCE((
+        WITH events AS (
+            SELECT te2.evt_type t, vsc_app.asset_by_id(te2.token) tk, te2.amount amt, te2.memo, te2.owner_name owner
+            FROM vsc_app.l2_tx_events te2
+            WHERE te2.l2_tx_id = id
+            ORDER BY te2.evt_pos
+        )
+        SELECT jsonb_agg(jsonb_build_object(
+            't', t,
+            'tk', tk,
+            'amt', amt,
+            'memo', memo,
+            'owner', owner
+        )) FROM events
+    ), '[]'::jsonb);
+END $$
+LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION vsc_app.get_event_details(_id INTEGER)
+RETURNs jsonb AS $$
+BEGIN
+    RETURN (
+        WITH txs AS (
+            SELECT t.cid, vsc_app.l2_tx_type_by_id(t.tx_type) tx_type, vsc_app.get_events_in_tx_by_id(t.id) evts
+            FROM vsc_app.l2_tx_events te
+            JOIN vsc_app.l2_txs t ON
+                t.id = te.l2_tx_id
+            WHERE te.event_id = _id
+            GROUP BY t.id
+        )
+        SELECT jsonb_agg(jsonb_build_object(
+            'tx_id', cid,
+            'tx_type', tx_type,
+            'events', evts
+        )) FROM txs
+    );
+END $$
+LANGUAGE plpgsql STABLE;
+

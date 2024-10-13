@@ -664,7 +664,7 @@ BEGIN
         FOR e2 in SELECT value::INTEGER FROM jsonb_array_elements(e1)
         LOOP
             e := (_body->'events')->e2;
-            INSERT INTO vsc_app.l2_tx_events(event_id, l2_tx_id, tx_pos, evt_pos, evt_type, token, amount, memo, user)
+            INSERT INTO vsc_app.l2_tx_events(event_id, l2_tx_id, tx_pos, evt_pos, evt_type, token, amount, memo, owner_name)
                 VALUES(
                     new_evt_id,
                     (SELECT id FROM vsc_app.l2_txs WHERE cid = ((_body->'txs')->>i)),

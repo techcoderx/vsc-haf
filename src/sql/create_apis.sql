@@ -411,7 +411,7 @@ BEGIN
                 'tk', te2.token,
                 'amt', te2.amount,
                 'memo', te2.memo,
-                'owner', te2.user
+                'owner', te2.owner_name
             ))
             FROM vsc_app.l2_tx_events te2
             WHERE te2.l2_tx_id = t.id
@@ -583,7 +583,7 @@ BEGIN
                         'tk', te.token,
                         'amt', te.amount,
                         'memo', te.memo,
-                        'owner', te.user
+                        'owner', te.owner_name
                     ))
                 ))
                 FROM vsc_app.l2_tx_events te

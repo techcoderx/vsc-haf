@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.l2_tx_events(
     token SMALLINT NOT NULL, -- 0 for HIVE, 1 for HBD
     amount INTEGER NOT NULL,
     memo VARCHAR,
-    user VARCHAR NOT NULL,
+    owner_name VARCHAR NOT NULL,
     PRIMARY KEY(event_id, l2_tx_id, tx_pos, evt_pos)
 );
 

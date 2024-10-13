@@ -495,7 +495,6 @@ CREATE OR REPLACE FUNCTION vsc_app.push_transfer_tx(
 RETURNS void
 AS $function$
 DECLARE
-    _coin SMALLINT;
     _xfer_id BIGINT;
     _from_acctype SMALLINT;
     _from_id INTEGER = NULL;
@@ -505,14 +504,6 @@ DECLARE
 BEGIN
     IF (SELECT EXISTS (SELECT 1 FROM vsc_app.l2_txs WHERE cid=_id)) THEN
         RETURN;
-    END IF;
-
-    IF _tk = 'HIVE' THEN
-        _coin := 0::SMALLINT;
-    ELSIF _tk = 'HBD' THEN
-        _coin := 1::SMALLINT;
-    ELSE
-        RAISE EXCEPTION '_tk must be HIVE or HBD';
     END IF;
 
     -- prepare from id
@@ -550,7 +541,7 @@ BEGIN
     END IF;
 
     INSERT INTO vsc_app.transfers(from_acctype, from_id, to_acctype, to_id, amount, coin, memo)
-        VALUES(_from_acctype, _from_id, _to_acctype, _to_id, _amount, _coin, _memo)
+        VALUES(_from_acctype, _from_id, _to_acctype, _to_id, _amount, (SELECT vsc_app.get_asset_id(_tk)), _memo)
         RETURNING id INTO _xfer_id;
 
     INSERT INTO vsc_app.l2_txs(cid, block_num, idx_in_block, tx_type, details)
@@ -574,7 +565,6 @@ CREATE OR REPLACE FUNCTION vsc_app.push_l2_withdraw_tx(
 RETURNS void
 AS $function$
 DECLARE
-    _coin SMALLINT;
     _xfer_id BIGINT;
     _from_acctype SMALLINT;
     _from_id INTEGER = NULL;
@@ -583,14 +573,6 @@ DECLARE
 BEGIN
     IF (SELECT EXISTS (SELECT 1 FROM vsc_app.l2_txs WHERE cid=_id)) THEN
         RETURN;
-    END IF;
-
-    IF _tk = 'HIVE' THEN
-        _coin := 0::SMALLINT;
-    ELSIF _tk = 'HBD' THEN
-        _coin := 1::SMALLINT;
-    ELSE
-        RAISE EXCEPTION '_tk must be HIVE or HBD';
     END IF;
 
     -- prepare from id
@@ -616,7 +598,7 @@ BEGIN
     END IF;
 
     INSERT INTO vsc_app.l2_withdrawals(from_acctype, from_id, to_id, amount, asset, memo)
-        VALUES(_from_acctype, _from_id, _to_id, _amount, _coin, _memo)
+        VALUES(_from_acctype, _from_id, _to_id, _amount, (SELECT vsc_app.get_asset_id(_tk)), _memo)
         RETURNING id INTO _xfer_id;
 
     INSERT INTO vsc_app.l2_txs(cid, block_num, idx_in_block, tx_type, details)
@@ -663,26 +645,41 @@ CREATE OR REPLACE FUNCTION vsc_app.push_events(
 RETURNS void
 AS $function$
 DECLARE
+    new_evt_id INTEGER;
     i INTEGER = 0;
-    e jsonb[] = '{}'; -- events for the tx
+    j SMALLINT;
+    e jsonb; -- event for the tx
     e1 jsonb; -- txs map array used in first loop
     e2 INTEGER; -- event array position used in second loop
 BEGIN
     IF (SELECT jsonb_array_length(_body->'txs')) != (SELECT jsonb_array_length(_body->'txs_map')) THEN
         RETURN; -- txs must have the same array length as txs_map
     END IF;
+    INSERT INTO vsc_app.events(cid, block_num, idx_in_block)
+        VALUES(_id, _l2_block_num, _index)
+        RETURNING id INTO new_evt_id;
     FOR e1 in SELECT * FROM jsonb_array_elements(_body->'txs_map')
     LOOP
+        j := 0::SMALLINT;
         FOR e2 in SELECT value::INTEGER FROM jsonb_array_elements(e1)
         LOOP
-            e := array_append(e, (_body->'events')->e2);
+            e := (_body->'events')->e2;
+            INSERT INTO vsc_app.l2_tx_events(event_id, l2_tx_id, tx_pos, evt_pos, evt_type, token, amount, memo, user)
+                VALUES(
+                    new_evt_id,
+                    (SELECT id FROM vsc_app.l2_txs WHERE cid = ((_body->'txs')->>i)),
+                    i,
+                    j,
+                    (e->>'t')::INTEGER,
+                    (SELECT vsc_app.get_asset_id(e->>'tk')),
+                    (e->'amt')::INTEGER,
+                    e->>'memo',
+                    e->>'owner'
+                );
+            j := j+1::SMALLINT;
         END LOOP;
-        UPDATE vsc_app.l2_txs SET events = array_to_json(e) WHERE cid = ((_body->'txs')->>i);
-        e := '{}';
         i := i+1;
     END LOOP;
-    INSERT INTO vsc_app.events(cid, block_num, idx_in_block, tx_ids)
-        VALUES(_id, _l2_block_num, _index, (SELECT ARRAY(SELECT jsonb_array_elements_text(_body->'txs'))));
 END $function$
 LANGUAGE plpgsql VOLATILE;
 

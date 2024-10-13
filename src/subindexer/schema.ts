@@ -85,6 +85,16 @@ export const HAF_FKS: FKS_TYPE = {
         fk: 'did',
         ref: SCHEMA_NAME+'.dids(id)'
     },
+    l2_tx_events_evt_id_fk: {
+        table: SCHEMA_NAME+'.l2_tx_events',
+        fk: 'event_id',
+        ref: SCHEMA_NAME+'.events(id)'
+    },
+    l2_tx_events_tx_id_fk: {
+        table: SCHEMA_NAME+'.l2_tx_events',
+        fk: 'l2_tx_id',
+        ref: SCHEMA_NAME+'.l2_txs(id)'
+    },
     contract_call_contract_id_fk: {
         table: SCHEMA_NAME+'.contract_calls',
         fk: 'contract_id',

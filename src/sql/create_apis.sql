@@ -405,7 +405,18 @@ BEGIN
                 ma.did = k.id
             WHERE ma.id = t.id
         ),
-        'events', t.events
+        'events', (
+            SELECT jsonb_agg(jsonb_build_object(
+                't', te2.evt_type,
+                'tk', te2.token,
+                'amt', te2.amount,
+                'memo', te2.memo,
+                'owner', te2.user
+            ))
+            FROM vsc_app.l2_tx_events te2
+            WHERE te2.l2_tx_id = t.id
+            ORDER BY te2.evt_pos
+        )
     ), t.tx_type, t.details
     INTO _result, _tx_type, _tx_id
     FROM vsc_app.l2_txs t
@@ -567,10 +578,20 @@ BEGIN
                 SELECT json_agg(jsonb_build_object(
                     'tx_id', t.cid,
                     'tx_type', (SELECT vsc_app.l2_tx_type_by_id(t.tx_type)),
-                    'events', t.events
+                    'events', jsonb_agg(jsonb_build_object(
+                        't', te.evt_type,
+                        'tk', te.token,
+                        'amt', te.amount,
+                        'memo', te.memo,
+                        'owner', te.user
+                    ))
                 ))
-                FROM vsc_app.l2_txs t
-                WHERE t.cid = ANY(ev.tx_ids)
+                FROM vsc_app.l2_tx_events te
+                JOIN vsc_app.l2_txs t ON
+                    t.id = te.l2_tx_id
+                WHERE te.event_id = ev.id
+                GROUP BY te.l2_tx_id
+                ORDER BY te.tx_pos ASC, te.evt_pos ASC
             )
         )
         FROM vsc_app.events ev

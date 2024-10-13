@@ -85,6 +85,20 @@ END
 $function$
 LANGUAGE plpgsql IMMUTABLE;
 
+-- ASSET to SMALLINT string mapping
+CREATE OR REPLACE FUNCTION vsc_app.get_asset_id(asset VARCHAR)
+RETURNS SMALLINT AS $function$
+BEGIN
+    IF asset = 'HIVE' THEN
+        RETURN 0::SMALLINT;
+    ELSIF asset = 'HBD' THEN
+        RETURN 1::SMALLINT;
+    ELSE
+        RETURN -1;
+    END IF;
+END $function$
+LANGUAGE plpgsql IMMUTABLE;
+
 -- SMALLINT to L2 tx type string mapping for API use
 CREATE OR REPLACE FUNCTION vsc_app.l2_tx_type_by_id(id SMALLINT = -1)
 RETURNS VARCHAR

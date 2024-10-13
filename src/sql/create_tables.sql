@@ -45,13 +45,25 @@ CREATE TABLE IF NOT EXISTS vsc_app.l2_txs(
     tx_type SMALLINT NOT NULL, -- 1 for call_contract, 2 for contract_output, 3 for transfer, 4 for withdraw
     nonce INTEGER, -- currently not enforced
     details BIGINT, -- transaction details from contract_calls/transfers table. this should not be fk
-    events jsonb,
     UNIQUE(cid)
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.l2_tx_multiauth(
     id INTEGER PRIMARY KEY, -- id from l2_txs table
     did INTEGER NOT NULL -- id from dids table
+);
+
+CREATE TABLE IF NOT EXISTS vsc_app.l2_tx_events(
+    event_id INTEGER NOT NULL, -- id from events table
+    l2_tx_id INTEGER NOT NULL, -- id from l2_txs table
+    tx_pos INTEGER NOT NULL,
+    evt_pos SMALLINT NOT NULL, -- assume each tx can never emit more than 32767 events
+    evt_type INTEGER NOT NULL,
+    token SMALLINT NOT NULL, -- 0 for HIVE, 1 for HBD
+    amount INTEGER NOT NULL,
+    memo VARCHAR,
+    user VARCHAR NOT NULL,
+    PRIMARY KEY(event_id, l2_tx_id, tx_pos, evt_pos)
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.l2_blocks(
@@ -102,7 +114,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.events(
     cid VARCHAR(59) NOT NULL,
     block_num INTEGER NOT NULL,
     idx_in_block SMALLINT NOT NULL,
-    tx_ids VARCHAR(59)[]
+    UNIQUE(cid)
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.contracts(

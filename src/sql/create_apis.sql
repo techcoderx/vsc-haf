@@ -190,14 +190,14 @@ RETURNS jsonb
 AS $function$
 BEGIN
     RETURN (WITH result AS (
-        SELECT t.cid, t.block_num, t.idx_in_block, t.tx_type, MIN(d.did) did, COUNT(a.id) auth_count
+        SELECT t.cid AS id, t.block_num, t.idx_in_block, t.tx_type, MIN(d.did) did, COUNT(a.id) auth_count
             FROM vsc_app.l2_txs t
             LEFT JOIN vsc_app.l2_tx_multiauth a ON
                 a.id = t.id
             LEFT JOIN vsc_app.dids d ON
                 a.did = d.id
             WHERE t.block_num = blk_id
-            GROUP BY t.cid
+            GROUP BY t.id
         UNION ALL
         SELECT o.id, o.block_num, o.idx_in_block, 2, NULL, 0
             FROM vsc_app.contract_outputs o

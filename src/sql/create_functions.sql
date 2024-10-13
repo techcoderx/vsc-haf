@@ -435,6 +435,7 @@ BEGIN
 END $function$
 LANGUAGE plpgsql STABLE;
 
+-- Get events in l2 tx
 CREATE OR REPLACE FUNCTION vsc_app.get_events_in_tx_by_id(id INTEGER)
 RETURNS jsonb AS $$
 BEGIN
@@ -456,6 +457,7 @@ BEGIN
 END $$
 LANGUAGE plpgsql STABLE;
 
+-- Get all event items in event by id
 CREATE OR REPLACE FUNCTION vsc_app.get_event_details(_id INTEGER)
 RETURNs jsonb AS $$
 BEGIN
@@ -477,3 +479,28 @@ BEGIN
 END $$
 LANGUAGE plpgsql STABLE;
 
+-- Flat event array
+CREATE OR REPLACE FUNCTION vsc_app.get_event_details2(_id INTEGER)
+RETURNs jsonb AS $$
+BEGIN
+    RETURN (
+        WITH events AS (
+            SELECT t.cid, vsc_app.l2_tx_type_by_id(t.tx_type) tx_type, te.evt_type, vsc_app.asset_by_id(te.token) token, te.amount, te.memo, te.owner_name
+            FROM vsc_app.l2_tx_events te
+            JOIN vsc_app.l2_txs t ON
+                t.id = te.l2_tx_id
+            WHERE te.event_id = _id
+            ORDER BY te.tx_pos ASC, te.evt_pos ASC
+        )
+        SELECT jsonb_agg(jsonb_build_object(
+            'tx_id', cid,
+            'tx_type', tx_type,
+            'type', evt_type,
+            'token', token,
+            'amount', amount,
+            'memo', memo,
+            'owner', owner_name
+        )) FROM events
+    );
+END $$
+LANGUAGE plpgsql STABLE;

@@ -551,7 +551,7 @@ BEGIN
 END $function$
 LANGUAGE plpgsql STABLE;
 
-CREATE OR REPLACE FUNCTION vsc_api.get_event(cid VARCHAR)
+CREATE OR REPLACE FUNCTION vsc_api.get_event(cid VARCHAR, flat_events_arr BOOLEAN = FALSE)
 RETURNS jsonb
 AS $function$
 DECLARE
@@ -563,7 +563,7 @@ BEGIN
             'block_num', ev.block_num,
             'idx_in_block', ev.idx_in_block,
             'ts', bo.ts,
-            'events', (SELECT vsc_app.get_event_details(ev.id))
+            'events', (SELECT CASE WHEN flat_events_arr THEN vsc_app.get_event_details2(ev.id) ELSE vsc_app.get_event_details(ev.id) END)
         )
         FROM vsc_app.events ev
         JOIN vsc_app.l2_blocks b ON

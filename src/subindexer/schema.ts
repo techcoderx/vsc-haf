@@ -154,6 +154,10 @@ export const INDEXES: INDEXES_TYPE = {
     events_cid_idx: {
         table_name: SCHEMA_NAME+'.events',
         columns: [{ col_name: 'cid', order: Ordering.ASC }]
+    },
+    l2_tx_events_tx_id_idx: {
+        table_name: SCHEMA_NAME+'.l2_tx_events',
+        columns: [{ col_name: 'l2_tx_id', order: Ordering.DESC }]
     }
 }
 

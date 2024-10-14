@@ -359,14 +359,16 @@ RETURNS INTEGER
 AS $function$
 DECLARE
     _did_id INTEGER = NULL;
+    _count INTEGER := 0;
 BEGIN
-    SELECT id INTO _did_id FROM vsc_app.dids WHERE did=_did;
+    SELECT id, count INTO _did_id, _count FROM vsc_app.dids WHERE did=_did;
     IF _did_id IS NULL THEN
         INSERT INTO vsc_app.dids(did) VALUES(_did) RETURNING id INTO _did_id;
     END IF;
     IF _id IS NOT NULL THEN
-        INSERT INTO vsc_app.l2_tx_multiauth(id, did)
-            VALUES(_id, _did_id);
+        INSERT INTO vsc_app.l2_tx_multiauth(id, did, nonce_counter)
+            VALUES(_id, _did_id, _count+1);
+        UPDATE vsc_app.dids SET count=_count+1 WHERE id=_did_id;
     END IF;
     RETURN _did_id;
 END $function$

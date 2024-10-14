@@ -50,7 +50,8 @@ CREATE TABLE IF NOT EXISTS vsc_app.l2_txs(
 
 CREATE TABLE IF NOT EXISTS vsc_app.l2_tx_multiauth(
     id INTEGER PRIMARY KEY, -- id from l2_txs table
-    did INTEGER NOT NULL -- id from dids table
+    did INTEGER NOT NULL, -- id from dids table
+    nonce_counter INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.l2_tx_events(
@@ -280,6 +281,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.l2_withdrawals(
 CREATE TABLE IF NOT EXISTS vsc_app.dids(
     id SERIAL PRIMARY KEY,
     did VARCHAR(78) NOT NULL,
+    count INTEGER NOT NULL DEFAULT 0,
     UNIQUE(did)
 );
 

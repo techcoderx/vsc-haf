@@ -285,9 +285,3 @@ CREATE TABLE IF NOT EXISTS vsc_app.dids(
     count INTEGER NOT NULL DEFAULT 0,
     UNIQUE(did)
 );
-
-CREATE TABLE IF NOT EXISTS vsc_app.bls_dids(
-    id SERIAL PRIMARY KEY,
-    bls_did VARCHAR(78) NOT NULL,
-    UNIQUE(bls_did)
-);

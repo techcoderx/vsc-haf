@@ -590,14 +590,7 @@ CREATE TYPE vsc_api.l1_op_type AS (
 );
 
 CREATE OR REPLACE FUNCTION vsc_api.get_l1_operations_by_l1_blocks(l1_blk_start INTEGER, l1_blk_count INTEGER, full_tx_body BOOLEAN = FALSE)
-RETURNS jsonb
-AS
-$function$
-DECLARE
-    op vsc_api.l1_op_type;
-    ops vsc_api.l1_op_type[];
-    ops_arr jsonb[] DEFAULT '{}';
-    op_payload jsonb;
+RETURNS jsonb AS $$
 BEGIN
     IF l1_blk_count > 1000 OR l1_blk_count <= 0 THEN
         RETURN jsonb_build_object(
@@ -608,8 +601,10 @@ BEGIN
             'error', 'l1_blk_start must be greater than or equal to 1'
         );
     END IF;
-    SELECT ARRAY(
-        SELECT ROW(o.id, hive.vsc_app_accounts.name, o.nonce, o.op_type, ot.op_name, ho.block_num, ho.trx_in_block, ho.op_pos, o.ts, ho.body::TEXT)::vsc_api.l1_op_type
+
+    RETURN COALESCE((
+        WITH op AS (
+            SELECT o.id, hive.vsc_app_accounts.name, o.nonce, o.op_type, ot.op_name, ho.block_num, ho.trx_in_block, ho.op_pos, o.ts, ho.body::TEXT
             FROM vsc_app.l1_operations o
             JOIN vsc_app.l1_operation_types ot ON
                 ot.id = o.op_type
@@ -618,30 +613,19 @@ BEGIN
             JOIN hive.vsc_app_accounts ON
                 hive.vsc_app_accounts.id = o.user_id
             WHERE ho.block_num >= l1_blk_start AND ho.block_num < l1_blk_start+l1_blk_count
-    ) INTO ops;
-    
-    FOREACH op IN ARRAY ops
-    LOOP
-        IF full_tx_body IS TRUE THEN
-            op_payload := (op.body::jsonb->'value')::jsonb;
-        ELSE
-            op_payload := (SELECT vsc_app.parse_l1_payload(op.op_name, op.body::jsonb->>'value'));
-        END IF;
-        SELECT ARRAY_APPEND(ops_arr, jsonb_build_object(
+        )
+        SELECT jsonb_agg(jsonb_build_object(
             'id', op.id,
             'username', op.name,
             'nonce', op.nonce,
             'type', op.op_name,
             'l1_block', op.block_num,
-            'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(op.block_num, op.trx_in_block)),
+            'l1_tx', vsc_app.get_tx_hash_by_op(op.block_num, op.trx_in_block),
             'ts', op.ts,
-            'payload', op_payload
-        )) INTO ops_arr;
-    END LOOP;
-    
-    RETURN array_to_json(ops_arr)::jsonb;
-END
-$function$
+            'payload', (CASE WHEN full_tx_body THEN op.body::jsonb->'value' ELSE vsc_app.parse_l1_payload(op.op_name, op.body::jsonb->>'value') END)
+        )) FROM op
+    ), '[]'::jsonb);
+END $$
 LANGUAGE plpgsql STABLE;
 
 CREATE OR REPLACE FUNCTION vsc_api.get_l1_user(username VARCHAR)
@@ -773,26 +757,8 @@ END
 $function$
 LANGUAGE plpgsql STABLE;
 
-DROP TYPE IF EXISTS vsc_api.op_history_type CASCADE;
-CREATE TYPE vsc_api.op_history_type AS (
-    id BIGINT,
-    username VARCHAR(16),
-    nonce INTEGER,
-    block_num INTEGER,
-    trx_in_block SMALLINT,
-    ts TIMESTAMP,
-    op_name VARCHAR(20),
-    body TEXT
-);
-
 CREATE OR REPLACE FUNCTION vsc_api.get_op_history_by_l1_user(username VARCHAR, count INTEGER = 50, last_nonce INTEGER = NULL, bitmask_filter BIGINT = NULL)
-RETURNS jsonb
-AS
-$function$
-DECLARE
-    result vsc_api.op_history_type;
-    results vsc_api.op_history_type[];
-    results_arr jsonb[] DEFAULT '{}';
+RETURNS jsonb AS $$
 BEGIN
     IF last_nonce IS NOT NULL AND last_nonce < 0 THEN
         RETURN jsonb_build_object(
@@ -804,53 +770,34 @@ BEGIN
         );
     END IF;
 
-    IF bitmask_filter IS NULL THEN
-        SELECT ARRAY(
-            SELECT ROW(o.id, a.name, o.nonce, o.block_num, o.trx_in_block, o.ts, ot.op_name, ho.body::jsonb->>'value')::vsc_api.op_history_type
-                FROM vsc_app.l1_operations o
-                JOIN vsc_app.l1_operation_types ot ON
-                    ot.id = o.op_type
-                JOIN hive.vsc_app_accounts a ON
-                    a.id = o.user_id
-                JOIN hive.operations_view ho ON
-                    ho.id = o.op_id
-                WHERE a.name = username AND o.nonce <= COALESCE(last_nonce, 9223372036854775807)
-                ORDER BY o.id DESC
-                LIMIT count
-        ) INTO results;
-    ELSE
-        SELECT ARRAY(
-            SELECT ROW(o.id, a.name, o.nonce, o.block_num, o.trx_in_block, o.ts, ot.op_name, ho.body::jsonb->>'value')::vsc_api.op_history_type
-                FROM vsc_app.l1_operations o
-                JOIN vsc_app.l1_operation_types ot ON
-                    ot.id = o.op_type
-                JOIN hive.vsc_app_accounts a ON
-                    a.id = o.user_id
-                JOIN hive.operations_view ho ON
-                    ho.id = o.op_id
-                WHERE a.name = username AND o.nonce <= COALESCE(last_nonce, 9223372036854775807) AND (ot.filterer & bitmask_filter) > 0
-                ORDER BY o.id DESC
-                LIMIT count
-        ) INTO results;
-    END IF;
-
-    FOREACH result IN ARRAY results
-    LOOP
-        SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
+    RETURN COALESCE((
+        WITH result AS (
+            SELECT o.id, a.name, o.nonce, o.block_num, o.trx_in_block, o.ts, ot.op_name, ho.body::jsonb->>'value' body
+            FROM vsc_app.l1_operations o
+            JOIN vsc_app.l1_operation_types ot ON
+                ot.id = o.op_type
+            JOIN hive.vsc_app_accounts a ON
+                a.id = o.user_id
+            JOIN hive.operations_view ho ON
+                ho.id = o.op_id
+            WHERE a.name = username AND
+                (SELECT CASE WHEN last_nonce IS NOT NULL THEN o.nonce <= last_nonce ELSE TRUE END) AND
+                (SELECT CASE WHEN bitmask_filter IS NOT NULL THEN (ot.filterer & bitmask_filter) > 0 ELSE TRUE END)
+            ORDER BY o.id DESC
+            LIMIT count
+        )
+        SELECT jsonb_agg(jsonb_build_object(
             'id', result.id,
-            'username', result.username,
+            'username', result.name,
             'nonce', result.nonce,
             'ts', result.ts,
             'type', result.op_name,
-            'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(result.block_num, result.trx_in_block)),
+            'l1_tx', vsc_app.get_tx_hash_by_op(result.block_num, result.trx_in_block),
             'l1_block', result.block_num,
-            'payload', (SELECT vsc_app.parse_l1_payload(result.op_name, result.body))
-        )) INTO results_arr;
-    END LOOP;
-    
-    RETURN array_to_json(results_arr)::jsonb;
-END
-$function$
+            'payload', vsc_app.parse_l1_payload(result.op_name, result.body)
+        )) FROM result
+    ), '[]'::jsonb);
+END $$
 LANGUAGE plpgsql STABLE;
 
 DROP TYPE IF EXISTS vsc_api.l1_op_blk_trx CASCADE;
@@ -917,13 +864,7 @@ $function$
 LANGUAGE plpgsql STABLE;
 
 CREATE OR REPLACE FUNCTION vsc_api.list_latest_ops(count INTEGER = 100, bitmask_filter BIGINT = NULL, with_payload BOOLEAN = FALSE)
-RETURNS jsonb
-AS
-$function$
-DECLARE
-    result vsc_api.op_history_type;
-    results vsc_api.op_history_type[];
-    results_arr jsonb[] DEFAULT '{}';
+RETURNS jsonb AS $$
 BEGIN
     IF count <= 0 OR count > 100 THEN
         RETURN jsonb_build_object(
@@ -931,64 +872,32 @@ BEGIN
         );
     END IF;
 
-    IF bitmask_filter IS NULL THEN
-        SELECT ARRAY(
-            SELECT ROW(o.id, a.name, o.nonce, o.block_num, o.trx_in_block, o.ts, ot.op_name, ho.body::jsonb->>'value')::vsc_api.op_history_type
-                FROM vsc_app.l1_operations o
-                JOIN vsc_app.l1_operation_types ot ON
-                    ot.id = o.op_type
-                JOIN hive.vsc_app_accounts a ON
-                    a.id = o.user_id
-                JOIN hive.operations_view ho ON
-                    ho.id = o.op_id
-                ORDER BY o.id DESC
-                LIMIT count
-        ) INTO results;
-    ELSE
-        SELECT ARRAY(
-            SELECT ROW(o.id, a.name, o.nonce, o.block_num, o.trx_in_block, o.ts, ot.op_name, ho.body::jsonb->>'value')::vsc_api.op_history_type
-                FROM vsc_app.l1_operations o
-                JOIN vsc_app.l1_operation_types ot ON
-                    ot.id = o.op_type
-                JOIN hive.vsc_app_accounts a ON
-                    a.id = o.user_id
-                JOIN hive.operations_view ho ON
-                    ho.id = o.op_id
-                WHERE (ot.filterer & bitmask_filter) > 0
-                ORDER BY o.id DESC
-                LIMIT count
-        ) INTO results;
-    END IF;
-
-    FOREACH result IN ARRAY results
-    LOOP
-        IF with_payload IS TRUE THEN
-            SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
-                'id', result.id,
-                'username', result.username,
-                'nonce', result.nonce,
-                'type', result.op_name,
-                'ts', result.ts,
-                'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(result.block_num, result.trx_in_block)),
-                'l1_block', result.block_num,
-                'payload', (SELECT vsc_app.parse_l1_payload(result.op_name, result.body))
-            )) INTO results_arr;
-        ELSE
-            SELECT ARRAY_APPEND(results_arr, jsonb_build_object(
-                'id', result.id,
-                'username', result.username,
-                'nonce', result.nonce,
-                'type', result.op_name,
-                'ts', result.ts,
-                'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(result.block_num, result.trx_in_block)),
-                'l1_block', result.block_num
-            )) INTO results_arr;
-        END IF;
-    END LOOP;
-
-    RETURN array_to_json(results_arr)::jsonb;
-END
-$function$
+    RETURN COALESCE((
+        WITH result AS (
+            SELECT o.id, a.name, o.nonce, o.block_num, o.trx_in_block, o.ts, ot.op_name, ho.body::jsonb->>'value' body
+            FROM vsc_app.l1_operations o
+            JOIN vsc_app.l1_operation_types ot ON
+                ot.id = o.op_type
+            JOIN hive.vsc_app_accounts a ON
+                a.id = o.user_id
+            JOIN hive.operations_view ho ON
+                ho.id = o.op_id
+            WHERE (SELECT CASE WHEN bitmask_filter IS NOT NULL THEN (ot.filterer & bitmask_filter) > 0 ELSE TRUE END)
+            ORDER BY o.id DESC
+            LIMIT count
+        )
+        SELECT jsonb_agg(jsonb_build_object(
+            'id', result.id,
+            'username', result.name,
+            'nonce', result.nonce,
+            'type', result.op_name,
+            'ts', result.ts,
+            'l1_tx', vsc_app.get_tx_hash_by_op(result.block_num, result.trx_in_block),
+            'l1_block', result.block_num,
+            'payload', (CASE WHEN with_payload THEN vsc_app.parse_l1_payload(result.op_name, result.body) ELSE NULL END)
+        )) FROM result
+    ), '[]'::jsonb);
+END $$
 LANGUAGE plpgsql STABLE;
 
 CREATE OR REPLACE FUNCTION vsc_api.list_latest_contracts(count INTEGER = 100)

@@ -50,11 +50,6 @@ export const HAF_FKS: FKS_TYPE = {
         fk: 'id',
         ref: SCHEMA_NAME+'.l1_operations(id)'
     },
-    l1_txs_details_fk: {
-        table: SCHEMA_NAME+'.l1_txs',
-        fk: 'details',
-        ref: SCHEMA_NAME+'.contract_calls(id)'
-    },
     l1_tx_multiauth_tx_id: {
         table: SCHEMA_NAME+'.l1_tx_multiauth',
         fk: 'id',
@@ -74,11 +69,6 @@ export const HAF_FKS: FKS_TYPE = {
         table: SCHEMA_NAME+'.l2_txs',
         fk: 'tx_type',
         ref: SCHEMA_NAME+'.l2_operation_types(id)'
-    },
-    l2_txs_details_fk: {
-        table: SCHEMA_NAME+'.l2_txs',
-        fk: 'details',
-        ref: SCHEMA_NAME+'.contract_calls(id)'
     },
     l2_tx_multiauth_tx_id: {
         table: SCHEMA_NAME+'.l2_tx_multiauth',

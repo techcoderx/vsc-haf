@@ -6,12 +6,10 @@ ALTER TABLE vsc_app.election_results DROP CONSTRAINT IF EXISTS election_proposer
 ALTER TABLE vsc_app.election_result_members DROP CONSTRAINT IF EXISTS elected_members_epoch_fk;
 ALTER TABLE vsc_app.election_result_members DROP CONSTRAINT IF EXISTS elected_members_user_id_fk;
 ALTER TABLE vsc_app.l1_txs DROP CONSTRAINT IF EXISTS l1_txs_op_id_fk;
-ALTER TABLE vsc_app.l1_txs DROP CONSTRAINT IF EXISTS l1_txs_details_fk;
 ALTER TABLE vsc_app.l1_tx_multiauth DROP CONSTRAINT IF EXISTS l1_tx_multiauth_tx_id;
 ALTER TABLE vsc_app.l1_tx_multiauth DROP CONSTRAINT IF EXISTS l1_tx_multiauth_user_id_fk;
 ALTER TABLE vsc_app.l2_txs DROP CONSTRAINT IF EXISTS l2_txs_block_num_fk;
 ALTER TABLE vsc_app.l2_txs DROP CONSTRAINT IF EXISTS l2_txs_tx_type_fk;
-ALTER TABLE vsc_app.l2_txs DROP CONSTRAINT IF EXISTS l2_txs_details_fk;
 ALTER TABLE vsc_app.l2_tx_multiauth DROP CONSTRAINT IF EXISTS l2_tx_multiauth_tx_id;
 ALTER TABLE vsc_app.l2_tx_multiauth DROP CONSTRAINT IF EXISTS l2_tx_multiauth_did_fk;
 ALTER TABLE vsc_app.l2_tx_events DROP CONSTRAINT IF EXISTS l2_tx_events_evt_id_fk;

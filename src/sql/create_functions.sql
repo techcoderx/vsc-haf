@@ -396,34 +396,29 @@ $function$
 LANGUAGE plpgsql VOLATILE;
 
 -- Helper function for parsing L1 payload mainly for use by vsc_api schema
-CREATE OR REPLACE FUNCTION vsc_app.parse_l1_payload(_op_name VARCHAR, _op_body TEXT)
-RETURNS jsonb
-AS
-$function$
+CREATE OR REPLACE FUNCTION vsc_app.parse_l1_payload(_op_name VARCHAR, _op_body jsonb)
+RETURNS jsonb AS $$
 DECLARE
     _payload TEXT;
     _payload2 jsonb;
 BEGIN
     IF _op_name = 'announce_node' THEN
         _payload := '{}';
-        _payload2 := (_op_body::jsonb->>'json_metadata')::jsonb;
+        _payload2 := (_op_body->>'json_metadata')::jsonb;
         IF _payload2 ? 'vsc_node' IS TRUE THEN
             _payload := jsonb_set(_payload::jsonb, '{vsc_node}', _payload2->'vsc_node');
         END IF;
         IF _payload2 ? 'did_keys' IS TRUE THEN
             _payload := jsonb_set(_payload::jsonb, '{did_keys}', _payload2->'did_keys');
         END IF;
-    ELSIF _op_name = 'rotate_multisig' THEN
-        _payload := _op_body::jsonb;
-    ELSIF _op_name = 'deposit' OR _op_name = 'withdrawal' OR _op_name = 'withdrawal_request' THEN
-        _payload := _op_body::jsonb;
+    ELSIF _op_name = 'rotate_multisig' OR _op_name = 'deposit' OR _op_name = 'withdrawal' OR _op_name = 'withdrawal_request' THEN
+        _payload := _op_body;
     ELSE
-        _payload := _op_body::jsonb->>'json';
+        _payload := _op_body->>'json';
     END IF;
 
     RETURN _payload::jsonb;
-END
-$function$
+END $$
 LANGUAGE plpgsql STABLE;
 
 -- Get total L2 block operations count

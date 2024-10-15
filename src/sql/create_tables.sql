@@ -49,9 +49,10 @@ CREATE TABLE IF NOT EXISTS vsc_app.l2_txs(
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.l2_tx_multiauth(
-    id INTEGER PRIMARY KEY, -- id from l2_txs table
+    id INTEGER NOT NULL, -- id from l2_txs table
     did INTEGER NOT NULL, -- id from dids table
-    nonce_counter INTEGER NOT NULL
+    nonce_counter INTEGER NOT NULL,
+    PRIMARY KEY(id, did)
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.l2_tx_events(

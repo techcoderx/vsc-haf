@@ -99,29 +99,6 @@ BEGIN
 END $function$
 LANGUAGE plpgsql IMMUTABLE;
 
--- SMALLINT to L2 tx type string mapping for API use
-CREATE OR REPLACE FUNCTION vsc_app.l2_tx_type_by_id(id SMALLINT = -1)
-RETURNS VARCHAR
-AS $function$
-BEGIN
-    IF id = 1 THEN
-        RETURN 'call_contract';
-    ELSIF id = 2 THEN
-        RETURN 'contract_output';
-    ELSIF id = 3 THEN
-        RETURN 'transfer';
-    ELSIF id = 4 THEN
-        RETURN 'withdraw';
-    ELSIF id = 5 THEN
-        RETURN 'anchor_ref';
-    ELSIF id = 6 THEN
-        RETURN 'event';
-    ELSE
-        RETURN '';
-    END IF;
-END $function$
-LANGUAGE plpgsql IMMUTABLE;
-
 -- L2 Account ID to string
 CREATE OR REPLACE FUNCTION vsc_app.l2_account_id_to_str(_id INTEGER, _acctype SMALLINT)
 RETURNS VARCHAR
@@ -458,16 +435,18 @@ RETURNs jsonb AS $$
 BEGIN
     RETURN (
         WITH txs AS (
-            SELECT t.cid, vsc_app.l2_tx_type_by_id(t.tx_type) tx_type, vsc_app.get_events_in_tx_by_id(t.id) evts
+            SELECT t.cid, ot.op_name, vsc_app.get_events_in_tx_by_id(t.id) evts
             FROM vsc_app.l2_tx_events te
             JOIN vsc_app.l2_txs t ON
                 t.id = te.l2_tx_id
+            JOIN vsc_app.l2_operation_types ot ON
+                ot.id = t.tx_type
             WHERE te.event_id = _id
             GROUP BY t.id
         )
         SELECT jsonb_agg(jsonb_build_object(
             'tx_id', cid,
-            'tx_type', tx_type,
+            'tx_type', op_name,
             'events', evts
         )) FROM txs
     );
@@ -480,16 +459,18 @@ RETURNs jsonb AS $$
 BEGIN
     RETURN (
         WITH events AS (
-            SELECT t.cid, vsc_app.l2_tx_type_by_id(t.tx_type) tx_type, te.evt_type, vsc_app.asset_by_id(te.token) token, te.amount, te.memo, te.owner_name
+            SELECT t.cid, ot.op_name, te.evt_type, vsc_app.asset_by_id(te.token) token, te.amount, te.memo, te.owner_name
             FROM vsc_app.l2_tx_events te
             JOIN vsc_app.l2_txs t ON
                 t.id = te.l2_tx_id
+            JOIN vsc_app.l2_operation_types ot ON
+                ot.id = t.tx_type
             WHERE te.event_id = _id
             ORDER BY te.tx_pos ASC, te.evt_pos ASC
         )
         SELECT jsonb_agg(jsonb_build_object(
             'tx_id', cid,
-            'tx_type', tx_type,
+            'tx_type', op_name,
             'type', evt_type,
             'token', token,
             'amount', amount,

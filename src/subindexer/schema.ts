@@ -70,6 +70,11 @@ export const HAF_FKS: FKS_TYPE = {
         fk: 'block_num',
         ref: SCHEMA_NAME+'.l2_blocks(id)'
     },
+    l2_txs_tx_type_fk: {
+        table: SCHEMA_NAME+'.l2_txs',
+        fk: 'tx_type',
+        ref: SCHEMA_NAME+'.l2_operation_types(id)'
+    },
     l2_txs_details_fk: {
         table: SCHEMA_NAME+'.l2_txs',
         fk: 'details',
@@ -123,6 +128,10 @@ export const INDEXES: INDEXES_TYPE = {
         table_name: SCHEMA_NAME+'.anchor_refs',
         columns: [{ col_name: 'cid', order: Ordering.ASC }]
     },
+    anchor_refs_block_num_idx: {
+        table_name: SCHEMA_NAME+'.anchor_refs',
+        columns: [{ col_name: 'block_num', order: Ordering.DESC }]
+    },
     block_hash_idx: {
         table_name: SCHEMA_NAME+'.l2_blocks',
         columns: [{ col_name: 'block_hash', order: Ordering.ASC }]
@@ -143,6 +152,10 @@ export const INDEXES: INDEXES_TYPE = {
         table_name: SCHEMA_NAME+'.contract_calls',
         columns: [{ col_name: 'contract_output_tx_id', order: Ordering.ASC }]
     },
+    contract_outputs_block_num_idx: {
+        table_name: SCHEMA_NAME+'.contract_outputs',
+        columns: [{ col_name: 'block_num', order: Ordering.DESC }]
+    },
     election_results_data_cid_idx: {
         table_name: SCHEMA_NAME+'.election_results',
         columns: [{ col_name: 'data_cid', order: Ordering.ASC }]
@@ -155,9 +168,21 @@ export const INDEXES: INDEXES_TYPE = {
         table_name: SCHEMA_NAME+'.events',
         columns: [{ col_name: 'cid', order: Ordering.ASC }]
     },
+    events_block_num_idx: {
+        table_name: SCHEMA_NAME+'.events',
+        columns: [{ col_name: 'block_num', order: Ordering.DESC }]
+    },
     l2_tx_events_tx_id_idx: {
         table_name: SCHEMA_NAME+'.l2_tx_events',
         columns: [{ col_name: 'l2_tx_id', order: Ordering.DESC }]
+    },
+    l2_tx_multiauth_did_idx: {
+        table_name: SCHEMA_NAME+'.l2_tx_multiauth',
+        columns: [{ col_name: 'did', order: Ordering.ASC }, { col_name: 'nonce_counter', order: Ordering.DESC }]
+    },
+    l2_txs_block_number_idx: {
+        table_name: SCHEMA_NAME+'.l2_txs',
+        columns: [{ col_name: 'block_num', order: Ordering.DESC }]
     }
 }
 

@@ -10,6 +10,7 @@ ALTER TABLE vsc_app.l1_txs DROP CONSTRAINT IF EXISTS l1_txs_details_fk;
 ALTER TABLE vsc_app.l1_tx_multiauth DROP CONSTRAINT IF EXISTS l1_tx_multiauth_tx_id;
 ALTER TABLE vsc_app.l1_tx_multiauth DROP CONSTRAINT IF EXISTS l1_tx_multiauth_user_id_fk;
 ALTER TABLE vsc_app.l2_txs DROP CONSTRAINT IF EXISTS l2_txs_block_num_fk;
+ALTER TABLE vsc_app.l2_txs DROP CONSTRAINT IF EXISTS l2_txs_tx_type_fk;
 ALTER TABLE vsc_app.l2_txs DROP CONSTRAINT IF EXISTS l2_txs_details_fk;
 ALTER TABLE vsc_app.l2_tx_multiauth DROP CONSTRAINT IF EXISTS l2_tx_multiauth_tx_id;
 ALTER TABLE vsc_app.l2_tx_multiauth DROP CONSTRAINT IF EXISTS l2_tx_multiauth_did_fk;

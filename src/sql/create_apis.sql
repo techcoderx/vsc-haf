@@ -214,14 +214,14 @@ BEGIN
     )
     SELECT COALESCE(jsonb_agg(
         jsonb_build_object(
-            'id', id,
-            'block_num', block_num,
-            'idx_in_block', idx_in_block,
-            'tx_type', (SELECT vsc_app.l2_tx_type_by_id(tx_type::SMALLINT)),
-            'did', did,
-            'auth_count', auth_count
+            'id', r.id,
+            'block_num', r.block_num,
+            'idx_in_block', r.idx_in_block,
+            'tx_type', (SELECT ot.op_name FROM vsc_app.l2_operation_types ot WHERE ot.id=r.tx_type),
+            'did', r.did,
+            'auth_count', r.auth_count
         )
-    ), '[]'::jsonb) FROM result);
+    ), '[]'::jsonb) FROM result r);
 END $function$
 LANGUAGE plpgsql STABLE;
 
@@ -396,7 +396,7 @@ BEGIN
         'block_num', t.block_num,
         'idx_in_block', t.idx_in_block,
         'ts', bo.ts,
-        'tx_type', (SELECT vsc_app.l2_tx_type_by_id(t.tx_type::SMALLINT)),
+        'tx_type', ot.op_name,
         'nonce', t.nonce,
         'signers', (
             SELECT jsonb_agg(k.did)
@@ -409,6 +409,8 @@ BEGIN
     ), t.tx_type, t.details
     INTO _result, _tx_type, _tx_id
     FROM vsc_app.l2_txs t
+    JOIN vsc_app.l2_operation_types ot ON
+        ot.id = t.tx_type
     JOIN vsc_app.l2_blocks b ON
         b.id = t.block_num
     JOIN vsc_app.l1_operations bo ON

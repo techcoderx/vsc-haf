@@ -3,8 +3,16 @@ CREATE SCHEMA IF NOT EXISTS vsc_app;
 
 CREATE TABLE IF NOT EXISTS vsc_app.l1_operation_types(
     id SERIAL PRIMARY KEY,
-    op_name VARCHAR(25),
-    filterer BIGINT GENERATED ALWAYS AS (2^(id-1)) STORED
+    op_name VARCHAR(25) NOT NULL,
+    filterer BIGINT GENERATED ALWAYS AS (2^(id-1)) STORED,
+    UNIQUE(op_name)
+);
+
+CREATE TABLE IF NOT EXISTS vsc_app.l2_operation_types(
+    id SMALLSERIAL PRIMARY KEY,
+    op_name VARCHAR(25) NOT NULL,
+    filterer BIGINT GENERATED ALWAYS AS (2^(id-1)) STORED,
+    UNIQUE(op_name)
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.l1_operations(
@@ -285,3 +293,10 @@ CREATE TABLE IF NOT EXISTS vsc_app.dids(
     count INTEGER NOT NULL DEFAULT 0,
     UNIQUE(did)
 );
+
+INSERT INTO vsc_app.l2_operation_types(op_name) VALUES('call_contract');
+INSERT INTO vsc_app.l2_operation_types(op_name) VALUES('contract_output');
+INSERT INTO vsc_app.l2_operation_types(op_name) VALUES('transfer');
+INSERT INTO vsc_app.l2_operation_types(op_name) VALUES('withdraw');
+INSERT INTO vsc_app.l2_operation_types(op_name) VALUES('anchor_ref');
+INSERT INTO vsc_app.l2_operation_types(op_name) VALUES('event');

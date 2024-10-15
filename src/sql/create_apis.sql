@@ -657,7 +657,7 @@ LANGUAGE plpgsql STABLE;
 CREATE OR REPLACE FUNCTION vsc_api.get_witness(username VARCHAR)
 RETURNS jsonb AS $$
 BEGIN    
-    RETURN (
+    RETURN COALESCE((
         SELECT jsonb_build_object(
             'id', w.witness_id,
             'username', a.name,
@@ -680,7 +680,7 @@ BEGIN
         LEFT JOIN vsc_app.l1_operations l1_d ON
             l1_d.id = w.disabled_at
         WHERE a.name = username
-    );
+    ), '{"id":null,"error":"witness does not exist"}'::jsonb);
 END $$
 LANGUAGE plpgsql STABLE;
 

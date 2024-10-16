@@ -238,7 +238,7 @@ export interface L1TransferWithdrawTxOp {
 }
 
 export interface L1TxPayload {
-    tx: L1ContractCallTxOp | L1TransferWithdrawTxOp
+    tx: L1ContractCallTxOp['tx'] | L1TransferWithdrawTxOp['tx']
     callers: {
         user: string
         auth: 1 | 2

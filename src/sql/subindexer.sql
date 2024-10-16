@@ -381,8 +381,8 @@ BEGIN
     END IF;
     IF _id IS NOT NULL THEN
         INSERT INTO vsc_app.l2_tx_multiauth(id, did, nonce_counter)
-            VALUES(_id, _did_id, _count+1);
-        UPDATE vsc_app.dids SET count=_count+1 WHERE id=_did_id;
+            VALUES(_id, _did_id, COALESCE(_count, 0)+1);
+        UPDATE vsc_app.dids SET count=COALESCE(_count, 0)+1 WHERE id=_did_id;
     END IF;
     RETURN _did_id;
 END $function$
@@ -673,7 +673,7 @@ BEGIN
     SELECT ot.id INTO _tx_type FROM vsc_app.l2_operation_types ot WHERE ot.op_name = _payload->>'op';
 
     IF _tx_type::INT = 1 THEN
-        SELECT vsc_app.push_contract_call(_payload->>'contract_id', _payload->>'action', ('[' || _payload->>'payload' || ']')::jsonb) INTO _detail_id;
+        SELECT vsc_app.push_contract_call(_payload->>'contract_id', _payload->>'action', jsonb_build_array(_payload->'payload')) INTO _detail_id;
     ELSIF _tx_type::INT = 3 THEN
         SELECT vsc_app.push_transfer_tx((_payload->'payload'->>'amount')::INT, _payload->'payload'->>'from', _payload->'payload'->>'to', _payload->'payload'->>'tk', _payload->'payload'->>'memo') INTO _detail_id;
     ELSIF _tx_type::INT = 4 THEN

@@ -401,7 +401,7 @@ const processor = {
                 case op_type_map.map.tx:
                     details.payload = {
                         callers: [],
-                        tx: payload as L1ContractCallTxOp | L1TransferWithdrawTxOp
+                        tx: (payload as L1ContractCallTxOp | L1TransferWithdrawTxOp).tx
                     } as L1TxPayload
                     for (let i in parsed.value.required_auths)
                         details.payload.callers.push({ user: parsed.value.required_auths[i], auth: 1 })

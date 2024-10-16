@@ -643,7 +643,8 @@ BEGIN
                 FROM vsc_app.l1_operations o
                 JOIN hive.transactions_view ht ON
                     ht.block_num = o.block_num AND o.trx_in_block = o.trx_in_block
-                WHERE ht.trx_hash = decode(SPLIT_PART((_body->'txs')->>i, '-', 1), 'hex') AND o.op_pos = SPLIT_PART((_body->'txs')->>i, '-', 2);
+                WHERE ht.trx_hash = decode(SPLIT_PART((_body->'txs')->>i, '-', 1), 'hex') AND
+                    o.op_pos = SPLIT_PART((_body->'txs')->>i, '-', 2)::INT;
             END IF;
             IF _l1_tx_id IS NOT NULL OR _l2_tx_id IS NOT NULL THEN
                 INSERT INTO vsc_app.l2_tx_events(event_id, tx_pos, evt_pos, l1_tx_id, l2_tx_id, evt_type, token, amount, memo, owner_name)

@@ -409,14 +409,18 @@ END $function$
 LANGUAGE plpgsql STABLE;
 
 -- Get events in l2 tx
-CREATE OR REPLACE FUNCTION vsc_app.get_events_in_tx_by_id(id INTEGER)
+CREATE OR REPLACE FUNCTION vsc_app.get_events_in_tx_by_id(id INTEGER, src INTEGER = 2)
 RETURNS jsonb AS $$
 BEGIN
+    IF src != 1 AND src != 2 THEN
+        RAISE EXCEPTION 'src must be 1 or 2';
+    END IF;
+
     RETURN COALESCE((
         WITH events AS (
             SELECT te2.evt_type t, vsc_app.asset_by_id(te2.token) tk, te2.amount amt, te2.memo, te2.owner_name owner
             FROM vsc_app.l2_tx_events te2
-            WHERE te2.l2_tx_id = id
+            WHERE (CASE WHEN src = 1 THEN te2.l1_tx_id = id ELSE te2.l2_tx_id = id END)
             ORDER BY te2.evt_pos
         )
         SELECT jsonb_agg(jsonb_build_object(
@@ -436,13 +440,26 @@ RETURNs jsonb AS $$
 BEGIN
     RETURN (
         WITH txs AS (
-            SELECT t.cid, ot.op_name, vsc_app.get_events_in_tx_by_id(t.id) evts
+            SELECT
+                COALESCE(t2.cid, vsc_app.get_tx_hash_by_op(t1o.block_num, t1o.trx_in_block) || '-' || t1o.op_pos) cid,
+                COALESCE(
+                    (SELECT ot2.op_name FROM vsc_app.l2_operation_types ot2 WHERE ot2.id = t2.tx_type),
+                    (SELECT ot1.op_name FROM vsc_app.l2_operation_types ot1 WHERE ot1.id = t1.tx_type)) op_name,
+                CASE
+                    WHEN te.l1_tx_id IS NOT NULL THEN
+                        vsc_app.get_events_in_tx_by_id(t1.id::INT, 1)
+                    WHEN te.l2_tx_id IS NOT NULL THEN 
+                        vsc_app.get_events_in_tx_by_id(t2.id, 2)
+                END evts
             FROM vsc_app.l2_tx_events te
-            JOIN vsc_app.l2_txs t ON
-                t.id = te.l2_tx_id
-            JOIN vsc_app.l2_operation_types ot ON
-                ot.id = t.tx_type
+            LEFT JOIN vsc_app.l1_txs t1 ON
+                t1.id = te.l1_tx_id
+            LEFT JOIN vsc_app.l1_operations t1o ON
+                t1o.id = t1.id
+            LEFT JOIN vsc_app.l2_txs t2 ON
+                t2.id = te.l2_tx_id
             WHERE te.event_id = _id
+            GROUP BY te.l1_tx_id, te.l2_tx_id, t1o.id, t1.id, t2.id
         )
         SELECT jsonb_agg(jsonb_build_object(
             'tx_id', cid,
@@ -459,12 +476,21 @@ RETURNs jsonb AS $$
 BEGIN
     RETURN (
         WITH events AS (
-            SELECT t.cid, ot.op_name, te.evt_type, vsc_app.asset_by_id(te.token) token, te.amount, te.memo, te.owner_name
+            SELECT
+                COALESCE(t2.cid, vsc_app.get_tx_hash_by_op(t1o.block_num, t1o.trx_in_block) || '-' || t1o.op_pos) cid,
+                COALESCE(ot2.op_name, ot1.op_name) op_name,
+                te.evt_type, vsc_app.asset_by_id(te.token) token, te.amount, te.memo, te.owner_name
             FROM vsc_app.l2_tx_events te
-            JOIN vsc_app.l2_txs t ON
-                t.id = te.l2_tx_id
-            JOIN vsc_app.l2_operation_types ot ON
-                ot.id = t.tx_type
+            LEFT JOIN vsc_app.l1_txs t1 ON
+                t1.id = te.l1_tx_id
+            LEFT JOIN vsc_app.l1_operations t1o ON
+                t1o.id = t1.id
+            LEFT JOIN vsc_app.l2_operation_types ot1 ON
+                ot1.id = t1.tx_type
+            LEFT JOIN vsc_app.l2_txs t2 ON
+                t2.id = te.l2_tx_id
+            LEFT JOIN vsc_app.l2_operation_types ot2 ON
+                ot2.id = t2.tx_type
             WHERE te.event_id = _id
             ORDER BY te.tx_pos ASC, te.evt_pos ASC
         )

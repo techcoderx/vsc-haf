@@ -277,7 +277,7 @@ BEGIN
             FROM vsc_app.l1_txs t
             JOIN vsc_app.contract_calls d ON
                 t.details = d.id
-            WHERE t.id = l1_op_id
+            WHERE t.id = l1_op_id AND t.tx_type = 1::SMALLINT
         );
     ELSIF _op_name = 'election_result' THEN
         RETURN (
@@ -405,7 +405,7 @@ BEGIN
                 ma.did = k.id
             WHERE ma.id = t.id
         ),
-        'events', (SELECT vsc_app.get_events_in_tx_by_id(t.id))
+        'events', (SELECT vsc_app.get_events_in_tx_by_id(t.id, 2))
     ), t.tx_type, t.details
     INTO _result, _tx_type, _tx_id
     FROM vsc_app.l2_txs t

@@ -621,6 +621,8 @@ DECLARE
     e jsonb; -- event for the tx
     e1 jsonb; -- txs map array used in first loop
     e2 INTEGER; -- event array position used in second loop
+    _l1_tx_id BIGINT;
+    _l2_tx_id INTEGER;
 BEGIN
     IF (SELECT jsonb_array_length(_body->'txs')) != (SELECT jsonb_array_length(_body->'txs_map')) THEN
         RETURN; -- txs must have the same array length as txs_map
@@ -634,18 +636,30 @@ BEGIN
         FOR e2 in SELECT value::INTEGER FROM jsonb_array_elements(e1)
         LOOP
             e := (_body->'events')->e2;
-            INSERT INTO vsc_app.l2_tx_events(event_id, l2_tx_id, tx_pos, evt_pos, evt_type, token, amount, memo, owner_name)
-                VALUES(
-                    new_evt_id,
-                    (SELECT id FROM vsc_app.l2_txs WHERE cid = ((_body->'txs')->>i)),
-                    i,
-                    j,
-                    (e->>'t')::INTEGER,
-                    (SELECT vsc_app.get_asset_id(e->>'tk')),
-                    (e->'amt')::INTEGER,
-                    e->>'memo',
-                    e->>'owner'
-                );
+            SELECT id INTO _l2_tx_id FROM vsc_app.l2_txs WHERE cid = (_body->'txs')->>i;
+            IF _l2_tx_id IS NULL THEN
+                SELECT o.id
+                INTO _l1_tx_id
+                FROM vsc_app.l1_operations o
+                JOIN hive.transactions_view ht ON
+                    ht.block_num = o.block_num AND o.trx_in_block = o.trx_in_block
+                WHERE ht.trx_hash = decode(SPLIT_PART((_body->'txs')->>i, '-', 1), 'hex');
+            END IF;
+            IF _l1_tx_id IS NOT NULL OR _l2_tx_id IS NOT NULL THEN
+                INSERT INTO vsc_app.l2_tx_events(event_id, tx_pos, evt_pos, l1_tx_id, l2_tx_id, evt_type, token, amount, memo, owner_name)
+                    VALUES(
+                        new_evt_id,
+                        i,
+                        j,
+                        _l1_tx_id,
+                        (SELECT id FROM vsc_app.l2_txs WHERE cid = ((_body->'txs')->>i)),
+                        (e->>'t')::INTEGER,
+                        (SELECT vsc_app.get_asset_id(e->>'tk')),
+                        (e->'amt')::INTEGER,
+                        e->>'memo',
+                        e->>'owner'
+                    );
+            END IF; -- skip if both are null
             j := j+1::SMALLINT;
         END LOOP;
         i := i+1;

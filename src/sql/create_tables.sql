@@ -66,15 +66,20 @@ CREATE TABLE IF NOT EXISTS vsc_app.l2_tx_multiauth(
 
 CREATE TABLE IF NOT EXISTS vsc_app.l2_tx_events(
     event_id INTEGER NOT NULL, -- id from events table
-    l2_tx_id INTEGER NOT NULL, -- id from l2_txs table
     tx_pos INTEGER NOT NULL,
     evt_pos SMALLINT NOT NULL, -- assume each tx can never emit more than 32767 events
+    l1_tx_id BIGINT, -- id from l1_txs table
+    l2_tx_id INTEGER, -- id from l2_txs table
     evt_type INTEGER NOT NULL,
     token SMALLINT NOT NULL, -- 0 for HIVE, 1 for HBD
     amount INTEGER NOT NULL,
     memo VARCHAR,
     owner_name VARCHAR NOT NULL,
-    PRIMARY KEY(event_id, l2_tx_id, tx_pos, evt_pos)
+    PRIMARY KEY(event_id, tx_pos, evt_pos),
+    CONSTRAINT l2_tx_events_l1_or_l2_only CHECK (
+        (l1_tx_id IS NOT NULL AND l2_tx_id IS NULL) OR
+        (l1_tx_id IS NULL AND l2_tx_id IS NOT NULL)
+    )
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.l2_blocks(

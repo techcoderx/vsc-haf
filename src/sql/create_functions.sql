@@ -443,7 +443,6 @@ BEGIN
             JOIN vsc_app.l2_operation_types ot ON
                 ot.id = t.tx_type
             WHERE te.event_id = _id
-            GROUP BY t.id
         )
         SELECT jsonb_agg(jsonb_build_object(
             'tx_id', cid,

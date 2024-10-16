@@ -350,7 +350,7 @@ BEGIN
             PERFORM vsc_app.push_events(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, (_tx->'body')::jsonb);
         END IF;
 
-        IF (_tx->>'type')::INT = ANY('{1,3,4}'::INT[]) THEN
+        IF (_tx->>'type')::INT = ANY('{1,3,4}'::INT[]) AND _new_tx_detail_id != -1::BIGINT THEN
             INSERT INTO vsc_app.l2_txs(cid, block_num, idx_in_block, tx_type, nonce, details)
                 VALUES(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, (_tx->>'type')::INT, (_tx->>'nonce')::INT, _new_tx_detail_id)
                 RETURNING id INTO _new_tx_id;
@@ -514,7 +514,7 @@ BEGIN
         _to_acctype := 1::SMALLINT;
 
         IF _to_id IS NULL THEN
-            RETURN; -- todo: handle sending to non-existent hive username
+            RETURN -1; -- todo: handle sending to non-existent hive username
         END IF;
     ELSE
         -- assume hive account otherwise?
@@ -522,7 +522,7 @@ BEGIN
         _to_acctype := 1::SMALLINT;
 
         IF _to_id IS NULL THEN
-            RETURN; -- todo: handle sending to non-existent hive username
+            RETURN -1; -- todo: handle sending to non-existent hive username
         END IF;
     END IF;
 

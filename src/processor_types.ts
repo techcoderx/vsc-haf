@@ -88,7 +88,7 @@ export interface VscOp extends Op {
     op_type: number
 }
 
-export type CustomJsonPayloads = BlockOp | NewContractOp | ElectionOp | BridgeRefPayload | L1CallTxOp
+export type CustomJsonPayloads = BlockOp | NewContractOp | ElectionOp | BridgeRefPayload | L1ContractCallTxOp | L1TransferWithdrawTxOp
 export type BridgeRefResult = bigint[]
 export type L2PayloadTypes = BridgeRefResult | ElectionPayload2 | BlockPayload | L1TxPayload | NewContractPayload
 export type L2Tx = L2ContractCallPayload | L2ContractOutPayload | AnchorRefPayload | TransferPayload | WithdrawPayload | EventsPayload
@@ -132,12 +132,12 @@ export interface L2TxPayload {
     id: string
     type: number
     index: number
+    callers?: string[]
 }
 
 export interface L2ContractCallPayload extends ContractCallPayload, L2TxPayload {
     type: 1
     op: 'call_contract'
-    callers: string[]
     nonce: number
 }
 
@@ -150,7 +150,7 @@ export interface L2ContractOutPayload extends L2TxPayload {
 }
 
 export interface TransferPayload extends L2TxPayload {
-    type: 1
+    type: 3
     op: 'transfer'
     amount: number
     from: string
@@ -160,7 +160,7 @@ export interface TransferPayload extends L2TxPayload {
 }
 
 export interface WithdrawPayload extends L2TxPayload {
-    type: 1
+    type: 4
     op: 'withdraw'
     amount: number
     from: string
@@ -215,7 +215,7 @@ export interface NewContractPayload extends NewContract {
     storage_proof?: StorageProof<Buffer>
 }
 
-export interface L1CallTxOp {
+export interface L1ContractCallTxOp {
     tx: {
         op: 'call_contract'
         action: string
@@ -224,7 +224,21 @@ export interface L1CallTxOp {
     }
 }
 
-export interface L1TxPayload extends ContractCallPayload {
+export interface L1TransferWithdrawTxOp {
+    tx: {
+        op: 'transfer' | 'withdraw'
+        payload: {
+            tk: Coin
+            to: string
+            from: string
+            memo?: string
+            amount: number
+        }
+    }
+}
+
+export interface L1TxPayload {
+    tx: L1ContractCallTxOp | L1TransferWithdrawTxOp
     callers: {
         user: string
         auth: 1 | 2

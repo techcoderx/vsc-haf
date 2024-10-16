@@ -312,6 +312,7 @@ END
 $function$
 LANGUAGE plpgsql VOLATILE;
 
+-- Legacy?
 CREATE OR REPLACE FUNCTION vsc_app.insert_withdrawal_request(
     _in_op BIGINT,
     _amount INTEGER,

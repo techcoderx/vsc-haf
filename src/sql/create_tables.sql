@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.l1_users(
 
 CREATE TABLE IF NOT EXISTS vsc_app.l1_txs(
     id BIGINT PRIMARY KEY, -- id from l1_operations table
+    tx_type SMALLINT NOT NULL, -- id from l2_operation_types table
     details BIGINT NOT NULL -- id from contract_calls table
 );
 
@@ -50,7 +51,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.l2_txs(
     cid VARCHAR(59) NOT NULL, -- call_contract transaction CID
     block_num INTEGER NOT NULL, -- included in l2 block number from blocks table
     idx_in_block SMALLINT NOT NULL, -- position in l2 block, max 32767
-    tx_type SMALLINT NOT NULL, -- 1 for call_contract, 2 for contract_output, 3 for transfer, 4 for withdraw
+    tx_type SMALLINT NOT NULL, -- id from l2_operation_types table
     nonce INTEGER, -- currently not enforced
     details BIGINT, -- transaction details from contract_calls/transfers table. this should not be fk
     UNIQUE(cid)

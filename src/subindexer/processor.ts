@@ -1,6 +1,6 @@
 import logger from '../logger.js'
 import db from '../db.js'
-import { L2PayloadTypes, ParsedOp, VscOp, BlockOp, OpBody, BridgeRefPayload, CustomJsonPayloads, BridgeRefResult, ElectionOp, ElectionPayload2, ElectionMember, ElectionMemberWeighted, ShuffledSchedule, UnsignedBlock, BlockPayload, L1CallTxOp, L1TxPayload, NewContractPayload, NewContractOp } from '../processor_types.js'
+import { L2PayloadTypes, ParsedOp, VscOp, BlockOp, OpBody, BridgeRefPayload, CustomJsonPayloads, BridgeRefResult, ElectionOp, ElectionPayload2, ElectionMember, ElectionMemberWeighted, ShuffledSchedule, UnsignedBlock, BlockPayload, L1ContractCallTxOp, L1TransferWithdrawTxOp, L1TxPayload, NewContractPayload, NewContractOp } from '../processor_types.js'
 import { BlockScheduleParams, LastElectionDetail, WitnessConsensusDid } from '../psql_types.js'
 import ipfs from './ipfs.js'
 import { CID } from 'kubo-rpc-client'
@@ -176,6 +176,17 @@ const processor = {
                                             logger.warn(`Ignoring malformed input tx at index ${t} in block ${blockCIDShort}`)
                                             continue
                                         }
+                                        let invalidAuths = false
+                                        for (let i in txBody.headers.required_auths)
+                                            if (typeof txBody.headers.required_auths[i] !== 'string' ||
+                                                txBody.headers.required_auths[i].length > 78 ||
+                                                !txBody.headers.required_auths[i].startsWith('did:')) {
+                                                logger.warn(`Ignoring tx with invalid auth at index ${t} in block ${blockCIDShort}`)
+                                                invalidAuths = true
+                                                break
+                                            }
+                                        if (invalidAuths)
+                                            continue
                                         if (txBody.tx.op === 'call_contract') {
                                             // contract call
                                             if (typeof txBody.tx.action !== 'string' ||
@@ -188,26 +199,15 @@ const processor = {
                                                 logger.warn(`Ignoring contract call to non-existent contract at index ${t} in block ${blockCIDShort}`)
                                                 continue
                                             }
-                                            let invalidAuths = false
-                                            for (let i in txBody.headers.required_auths)
-                                                if (typeof txBody.headers.required_auths[i] !== 'string' ||
-                                                    txBody.headers.required_auths[i].length > 78 ||
-                                                    !txBody.headers.required_auths[i].startsWith('did:')) {
-                                                    logger.warn(`Ignoring tx with invalid auth at index ${t} in block ${blockCIDShort}`)
-                                                    invalidAuths = true
-                                                    break
-                                                }
-                                            if (invalidAuths)
-                                                continue
                                             details.payload.txs.push({
                                                 id: blockTxs.txs[t].id,
                                                 type: 1,
                                                 op: 'call_contract',
                                                 index: parseInt(t),
+                                                callers: txBody.headers.required_auths,
                                                 contract_id: txBody.tx.contract_id,
                                                 action: txBody.tx.action,
                                                 payload: [txBody.tx.payload],
-                                                callers: txBody.headers.required_auths,
                                                 nonce: txBody.headers.nonce
                                             })
                                         } else if (txBody.tx.op === 'transfer') {
@@ -221,9 +221,10 @@ const processor = {
                                                 return { valid: false }
                                             details.payload.txs.push({
                                                 id: blockTxs.txs[t].id,
-                                                type: 1,
+                                                type: 3,
                                                 op: 'transfer',
                                                 index: parseInt(t),
+                                                callers: txBody.headers.required_auths,
                                                 amount: txBody.tx.payload.amount,
                                                 from: txBody.tx.payload.from,
                                                 to: txBody.tx.payload.to,
@@ -241,9 +242,10 @@ const processor = {
                                                 return { valid: false }
                                             details.payload.txs.push({
                                                 id: blockTxs.txs[t].id,
-                                                type: 1,
+                                                type: 4,
                                                 op: 'withdraw',
                                                 index: parseInt(t),
+                                                callers: txBody.headers.required_auths,
                                                 amount: txBody.tx.payload.amount,
                                                 from: txBody.tx.payload.from,
                                                 to: txBody.tx.payload.to,
@@ -397,15 +399,9 @@ const processor = {
                     }
                     break
                 case op_type_map.map.tx:
-                    payload = payload as L1CallTxOp
-                    const contractExists = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.contracts WHERE contract_id=$1;`,[payload.tx.contract_id])
-                    if (contractExists.rowCount! === 0)
-                        return { valid: false }
                     details.payload = {
                         callers: [],
-                        contract_id: payload.tx.contract_id,
-                        action: payload.tx.action,
-                        payload: payload.tx.payload
+                        tx: payload as L1ContractCallTxOp | L1TransferWithdrawTxOp
                     } as L1TxPayload
                     for (let i in parsed.value.required_auths)
                         details.payload.callers.push({ user: parsed.value.required_auths[i], auth: 1 })
@@ -550,13 +546,11 @@ const processor = {
                     break
                 case op_type_map.map.tx:
                     result.payload = result.payload as L1TxPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_l1_call_tx($1,$2,$3::SMALLINT[],$4,$5,$6::jsonb);`,[
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_l1_tx($1,$2,$3::SMALLINT[],$4::jsonb);`,[
                         op.id,
                         result.payload.callers.map(c => c.user),
                         result.payload.callers.map(c => c.auth),
-                        result.payload.contract_id,
-                        result.payload.action,
-                        JSON.stringify([result.payload.payload])
+                        JSON.stringify(result.payload.tx)
                     ])
                     break
                 case op_type_map.map.election_result:

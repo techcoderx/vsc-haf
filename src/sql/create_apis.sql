@@ -1372,7 +1372,7 @@ BEGIN
     END IF;
 
     -- Transaction search
-    SELECT tx_type::INTEGER INTO _result_int FROM vsc_app.l2_txs WHERE cid = _cid;
+    SELECT t.tx_type::INTEGER INTO _result_int FROM vsc_app.l2_txs t WHERE t.cid = _cid;
     IF _result_int IS NOT NULL THEN
         IF _result_int = 1 THEN
             RETURN jsonb_build_object(
@@ -1402,7 +1402,7 @@ BEGIN
     END IF;
 
     -- Event search
-    SELECT cid INTO _result_varchar FROM vsc_app.events WHERE cid = _cid;
+    SELECT e.cid INTO _result_varchar FROM vsc_app.events e WHERE e.cid = _cid;
     IF _result_varchar IS NOT NULL THEN
         RETURN jsonb_build_object(
             'type', 'event',

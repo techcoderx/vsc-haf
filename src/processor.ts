@@ -1,5 +1,4 @@
 import { CID } from 'multiformats/cid'
-import { bech32 } from "bech32"
 import randomDID from './did.js'
 import { APP_CONTEXT, CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS, REQUIRES_ACTIVE, START_BLOCK, ANY_AUTH, CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT, MULTISIG_ACCOUNT_2 } from './constants.js'
 import db from './db.js'
@@ -115,14 +114,22 @@ const processor = {
                         break
                     case 2:
                     case 3:
-                        // l1 contract calls
-                        if (typeof payload.tx !== 'object' ||
+                        // l1 contract calls/transfer/withdraw through custom_json
+                        if (typeof payload.tx !== 'object' || typeof payload.tx.op !== 'string')
+                            return { valid: false }
+                        if (payload.tx.op === 'call_contract' && (
                             typeof payload.tx.action !== 'string' ||
                             typeof payload.tx.contract_id !== 'string' ||
                             payload.tx.contract_id.length > 68 ||
-                            !payload.tx.contract_id.startsWith('vs4'))
+                            !payload.tx.contract_id.startsWith('vs4')))
                             return { valid: false }
-                        bech32.decode(payload.tx.contract_id)
+                        else if ((payload.tx.op === 'transfer' || payload.tx.op === 'withdraw') && (
+                            typeof payload.tx.payload !== 'object' ||
+                            typeof payload.tx.payload.to !== 'string' ||
+                            typeof payload.tx.payload.from !== 'string' ||
+                            (payload.tx.payload.tk !== 'HIVE' && payload.tx.payload.tk !== 'HBD') ||
+                            typeof payload.tx.payload.amount !== 'number'))
+                            return { valid: false }
                         // we might not want to check for contract existence here
                         // as it is possible that the contract may be deployed on L2
                         // so we only process this tx type on subindexer, which is

@@ -313,7 +313,11 @@ $function$
 DECLARE
     _acc_id INTEGER;
     _new_block_id INTEGER;
+    _new_tx_id INTEGER;
+    _new_tx_detail_id BIGINT;
     _tx jsonb;
+    _callers VARCHAR[];
+    _caller VARCHAR;
 BEGIN
     SELECT id INTO _acc_id FROM hive.vsc_app_accounts WHERE name=_proposer;
     SELECT l2_head_block+1 INTO _new_block_id FROM vsc_app.subindexer_state LIMIT 1;
@@ -331,20 +335,30 @@ BEGIN
 
     FOR _tx IN SELECT * FROM jsonb_array_elements(_txs)
     LOOP
+        SELECT ARRAY(SELECT jsonb_array_elements_text(_tx->'callers')) INTO _callers;
         IF (_tx->>'type')::INT = 1 THEN
-            IF _tx->>'op' = 'call_contract' THEN
-                PERFORM vsc_app.push_l2_contract_call_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, _tx->>'contract_id', _tx->>'action', (_tx->'payload')::jsonb, (SELECT ARRAY(SELECT jsonb_array_elements_text(_tx->'callers'))), (_tx->>'nonce')::INT);
-            ELSIF _tx->>'op' = 'transfer' THEN
-                PERFORM vsc_app.push_transfer_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, (_tx->>'amount')::INTEGER, _tx->>'from', _tx->>'to', _tx->>'tk', _tx->>'memo');
-            ELSIF _tx->>'op' = 'withdraw' THEN
-                PERFORM vsc_app.push_l2_withdraw_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, (_tx->>'amount')::INTEGER, _tx->>'from', _tx->>'to', _tx->>'tk', _tx->>'memo');
-            END IF;
+            SELECT vsc_app.push_contract_call(_tx->>'contract_id', _tx->>'action', (_tx->'payload')::jsonb) INTO _new_tx_detail_id;
+        ELSIF (_tx->>'type')::INT = 3 THEN
+            SELECT vsc_app.push_transfer_tx((_tx->>'amount')::INTEGER, _tx->>'from', _tx->>'to', _tx->>'tk', _tx->>'memo') INTO _new_tx_detail_id;
+        ELSIF (_tx->>'type')::INT = 4 THEN
+            SELECT vsc_app.push_l2_withdraw_tx((_tx->>'amount')::INTEGER, _tx->>'from', _tx->>'to', _tx->>'tk', _tx->>'memo') INTO _new_tx_detail_id;
         ELSIF (_tx->>'type')::INT = 2 THEN
             PERFORM vsc_app.push_l2_contract_output_tx(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, _tx->>'contract_id', (SELECT ARRAY(SELECT jsonb_array_elements_text(_tx->'inputs'))), (_tx->>'io_gas')::INT, (_tx->'results')::jsonb);
         ELSIF (_tx->>'type')::INT = 5 THEN
             PERFORM vsc_app.push_anchor_ref(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, _tx->>'data', (SELECT ARRAY(SELECT jsonb_array_elements_text(_tx->'txs'))));
         ELSIF (_tx->>'type')::INT = 6 THEN
             PERFORM vsc_app.push_events(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, (_tx->'body')::jsonb);
+        END IF;
+
+        IF (_tx->>'type')::INT = ANY('{1,3,4}'::INT[]) THEN
+            INSERT INTO vsc_app.l2_txs(cid, block_num, idx_in_block, tx_type, nonce, details)
+                VALUES(_tx->>'id', _new_block_id, (_tx->>'index')::SMALLINT, (_tx->>'type')::INT, (_tx->>'nonce')::INT, _new_tx_detail_id)
+                RETURNING id INTO _new_tx_id;
+
+            FOREACH _caller IN ARRAY _callers
+            LOOP
+                PERFORM vsc_app.insert_tx_auth_did(_new_tx_id, _caller);
+            END LOOP;
         END IF;
     END LOOP;
 END
@@ -374,42 +388,20 @@ BEGIN
 END $function$
 LANGUAGE plpgsql VOLATILE;
 
-CREATE OR REPLACE FUNCTION vsc_app.push_l2_contract_call_tx(
-    _id VARCHAR,
-    _l2_block_num INTEGER,
-    _index SMALLINT,
+CREATE OR REPLACE FUNCTION vsc_app.push_contract_call(
     _contract_id VARCHAR,
     _contract_action VARCHAR,
-    _payload jsonb,
-    _callers VARCHAR[],
-    _nonce INTEGER
+    _payload jsonb
 )
-RETURNS void
-AS
-$function$
+RETURNS BIGINT AS $$
 DECLARE
     _new_call_id BIGINT;
-    _new_l2_tx_id INTEGER;
-    _caller VARCHAR;
 BEGIN
-    IF (SELECT EXISTS (SELECT 1 FROM vsc_app.l2_txs WHERE cid=_id)) THEN
-        RETURN;
-    END IF;
-
     INSERT INTO vsc_app.contract_calls(contract_id, contract_action, payload)
         VALUES(_contract_id, _contract_action, _payload)
         RETURNING id INTO _new_call_id;
-
-    INSERT INTO vsc_app.l2_txs(cid, block_num, idx_in_block, tx_type, nonce, details)
-        VALUES(_id, _l2_block_num, _index, 1, _nonce, _new_call_id)
-        RETURNING id INTO _new_l2_tx_id;
-
-    FOREACH _caller IN ARRAY _callers
-    LOOP
-        PERFORM vsc_app.insert_tx_auth_did(_new_l2_tx_id, _caller);
-    END LOOP;
-END
-$function$
+    RETURN _new_call_id;
+END $$
 LANGUAGE plpgsql VOLATILE;
 
 CREATE OR REPLACE FUNCTION vsc_app.push_l2_contract_output_tx(
@@ -485,17 +477,13 @@ $function$
 LANGUAGE plpgsql VOLATILE;
 
 CREATE OR REPLACE FUNCTION vsc_app.push_transfer_tx(
-    _id VARCHAR,
-    _l2_block_num INTEGER,
-    _index SMALLINT,
     _amount INTEGER,
     _from VARCHAR,
     _to VARCHAR,
     _tk VARCHAR,
     _memo VARCHAR = NULL
 )
-RETURNS void
-AS $function$
+RETURNS BIGINT AS $$
 DECLARE
     _xfer_id BIGINT;
     _from_acctype SMALLINT;
@@ -504,10 +492,6 @@ DECLARE
     _to_id INTEGER = NULL;
     _new_l2_tx_id INTEGER;
 BEGIN
-    IF (SELECT EXISTS (SELECT 1 FROM vsc_app.l2_txs WHERE cid=_id)) THEN
-        RETURN;
-    END IF;
-
     -- prepare from id
     IF (SELECT starts_with(_from, 'did:')) THEN
         SELECT vsc_app.insert_tx_auth_did(NULL, _from) INTO _from_id;
@@ -546,26 +530,18 @@ BEGIN
         VALUES(_from_acctype, _from_id, _to_acctype, _to_id, _amount, (SELECT vsc_app.get_asset_id(_tk)), _memo)
         RETURNING id INTO _xfer_id;
 
-    INSERT INTO vsc_app.l2_txs(cid, block_num, idx_in_block, tx_type, details)
-        VALUES(_id, _l2_block_num, _index, 3, _xfer_id)
-        RETURNING id INTO _new_l2_tx_id;
-
-    PERFORM vsc_app.insert_tx_auth_did(_new_l2_tx_id, _from);
-END $function$
+    RETURN _xfer_id;
+END $$
 LANGUAGE plpgsql VOLATILE;
 
 CREATE OR REPLACE FUNCTION vsc_app.push_l2_withdraw_tx(
-    _id VARCHAR,
-    _l2_block_num INTEGER,
-    _index SMALLINT,
     _amount INTEGER,
     _from VARCHAR,
     _to VARCHAR,
     _tk VARCHAR,
     _memo VARCHAR = NULL
 )
-RETURNS void
-AS $function$
+RETURNS BIGINT AS $$
 DECLARE
     _xfer_id BIGINT;
     _from_acctype SMALLINT;
@@ -573,10 +549,6 @@ DECLARE
     _to_id INTEGER = NULL;
     _new_l2_tx_id INTEGER;
 BEGIN
-    IF (SELECT EXISTS (SELECT 1 FROM vsc_app.l2_txs WHERE cid=_id)) THEN
-        RETURN;
-    END IF;
-
     -- prepare from id
     IF (SELECT starts_with(_from, 'did:')) THEN
         SELECT vsc_app.insert_tx_auth_did(NULL, _from) INTO _from_id;
@@ -603,12 +575,8 @@ BEGIN
         VALUES(_from_acctype, _from_id, _to_id, _amount, (SELECT vsc_app.get_asset_id(_tk)), _memo)
         RETURNING id INTO _xfer_id;
 
-    INSERT INTO vsc_app.l2_txs(cid, block_num, idx_in_block, tx_type, details)
-        VALUES(_id, _l2_block_num, _index, 4, _xfer_id)
-        RETURNING id INTO _new_l2_tx_id;
-
-    PERFORM vsc_app.insert_tx_auth_did(_new_l2_tx_id, _from);
-END $function$
+    RETURN _xfer_id;
+END $$
 LANGUAGE plpgsql VOLATILE;
 
 CREATE OR REPLACE FUNCTION vsc_app.push_anchor_ref(
@@ -685,32 +653,35 @@ BEGIN
 END $function$
 LANGUAGE plpgsql VOLATILE;
 
-CREATE OR REPLACE FUNCTION vsc_app.insert_l1_call_tx(
+CREATE OR REPLACE FUNCTION vsc_app.insert_l1_tx(
     _in_op BIGINT,
     _callers VARCHAR[],
     _caller_auths SMALLINT[],
-    _contract_id VARCHAR,
-    _contract_action VARCHAR,
-    _payload jsonb -- normalised into single element jsonb array
+    _payload jsonb -- json.tx
 )
-RETURNS void
-AS
-$function$
+RETURNS void AS $$
 DECLARE
+    _tx_type SMALLINT;
     _caller_id INTEGER;
-    _new_l2_transaction_id BIGINT;
+    _detail_id BIGINT;
     i INTEGER;
 BEGIN
     IF (SELECT ARRAY_LENGTH(_callers, 1)) != (SELECT ARRAY_LENGTH(_caller_auths, 1)) THEN
         RAISE EXCEPTION 'callers and caller_auths must have the same array length';
     END IF;
 
-    INSERT INTO vsc_app.contract_calls(contract_id, contract_action, payload)
-        VALUES(_contract_id, _contract_action, _payload)
-        RETURNING id INTO _new_l2_transaction_id;
+    SELECT ot.id INTO _tx_type FROM vsc_app.l2_operation_types ot WHERE ot.op_name = _payload->>'op';
 
-    INSERT INTO vsc_app.l1_txs(id, details)
-        VALUES(_in_op, _new_l2_transaction_id);
+    IF _tx_type::INT = 1 THEN
+        SELECT vsc_app.push_contract_call(_payload->>'contract_id', _payload->>'action', ('[' || _payload->>'payload' || ']')::jsonb) INTO _detail_id;
+    ELSIF _tx_type::INT = 3 THEN
+        SELECT vsc_app.push_transfer_tx((_payload->'payload'->>'amount')::INT, _payload->'payload'->>'from', _payload->'payload'->>'to', _payload->'payload'->>'tk', _payload->'payload'->>'memo') INTO _detail_id;
+    ELSIF _tx_type::INT = 4 THEN
+        SELECT vsc_app.push_l2_withdraw_tx((_payload->'payload'->>'amount')::INT, _payload->'payload'->>'from', _payload->'payload'->>'to', _payload->'payload'->>'tk', _payload->'payload'->>'memo') INTO _detail_id;
+    END IF;
+
+    INSERT INTO vsc_app.l1_txs(id, tx_type, details)
+        VALUES(_in_op, _tx_type, _detail_id);
 
     FOR i IN array_lower(_callers, 1) .. array_upper(_callers, 1)
     LOOP
@@ -725,8 +696,7 @@ BEGIN
         INSERT INTO vsc_app.l1_tx_multiauth(id, user_id, auth_type)
             VALUES(_in_op, _caller_id, _caller_auths[i]);
     END LOOP;
-END
-$function$
+END $$
 LANGUAGE plpgsql VOLATILE;
 
 CREATE OR REPLACE FUNCTION vsc_app.insert_election_result(
@@ -773,6 +743,7 @@ END
 $function$
 LANGUAGE plpgsql VOLATILE;
 
+-- Legacy?
 CREATE OR REPLACE FUNCTION vsc_app.update_withdrawal_statuses(_in_op_ids BIGINT[], _status VARCHAR, _current_block_num INTEGER)
 RETURNS void
 AS

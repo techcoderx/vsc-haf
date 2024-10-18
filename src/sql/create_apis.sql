@@ -449,6 +449,150 @@ BEGIN
 END $function$
 LANGUAGE plpgsql STABLE;
 
+CREATE OR REPLACE FUNCTION vsc_api.get_l2_tx_history_by_did(did VARCHAR, count INTEGER = 100, last_nonce INTEGER = NULL)
+RETURNS jsonb AS $$
+DECLARE
+    _did ALIAS FOR did;
+BEGIN
+    IF last_nonce IS NOT NULL AND last_nonce < 0 THEN
+        RETURN jsonb_build_object(
+            'error', 'last_nonce must be greater than or equal to 0 if not null'
+        );
+    ELSIF count <= 0 OR count > 1000 THEN
+        RETURN jsonb_build_object(
+            'error', 'count must be between 1 and 1000'
+        );
+    END IF;
+
+    RETURN COALESCE((
+        WITH history AS (
+            SELECT t.id, t.cid, t.block_num, t.idx_in_block, l2bp.ts, ot.op_name, tm.nonce_counter
+            , (CASE
+                WHEN t.tx_type = 1 THEN 
+                    jsonb_build_object(
+                        'contract_id', cc.contract_id,
+                        'action', cc.contract_action,
+                        'io_gas', cc.io_gas
+                    )
+                WHEN t.tx_type = 3 THEN
+                    jsonb_build_object(
+                        'from', vsc_app.l2_account_id_to_str(xf.from_id, xf.from_acctype),
+                        'to', vsc_app.l2_account_id_to_str(xf.to_id, xf.to_acctype),
+                        'amount', xf.amount,
+                        'token', vsc_app.asset_by_id(xf.coin),
+                        'memo', xf.memo
+                    )
+                WHEN t.tx_type = 4 THEN
+                    jsonb_build_object(
+                        'from', vsc_app.l2_account_id_to_str(wd.from_id, wd.from_acctype),
+                        'to', vsc_app.l2_account_id_to_str(wd.to_id, 1::SMALLINT),
+                        'amount', wd.amount,
+                        'token', vsc_app.asset_by_id(wd.asset),
+                        'memo', wd.memo
+                    )
+                END
+            ) details
+            FROM vsc_app.l2_tx_multiauth tm
+            JOIN vsc_app.l2_txs t ON
+                t.id = tm.id
+            JOIN vsc_app.l2_operation_types ot ON
+                ot.id = t.tx_type
+            JOIN vsc_app.l2_blocks l2b ON
+                l2b.id = t.block_num
+            JOIN vsc_app.l1_operations l2bp ON
+                l2bp.id = l2b.proposed_in_op
+            LEFT JOIN vsc_app.contract_calls cc ON
+                cc.id = t.details AND t.tx_type = 1
+            LEFT JOIN vsc_app.transfers xf ON
+                xf.id = t.details AND t.tx_type = 3
+            LEFT JOIN vsc_app.l2_withdrawals wd ON
+                wd.id = t.details AND t.tx_type = 4
+            WHERE tm.did = (SELECT id FROM vsc_app.dids d WHERE d.did=_did) AND (SELECT CASE WHEN last_nonce IS NOT NULL THEN tm.nonce_counter <= last_nonce ELSE TRUE END)
+            ORDER BY tm.nonce_counter DESC
+            LIMIT count
+        )
+        SELECT jsonb_agg(jsonb_build_object(
+            'id', h.cid,
+            'block_num', h.block_num,
+            'idx_in_block', h.idx_in_block,
+            'ts', h.ts,
+            'type', h.op_name,
+            'nonce', h.nonce_counter,
+            'details', h.details
+        )) FROM history h
+    ), '[]'::jsonb);
+END $$
+LANGUAGE plpgsql STABLE;
+
+-- Event history by 'did:' or 'hive:' prefixed account name
+-- last_event_pos are tx_pos and evt_pos bits concatenated with 2 byte each
+CREATE OR REPLACE FUNCTION vsc_api.get_event_history_by_account_name(account_name VARCHAR, count INTEGER = 100, last_event_id INTEGER = NULL, last_event_pos INTEGER = NULL)
+RETURNS jsonb AS $$
+DECLARE
+    _owner_name VARCHAR := account_name;
+BEGIN
+    IF count <= 0 OR count > 100 THEN
+        RETURN jsonb_build_object(
+            'error', 'count must be between 1 and 100'
+        );
+    ELSIF last_event_pos IS NOT NULL AND last_event_id IS NULL THEN
+        RETURN jsonb_build_object(
+            'error', 'last_event_id must not be null if last_event_pos is not null'
+        );
+    ELSIF (last_event_id IS NOT NULL AND last_event_id < 0) OR (last_event_pos IS NOT NULL AND last_event_pos < 0) THEN
+        RETURN jsonb_build_object(
+            'error', 'both last_event_id and last_event_pos must be greater than 0 if present'
+        );
+    END IF;
+
+    IF starts_with(account_name, 'hive:') THEN
+        -- hive: l1 account
+        _owner_name := 'hive:' || account_name;
+    END IF;
+    RETURN COALESCE((
+        WITH history AS (
+            SELECT te.event_id evt_id, ev.cid evt_cid, te.tx_pos, te.evt_pos, bp.ts, encode(ht.trx_hash, 'hex') || '-' || t1.op_pos l1_tx_id, t2.cid l2_cid, te.evt_type, vsc_app.asset_by_id(te.token) token, te.amount, te.memo
+            FROM vsc_app.l2_tx_events te
+            JOIN vsc_app.events ev ON
+                ev.id = te.event_id
+            JOIN vsc_app.l2_blocks b ON
+                b.id = ev.block_num
+            JOIN vsc_app.l1_operations bp ON
+                bp.id = b.proposed_in_op
+            LEFT JOIN vsc_app.l2_txs t2 ON
+                t2.id = te.l2_tx_id
+            LEFT JOIN vsc_app.l1_operations t1 ON
+                t1.id = te.l1_tx_id
+            LEFT JOIN hive.irreversible_operations_view ho ON
+                ho.id = t1.op_id
+            LEFT JOIN hive.irreversible_transactions_view ht ON
+                ht.block_num = ho.block_num AND ht.trx_in_block = ho.trx_in_block
+            WHERE
+                te.owner_name = _owner_name AND
+                (CASE WHEN last_event_id IS NOT NULL THEN te.event_id <= last_event_id ELSE TRUE END) AND
+                (CASE WHEN last_event_pos IS NOT NULL THEN (
+                    te.event_id <= last_event_id AND (te.tx_pos < (last_event_pos >> 16) OR
+                    (te.tx_pos = (last_event_pos >> 16) AND te.evt_pos <= (last_event_pos & 0xFFFF)))
+                ) ELSE TRUE END)
+            ORDER BY te.event_id DESC, te.tx_pos DESC, te.evt_pos DESC
+            LIMIT count
+        )
+        SELECT jsonb_agg(jsonb_build_object(
+            'event_id', evt_id,
+            'event_cid', evt_cid,
+            'tx_pos', tx_pos,
+            'event_pos_in_tx', evt_pos,
+            'ts', ts,
+            'tx_id', COALESCE(l1_tx_id, l2_cid),
+            'event_type', evt_type,
+            'token', token,
+            'amount', amount,
+            'memo', memo
+        )) FROM history
+    ), '[]'::jsonb);
+END $$
+LANGUAGE plpgsql STABLE;
+
 CREATE OR REPLACE FUNCTION vsc_api.get_l1_contract_call(trx_id VARCHAR, op_pos INTEGER = 0)
 RETURNS jsonb
 AS $function$
@@ -559,20 +703,6 @@ BEGIN
     ), jsonb_build_object('error', 'event not found'));
 END $function$
 LANGUAGE plpgsql STABLE;
-
-DROP TYPE IF EXISTS vsc_api.l1_op_type CASCADE;
-CREATE TYPE vsc_api.l1_op_type AS (
-    id BIGINT,
-    name VARCHAR,
-    nonce INTEGER,
-    op_type INTEGER,
-    op_name VARCHAR,
-    block_num INTEGER,
-    trx_in_block SMALLINT,
-    op_pos INTEGER,
-    ts TIMESTAMP,
-    body jsonb
-);
 
 CREATE OR REPLACE FUNCTION vsc_api.get_l1_operations_by_l1_blocks(l1_blk_start INTEGER, l1_blk_count INTEGER, full_tx_body BOOLEAN = FALSE)
 RETURNS jsonb AS $$

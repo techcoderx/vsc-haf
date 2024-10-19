@@ -563,10 +563,8 @@ BEGIN
                 t2.id = te.l2_tx_id
             LEFT JOIN vsc_app.l1_operations t1 ON
                 t1.id = te.l1_tx_id
-            LEFT JOIN hive.irreversible_operations_view ho ON
-                ho.id = t1.op_id
             LEFT JOIN hive.irreversible_transactions_view ht ON
-                ht.block_num = ho.block_num AND ht.trx_in_block = ho.trx_in_block
+                ht.block_num = t1.block_num AND ht.trx_in_block = t1.trx_in_block
             WHERE
                 te.owner_name = _owner_name AND
                 (CASE WHEN last_event_id IS NOT NULL THEN te.event_id <= last_event_id ELSE TRUE END) AND

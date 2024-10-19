@@ -545,7 +545,7 @@ BEGIN
         );
     END IF;
 
-    IF starts_with(account_name, 'hive:') IS FALSE THEN
+    IF starts_with(account_name, 'hive:') IS FALSE AND starts_with(account_name, 'did:') IS FALSE THEN
         -- hive: l1 account
         _owner_name := 'hive:' || account_name;
     END IF;

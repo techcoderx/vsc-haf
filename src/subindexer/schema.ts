@@ -162,6 +162,10 @@ export const INDEXES: INDEXES_TYPE = {
         table_name: SCHEMA_NAME+'.events',
         columns: [{ col_name: 'block_num', order: Ordering.DESC }]
     },
+    l1_txs_details_idx: {
+        table_name: SCHEMA_NAME+'.l1_txs',
+        columns: [{ col_name: 'details', order: Ordering.ASC }]
+    },
     l2_tx_events_tx_id_idx: {
         table_name: SCHEMA_NAME+'.l2_tx_events',
         columns: [{ col_name: 'l2_tx_id', order: Ordering.DESC }]
@@ -173,6 +177,10 @@ export const INDEXES: INDEXES_TYPE = {
     l2_txs_block_number_idx: {
         table_name: SCHEMA_NAME+'.l2_txs',
         columns: [{ col_name: 'block_num', order: Ordering.DESC }]
+    },
+    l2_txs_details_idx: {
+        table_name: SCHEMA_NAME+'.l2_txs',
+        columns: [{ col_name: 'details', order: Ordering.ASC }]
     }
 }
 

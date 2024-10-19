@@ -661,13 +661,21 @@ BEGIN
             'total_io_gas', co.total_io_gas,
             'outputs', (
                 SELECT json_agg(jsonb_build_object(
-                    'tx_id', t.cid,
+                    'src', (CASE WHEN t.id IS NULL THEN 'hive' ELSE 'vsc' END),
+                    'tx_id', COALESCE(t.cid, encode(ht.trx_hash, 'hex')),
+                    'op_pos', l1o.op_pos,
                     'output', c.contract_output
                 ))
-                FROM vsc_app.l2_txs t
-                JOIN vsc_app.contract_calls c ON
+                FROM vsc_app.contract_calls c
+                LEFT JOIN vsc_app.l2_txs t ON
                     c.id = t.details
-                WHERE t.tx_type = 1 AND c.contract_output_tx_id = co_cid
+                LEFT JOIN vsc_app.l1_txs t1 ON
+                    c.id = t1.details
+                LEFT JOIN vsc_app.l1_operations l1o ON
+                    t1.id = l1o.id
+                LEFT JOIN hive.transactions_view ht ON
+                    ht.block_num = l1o.block_num AND ht.trx_in_block = l1o.trx_in_block
+                WHERE (t.tx_type = 1 OR t1.tx_type = 1) AND c.contract_output_tx_id = co_cid
             )
         )
         FROM vsc_app.contract_outputs co

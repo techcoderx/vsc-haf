@@ -357,7 +357,7 @@ BEGIN
 
             FOREACH _caller IN ARRAY _callers
             LOOP
-                PERFORM vsc_app.insert_tx_auth_did(_new_tx_id, _caller);
+                PERFORM vsc_app.insert_tx_auth_did(_new_tx_id, _caller, (SELECT ts FROM vsc_app.l1_operations WHERE id = _proposed_in_op));
             END LOOP;
         END IF;
     END LOOP;
@@ -367,7 +367,8 @@ LANGUAGE plpgsql VOLATILE;
 
 CREATE OR REPLACE FUNCTION vsc_app.insert_tx_auth_did(
     _id INTEGER,
-    _did VARCHAR
+    _did VARCHAR,
+    _ts TIMESTAMP
 )
 RETURNS INTEGER
 AS $function$
@@ -379,10 +380,13 @@ BEGIN
     IF _did_id IS NULL THEN
         INSERT INTO vsc_app.dids(did) VALUES(_did) RETURNING id INTO _did_id;
     END IF;
-    IF _id IS NOT NULL THEN
+    IF _id IS NOT NULL AND _ts IS NOT NULL THEN
         INSERT INTO vsc_app.l2_tx_multiauth(id, did, nonce_counter)
             VALUES(_id, _did_id, COALESCE(_count, 0)+1);
-        UPDATE vsc_app.dids SET count=COALESCE(_count, 0)+1 WHERE id=_did_id;
+        UPDATE vsc_app.dids SET
+            count = COALESCE(_count, 0)+1,
+            last_op_ts = _ts
+        WHERE id=_did_id;
     END IF;
     RETURN _did_id;
 END $function$
@@ -494,7 +498,7 @@ DECLARE
 BEGIN
     -- prepare from id
     IF (SELECT starts_with(_from, 'did:')) THEN
-        SELECT vsc_app.insert_tx_auth_did(NULL, _from) INTO _from_id;
+        SELECT vsc_app.insert_tx_auth_did(NULL, _from, NULL) INTO _from_id;
         _from_acctype := 2::SMALLINT;
     ELSIF (SELECT starts_with(_from, 'hive:')) THEN
         SELECT id INTO _from_id FROM hive.vsc_app_accounts WHERE name=(SELECT SPLIT_PART(_from, ':', 2));
@@ -507,7 +511,7 @@ BEGIN
 
     -- prepare to id
     IF (SELECT starts_with(_to, 'did:')) THEN
-        SELECT vsc_app.insert_tx_auth_did(NULL, _to) INTO _to_id;
+        SELECT vsc_app.insert_tx_auth_did(NULL, _to, NULL) INTO _to_id;
         _to_acctype := 2::SMALLINT;
     ELSIF (SELECT starts_with(_to, 'hive:')) THEN
         SELECT id INTO _to_id FROM hive.vsc_app_accounts WHERE name=(SELECT SPLIT_PART(_to, ':', 2));
@@ -551,7 +555,7 @@ DECLARE
 BEGIN
     -- prepare from id
     IF (SELECT starts_with(_from, 'did:')) THEN
-        SELECT vsc_app.insert_tx_auth_did(NULL, _from) INTO _from_id;
+        SELECT vsc_app.insert_tx_auth_did(NULL, _from, NULL) INTO _from_id;
         _from_acctype := 2::SMALLINT;
     ELSIF (SELECT starts_with(_from, 'hive:')) THEN
         SELECT id INTO _from_id FROM hive.vsc_app_accounts WHERE name=(SELECT SPLIT_PART(_from, ':', 2));

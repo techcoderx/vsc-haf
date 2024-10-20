@@ -773,6 +773,23 @@ END
 $function$
 LANGUAGE plpgsql STABLE;
 
+CREATE OR REPLACE FUNCTION vsc_api.get_l2_user(did VARCHAR)
+RETURNS jsonb AS $$
+DECLARE
+    _did ALIAS FOR did;
+BEGIN
+    RETURN (
+        SELECT jsonb_build_object(
+            'name', _did,
+            'tx_count', COALESCE(d.count, 0),
+            'last_activity', COALESCE(d.last_op_ts, '1970-01-01T00:00:00')
+        )
+        FROM vsc_app.dids d
+        WHERE d.did = _did
+    );
+END $$
+LANGUAGE plpgsql STABLE;
+
 CREATE OR REPLACE FUNCTION vsc_api.get_witness(username VARCHAR)
 RETURNS jsonb AS $$
 BEGIN    

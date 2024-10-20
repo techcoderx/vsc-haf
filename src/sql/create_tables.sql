@@ -297,6 +297,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.dids(
     id SERIAL PRIMARY KEY,
     did VARCHAR(78) NOT NULL,
     count INTEGER NOT NULL DEFAULT 0,
+    last_op_ts TIMESTAMP,
     UNIQUE(did)
 );
 

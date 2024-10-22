@@ -737,7 +737,7 @@ BEGIN
             'username', op.name,
             'nonce', op.nonce,
             'type', op.op_name,
-            'l1_block', op.block_num,
+            'block_num', op.block_num,
             'l1_tx', vsc_app.get_tx_hash_by_op(op.block_num, op.trx_in_block),
             'ts', op.ts,
             'payload', (CASE WHEN full_tx_body THEN op.body::jsonb->'value' ELSE vsc_app.parse_l1_payload(op.op_name, op.body::jsonb->'value') END)
@@ -747,27 +747,21 @@ END $$
 LANGUAGE plpgsql STABLE;
 
 CREATE OR REPLACE FUNCTION vsc_api.get_l1_user(username VARCHAR)
-RETURNS jsonb 
-AS
-$function$
-DECLARE
-    _count BIGINT;
-    _last_op_ts TIMESTAMP;
+RETURNS jsonb AS $$
 BEGIN
-    SELECT u.count, u.last_op_ts
-        INTO _count, _last_op_ts
+    RETURN (
+        SELECT jsonb_build_object(
+            'name', username,
+            'tx_count', COALESCE(u.count, 0),
+            'event_count', COALESCE(u.event_count, 0),
+            'last_activity', COALESCE(u.last_op_ts, '1970-01-01T00:00:00')
+        )
         FROM vsc_app.l1_users u
         JOIN hive.vsc_app_accounts ac ON
             ac.id = u.id
         WHERE ac.name=username;
-    
-    RETURN jsonb_build_object(
-        'name', username,
-        'tx_count', COALESCE(_count, 0),
-        'last_activity', COALESCE(_last_op_ts, '1970-01-01T00:00:00')
     );
-END
-$function$
+END $$
 LANGUAGE plpgsql STABLE;
 
 CREATE OR REPLACE FUNCTION vsc_api.get_l2_user(did VARCHAR)
@@ -895,7 +889,7 @@ BEGIN
             'ts', result.ts,
             'type', result.op_name,
             'l1_tx', vsc_app.get_tx_hash_by_op(result.block_num, result.trx_in_block),
-            'l1_block', result.block_num,
+            'block_num', result.block_num,
             'payload', vsc_app.parse_l1_payload(result.op_name, result.body)
         )) FROM result
     ), '[]'::jsonb);
@@ -925,7 +919,7 @@ BEGIN
             'username', r.name,
             'nonce', r.nonce,
             'type', r.op_name,
-            'l1_block', r.block_num,
+            'block_num', r.block_num,
             'l1_tx', trx_id,
             'op_pos', r.op_pos,
             'ts', r.ts,
@@ -965,7 +959,7 @@ BEGIN
             'type', result.op_name,
             'ts', result.ts,
             'l1_tx', vsc_app.get_tx_hash_by_op(result.block_num, result.trx_in_block),
-            'l1_block', result.block_num,
+            'block_num', result.block_num,
             'payload', (CASE WHEN with_payload THEN vsc_app.parse_l1_payload(result.op_name, result.body) ELSE NULL END)
         )) FROM result
     ), '[]'::jsonb);
@@ -1168,7 +1162,7 @@ BEGIN
             'id', id,
             'ts', ts,
             'in_op', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
-            'l1_block', block_num,
+            'block_num', block_num,
             'username', name,
             'amount', ROUND(amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(asset))
         )) FROM deposits
@@ -1200,7 +1194,7 @@ BEGIN
             'id', id,
             'ts', ts,
             'in_op', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
-            'l1_block', block_num,
+            'block_num', block_num,
             'did_key', did,
             'amount', ROUND(amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(asset))
         )) FROM deposits
@@ -1233,7 +1227,7 @@ BEGIN
             'id', id,
             'ts', ts,
             'in_op', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
-            'l1_block', block_num,
+            'block_num', block_num,
             'username', name,
             'amount', ROUND(amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(asset))
         )) FROM withdrawals
@@ -1264,8 +1258,9 @@ BEGIN
             LIMIT count
         )
         SELECT jsonb_agg(jsonb_build_object(
+            'id', epoch,
             'epoch', epoch,
-            'l1_block_num', block_num,
+            'block_num', block_num,
             'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
             'ts', ts,
             'proposer', name,
@@ -1335,8 +1330,9 @@ AS $function$
 BEGIN
     RETURN (COALESCE((
         SELECT jsonb_build_object(
+            'id', e.epoch,
             'epoch', e.epoch,
-            'l1_block_num', o.block_num,
+            'block_num', o.block_num,
             'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(o.block_num, o.trx_in_block)),
             'ts', o.ts,
             'proposer', a.name,

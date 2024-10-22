@@ -19,7 +19,7 @@ export const ANY_AUTH = [2,3]
 export const XFER_ACTIONS = [
     'deposit',
     'withdrawal',
-    'withdrawal_request'
+    'withdrawal_request' // legacy?
 ]
 export const L1_ASSETS = [
     '@@000000021', // HIVE

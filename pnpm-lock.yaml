@@ -38,6 +38,9 @@ dependencies:
   dotenv:
     specifier: ^16.3.1
     version: 16.4.5
+  eip55:
+    specifier: ^2.1.1
+    version: 2.1.1
   key-did-provider-ed25519:
     specifier: ^3.0.2
     version: 3.0.2
@@ -970,6 +973,12 @@ packages:
     engines: {node: '>=12'}
     dev: false
 
+  /eip55@2.1.1:
+    resolution: {integrity: sha512-WcagVAmNu2Ww2cDUfzuWVntYwFxbvZ5MvIyLZpMjTTkjD6sCvkGOiS86jTppzu9/gWsc8isLHAeMBWK02OnZmA==}
+    dependencies:
+      keccak: 3.0.4
+    dev: false
+
   /electron-fetch@1.9.1:
     resolution: {integrity: sha512-M9qw6oUILGVrcENMSRRefE1MbHPIz0h79EKIeJWK9v563aT9Qkh8aEHPO1H5vi970wPirNY+jO9OpFoLiMsMGA==}
     engines: {node: '>=6'}
@@ -1389,6 +1398,16 @@ packages:
       graceful-fs: 4.2.11
     dev: false
 
+  /keccak@3.0.4:
+    resolution: {integrity: sha512-3vKuW0jV8J3XNTzvfyicFR5qvxrSAGl7KIhvgOu5cmWwM7tZRj3fMbj/pfIf4be7aznbc+prBWGjywox/g2Y6Q==}
+    engines: {node: '>=10.0.0'}
+    requiresBuild: true
+    dependencies:
+      node-addon-api: 2.0.2
+      node-gyp-build: 4.8.0
+      readable-stream: 3.6.2
+    dev: false
+
   /key-did-provider-ed25519@3.0.2:
     resolution: {integrity: sha512-4Yw0CeO1hKRaUsh9NIz4tn4Ysr09CdoJItyT0vHjd5iedJ+FvVt7pTbNr7IY0/+8mWvYslutAK5LFrwu5agpsA==}
     engines: {node: '>=14.14'}
@@ -1657,6 +1676,10 @@ packages:
     dependencies:
       multiformats: 9.9.0
       uint8arrays: 2.1.10
+    dev: false
+
+  /node-addon-api@2.0.2:
+    resolution: {integrity: sha512-Ntyt4AIXyaLIuMHF6IOoTakB3K+RWxwtsHNRxllEoA6vPwP9o4866g6YWDLUdnucilZhmkxiHwHr11gAENw+QA==}
     dev: false
 
   /node-addon-api@5.1.0:

@@ -245,20 +245,17 @@ CREATE TABLE IF NOT EXISTS vsc_app.multisig_txrefs(
     ref_id VARCHAR(59) NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS vsc_app.deposits_to_hive(
+CREATE TABLE IF NOT EXISTS vsc_app.deposits(
     id SERIAL PRIMARY KEY,
     in_op BIGINT NOT NULL,
     amount INTEGER NOT NULL,
     asset SMALLINT NOT NULL,
-    dest_acc INTEGER NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS vsc_app.deposits_to_did(
-    id SERIAL PRIMARY KEY,
-    in_op BIGINT NOT NULL,
-    amount INTEGER NOT NULL,
-    asset SMALLINT NOT NULL,
-    dest_did INTEGER NOT NULL
+    dest_acc INTEGER,
+    dest_did INTEGER,
+    CONSTRAINT deposits_hive_or_did CHECK (
+        (dest_acc IS NOT NULL AND dest_did IS NULL) OR
+        (dest_acc IS NULL AND dest_did IS NOT NULL)
+    )
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.withdrawal_request(

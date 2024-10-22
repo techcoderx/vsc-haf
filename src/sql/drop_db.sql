@@ -12,10 +12,9 @@ ALTER TABLE vsc_app.witness_toggle_archive DROP CONSTRAINT IF EXISTS witness_tog
 ALTER TABLE vsc_app.witness_toggle_archive DROP CONSTRAINT IF EXISTS witness_toggle_op_id_fk;
 ALTER TABLE vsc_app.keyauths_archive DROP CONSTRAINT IF EXISTS keyauths_uid_fk;
 ALTER TABLE vsc_app.keyauths_archive DROP CONSTRAINT IF EXISTS keyauths_op_id_fk;
-ALTER TABLE vsc_app.deposits_to_hive DROP CONSTRAINT IF EXISTS deposits_to_hive_in_op_fk;
-ALTER TABLE vsc_app.deposits_to_hive DROP CONSTRAINT IF EXISTS deposits_to_hive_dest_acc_fk;
-ALTER TABLE vsc_app.deposits_to_did DROP CONSTRAINT IF EXISTS deposits_to_did_in_op_fk;
-ALTER TABLE vsc_app.deposits_to_did DROP CONSTRAINT IF EXISTS deposits_to_did_dest_did_fk;
+ALTER TABLE vsc_app.deposits DROP CONSTRAINT IF EXISTS deposits_in_op_fk;
+ALTER TABLE vsc_app.deposits DROP CONSTRAINT IF EXISTS deposits_dest_acc_fk;
+ALTER TABLE vsc_app.deposits DROP CONSTRAINT IF EXISTS deposits_dest_did_fk;
 ALTER TABLE vsc_app.withdrawal_request DROP CONSTRAINT IF EXISTS withdrawal_request_in_op_fk;
 ALTER TABLE vsc_app.withdrawal_request DROP CONSTRAINT IF EXISTS withdrawal_request_dest_acc_fk;
 ALTER TABLE vsc_app.withdrawal_request DROP CONSTRAINT IF EXISTS withdrawal_request_status_fk;

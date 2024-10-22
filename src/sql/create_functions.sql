@@ -296,14 +296,14 @@ BEGIN
         IF _dest_id IS NULL THEN
             INSERT INTO vsc_app.dids(did) VALUES(_dest) RETURNING id INTO _dest_id;
         END IF;
-        INSERT INTO vsc_app.deposits_to_did(in_op, amount, asset, dest_did)
+        INSERT INTO vsc_app.deposits(in_op, amount, asset, dest_did)
             VALUES(_in_op, _amount, _asset, _dest_id);
     ELSIF _dest_type = 'hive' THEN
         SELECT id INTO _dest_id FROM hive.vsc_app_accounts WHERE name=_dest;
         IF _dest_id IS NULL THEN
             RAISE EXCEPTION 'hive username does not exist';
         END IF;
-        INSERT INTO vsc_app.deposits_to_hive(in_op, amount, asset, dest_acc)
+        INSERT INTO vsc_app.deposits(in_op, amount, asset, dest_acc)
             VALUES(_in_op, _amount, _asset, _dest_id);
     ELSE
         RAISE EXCEPTION '_dest_type must be did or hive';

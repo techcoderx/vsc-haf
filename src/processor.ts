@@ -1,6 +1,7 @@
 import { CID } from 'multiformats/cid'
+import { encode as eip55 } from 'eip55'
 import randomDID from './did.js'
-import { APP_CONTEXT, CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS, REQUIRES_ACTIVE, START_BLOCK, ANY_AUTH, CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT, MULTISIG_ACCOUNT_2 } from './constants.js'
+import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT, L1_ASSETS, REQUIRES_ACTIVE, START_BLOCK, ANY_AUTH, CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT, MULTISIG_ACCOUNT_2 } from './constants.js'
 import db from './db.js'
 import logger from './logger.js'
 import { DepositPayload, MultisigTxRefPayload, NodeAnnouncePayload, Op, OpBody, ParsedOp, PayloadTypes, TxTypes } from './processor_types.js'
@@ -13,6 +14,20 @@ const getMultisigAccount = (block_num: number) => {
         return MULTISIG_ACCOUNT
     else
         return MULTISIG_ACCOUNT_2
+}
+
+const ethReg = new RegExp('^(0x)?[0-9a-fA-F]{40}$')
+
+export const isValidHiveUsername = (value: string): boolean => {
+    if (typeof value !== 'string' || value.length < 3 || value.length > 16) return false
+    const ref = value.split('.')
+    for (let i = 0, len = ref.length; i < len; i++) {
+        if (!/^[a-z]/.test(ref[i])) return false
+        if (!/^[a-z0-9-]*$/.test(ref[i])) return false
+        if (!/[a-z0-9]$/.test(ref[i])) return false
+        if (ref[i].length < 3) return false
+    }
+    return true
 }
 
 const processor = {
@@ -270,6 +285,29 @@ const processor = {
                             payload[key] = value
                     }
                     details.user = parsed.value.from
+                    if(typeof payload.to === 'string') {
+                        if (payload.to.startsWith('did:key') && payload.to.length <= 78)
+                            payload.owner = payload.to
+                        else if (payload.to.startsWith('did:pkh:eip155:1')) {
+                            if(ethReg.test(payload.to.replace('did:pkh:eip155:1:', ''))) {
+                                payload.owner = payload.to
+                            } else {
+                                payload.owner = parsed.value.from
+                            }
+                        }
+                        else if (ethReg.test(payload.to))
+                            payload.owner = `did:pkh:eip155:1:${eip55(payload.to)}`
+                        else if (payload.to.startsWith('@') || payload.to.startsWith('hive:')) {
+                            const name = payload.to.replace('@','').replace('hive:','')
+                            if (isValidHiveUsername(name))
+                                payload.owner = name
+                            else
+                                payload.owner = parsed.value.from // vsc node does not check username existence
+                        } else
+                            payload.owner = parsed.value.from
+                    } else {
+                        payload.owner = parsed.value.from
+                    }
                     if (typeof payload.action === 'string' && payload.action === 'withdraw') {
                         let amountToWithdraw = parseFloat(payload.amount)
                         if (isNaN(amountToWithdraw) || amountToWithdraw <= 0)
@@ -280,20 +318,9 @@ const processor = {
                             amount: Math.round(parseFloat(amountToWithdraw.toFixed(3))*1000),
                             amount2: parseInt(parsed.value.amount.amount),
                             asset: L1_ASSETS.indexOf(parsed.value.amount.nai),
-                            owner: details.user
+                            owner: payload.owner
                         }
                     } else {
-                        if(typeof payload.to === 'string') {
-                            if (payload.to.startsWith('did:') && payload.to.length <= 78)
-                                payload.owner = payload.to
-                            else if (payload.to.startsWith('@') && payload.to.length <= 17 &&
-                                (await db.client.query(`SELECT * FROM hive.${APP_CONTEXT}_accounts WHERE name=$1;`,[payload.to.replace('@','')])).rowCount! > 0)
-                                payload.owner = payload.to.replace('@','')
-                            else
-                                payload.owner = parsed.value.from
-                        } else {
-                            payload.owner = parsed.value.from
-                        }
                         // deposit
                         details.op_type = 0
                         details.payload = {

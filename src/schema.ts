@@ -69,23 +69,18 @@ const HAF_FKS: FKS_TYPE = {
         fk: 'in_op',
         ref: SCHEMA_NAME+'.l1_operations(id)'
     },
-    deposits_to_hive_in_op_fk: {
-        table: SCHEMA_NAME+'.deposits_to_hive',
+    deposits_in_op_fk: {
+        table: SCHEMA_NAME+'.deposits',
         fk: 'in_op',
         ref: SCHEMA_NAME+'.l1_operations(id)'
     },
-    deposits_to_hive_dest_acc_fk: {
-        table: SCHEMA_NAME+'.deposits_to_hive',
+    deposits_dest_acc_fk: {
+        table: SCHEMA_NAME+'.deposits',
         fk: 'dest_acc',
         ref: `hive.${APP_CONTEXT}_accounts(id)`
     },
-    deposits_to_did_in_op_fk: {
-        table: SCHEMA_NAME+'.deposits_to_did',
-        fk: 'in_op',
-        ref: SCHEMA_NAME+'.l1_operations(id)'
-    },
-    deposits_to_did_dest_did_fk: {
-        table: SCHEMA_NAME+'.deposits_to_did',
+    deposits_dest_did_fk: {
+        table: SCHEMA_NAME+'.deposits',
         fk: 'dest_did',
         ref: SCHEMA_NAME+'.dids(id)'
     },

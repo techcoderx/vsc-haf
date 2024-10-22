@@ -29,7 +29,7 @@ BEGIN
         'operations', (SELECT COUNT(*) FROM vsc_app.l1_operations),
         'contracts', (SELECT COUNT(*) FROM vsc_app.contracts),
         'witnesses', (SELECT COUNT(*) FROM vsc_app.witnesses),
-        'bridge_txs', (SELECT COUNT(*) FROM vsc_app.deposits_to_hive)+(SELECT COUNT(*) FROM vsc_app.deposits_to_did)+(SELECT COUNT(*) FROM vsc_app.withdrawals),
+        'bridge_txs', (SELECT COUNT(*) FROM vsc_app.deposits)+(SELECT COUNT(*) FROM vsc_app.withdrawals),
         'anchor_refs', (SELECT COUNT(*) FROM vsc_app.anchor_refs),
         'txrefs', (SELECT COUNT(*) FROM vsc_app.multisig_txrefs)
     ) FROM s1, s2);
@@ -1137,7 +1137,7 @@ $function$
 LANGUAGE plpgsql STABLE;
 
 -- Bridge operations
-CREATE OR REPLACE FUNCTION vsc_api.list_latest_deposits_hive(last_id INTEGER = NULL, count INTEGER = 100)
+CREATE OR REPLACE FUNCTION vsc_api.list_latest_deposits(count INTEGER = 100, last_id INTEGER = NULL)
 RETURNS jsonb
 AS $function$
 BEGIN
@@ -1148,54 +1148,24 @@ BEGIN
     END IF;
     RETURN (
         WITH deposits AS (
-            SELECT c.id, o.block_num, o.trx_in_block, o.ts, c.amount, c.asset, a.name
+            SELECT c.id, o.block_num, o.trx_in_block, o.ts, c.amount, c.asset, COALESCE(d.did, 'hive:' || a.name) name
             FROM vsc_app.deposits_to_hive c
             JOIN vsc_app.l1_operations o ON
-                o.id=c.in_op
-            JOIN hive.vsc_app_accounts a ON
-                a.id=c.dest_acc
-            WHERE c.id <= COALESCE(last_id, 2147483647)
+                o.id = c.in_op
+            LEFT JOIN vsc_app.dids d ON
+                d.id = c.dest_did
+            LEFT JOIN hive.vsc_app_accounts a ON
+                a.id = c.dest_acc
+            WHERE (CASE WHEN last_id IS NOT NULL THEN c.id <= last_id ELSE TRUE END)
             ORDER BY c.id DESC
             LIMIT count
         )
         SELECT jsonb_agg(jsonb_build_object(
             'id', id,
             'ts', ts,
-            'in_op', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
+            'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
             'block_num', block_num,
             'username', name,
-            'amount', ROUND(amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(asset))
-        )) FROM deposits
-    );
-END $function$
-LANGUAGE plpgsql STABLE;
-
-CREATE OR REPLACE FUNCTION vsc_api.list_latest_deposits_did(count INTEGER = 100)
-RETURNS jsonb
-AS $function$
-BEGIN
-    IF count <= 0 OR count > 100 THEN
-        RETURN jsonb_build_object(
-            'error', 'count must be between 1 and 100'
-        );
-    END IF;
-    RETURN (
-        WITH deposits AS (
-            SELECT c.id, o.block_num, o.trx_in_block, o.ts, c.amount, c.asset, a.did
-            FROM vsc_app.deposits_to_did c
-            JOIN vsc_app.l1_operations o ON
-                o.id=c.in_op
-            JOIN vsc_app.dids a ON
-                a.id=c.dest_did
-            ORDER BY c.id DESC
-            LIMIT count
-        )
-        SELECT jsonb_agg(jsonb_build_object(
-            'id', id,
-            'ts', ts,
-            'in_op', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
-            'block_num', block_num,
-            'did_key', did,
             'amount', ROUND(amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(asset))
         )) FROM deposits
     );

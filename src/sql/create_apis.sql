@@ -759,7 +759,7 @@ BEGIN
         FROM vsc_app.l1_users u
         JOIN hive.vsc_app_accounts ac ON
             ac.id = u.id
-        WHERE ac.name=username;
+        WHERE ac.name=username
     );
 END $$
 LANGUAGE plpgsql STABLE;

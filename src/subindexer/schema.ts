@@ -170,6 +170,10 @@ export const INDEXES: INDEXES_TYPE = {
         table_name: SCHEMA_NAME+'.l2_tx_events',
         columns: [{ col_name: 'l2_tx_id', order: Ordering.DESC }]
     },
+    l2_tx_events_owner_nonce_idx: {
+        table_name: SCHEMA_NAME+'.l2_tx_events',
+        columns: [{ col_name: 'owner_name', order: Ordering.ASC }, { col_name: 'nonce_counter', order: Ordering.DESC }]
+    },
     l2_tx_multiauth_did_idx: {
         table_name: SCHEMA_NAME+'.l2_tx_multiauth',
         columns: [{ col_name: 'did', order: Ordering.ASC }, { col_name: 'nonce_counter', order: Ordering.DESC }]

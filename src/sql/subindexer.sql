@@ -663,11 +663,11 @@ BEGIN
                     WHERE d.did = e->>'owner';
 
                     IF _nonce_counter IS NULL THEN
-                        INSERT INTO vsc_app.dids(did, nonce_counter) VALUES(e->>'owner', 1);
+                        INSERT INTO vsc_app.dids(did, event_count) VALUES(e->>'owner', 1);
                         _nonce_counter := 1;
                     ELSE
                         _nonce_counter := _nonce_counter+1;
-                        UPDATE vsc_app.dids SET nonce_counter = _nonce_counter WHERE did = e->>'owner';
+                        UPDATE vsc_app.dids SET event_count = _nonce_counter WHERE did = e->>'owner';
                     END IF;
                 ELSIF starts_with(e->>'owner', 'hive:') THEN
                     SELECT u.event_count, ha.id
@@ -679,9 +679,9 @@ BEGIN
 
                     IF _acc_id IS NOT NULL THEN
                         _nonce_counter := COALESCE(_nonce_counter, 0)+1;
-                        INSERT INTO vsc_app.l1_users(id, nonce_counter)
+                        INSERT INTO vsc_app.l1_users(id, event_count)
                             VALUES(_acc_id, _nonce_counter)
-                            ON CONFLICT(id) DO UPDATE SET nonce_counter = _nonce_counter; -- upsert
+                            ON CONFLICT(id) DO UPDATE SET event_count = _nonce_counter; -- upsert
                     END IF;
                 END IF;
 

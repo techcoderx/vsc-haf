@@ -526,7 +526,7 @@ LANGUAGE plpgsql STABLE;
 
 -- Event history by 'did:' or 'hive:' prefixed account name
 -- last_event_pos are tx_pos and evt_pos bits concatenated with 2 byte each
-CREATE OR REPLACE FUNCTION vsc_api.get_event_history_by_account_name(account_name VARCHAR, count INTEGER = 100, last_event_id INTEGER = NULL, last_event_pos INTEGER = NULL)
+CREATE OR REPLACE FUNCTION vsc_api.get_event_history_by_account_name(account_name VARCHAR, count INTEGER = 100, last_nonce INTEGER = NULL)
 RETURNS jsonb AS $$
 DECLARE
     _owner_name VARCHAR := account_name;
@@ -535,13 +535,9 @@ BEGIN
         RETURN jsonb_build_object(
             'error', 'count must be between 1 and 100'
         );
-    ELSIF last_event_pos IS NOT NULL AND last_event_id IS NULL THEN
+    ELSIF last_nonce IS NOT NULL AND last_nonce < 0 THEN
         RETURN jsonb_build_object(
-            'error', 'last_event_id must not be null if last_event_pos is not null'
-        );
-    ELSIF (last_event_id IS NOT NULL AND last_event_id < 0) OR (last_event_pos IS NOT NULL AND last_event_pos < 0) THEN
-        RETURN jsonb_build_object(
-            'error', 'both last_event_id and last_event_pos must be greater than 0 if present'
+            'error', 'last_nonce must be greater than or equal to 0 if not null'
         );
     END IF;
 
@@ -551,7 +547,7 @@ BEGIN
     END IF;
     RETURN COALESCE((
         WITH history AS (
-            SELECT te.event_id evt_id, ev.cid evt_cid, te.tx_pos, te.evt_pos, ev.block_num, bp.ts, encode(ht.trx_hash, 'hex') || '-' || t1.op_pos l1_tx_id, t2.cid l2_cid, te.evt_type, vsc_app.asset_by_id(te.token) token, te.amount, te.memo
+            SELECT te.event_id evt_id, ev.cid evt_cid, te.tx_pos, te.evt_pos, te.nonce_counter, ev.block_num, bp.ts, encode(ht.trx_hash, 'hex') || '-' || t1.op_pos l1_tx_id, t2.cid l2_cid, te.evt_type, vsc_app.asset_by_id(te.token) token, te.amount, te.memo
             FROM vsc_app.l2_tx_events te
             JOIN vsc_app.events ev ON
                 ev.id = te.event_id
@@ -567,18 +563,15 @@ BEGIN
                 ht.block_num = t1.block_num AND ht.trx_in_block = t1.trx_in_block
             WHERE
                 te.owner_name = _owner_name AND
-                (CASE WHEN last_event_id IS NOT NULL THEN te.event_id <= last_event_id ELSE TRUE END) AND
-                (CASE WHEN last_event_pos IS NOT NULL THEN (
-                    te.event_id <= last_event_id AND (te.tx_pos < (last_event_pos >> 16) OR
-                    (te.tx_pos = (last_event_pos >> 16) AND te.evt_pos <= (last_event_pos & 0xFFFF)))
-                ) ELSE TRUE END)
-            ORDER BY te.event_id DESC, te.tx_pos DESC, te.evt_pos DESC
+                (CASE WHEN last_nonce IS NOT NULL THEN te.nonce_counter <= last_nonce ELSE TRUE END)
+            ORDER BY te.nonce_counter DESC
             LIMIT count
         )
         SELECT jsonb_agg(jsonb_build_object(
             'id', COALESCE(l1_tx_id, l2_cid),
             'block_num', block_num,
             'ts', ts,
+            'nonce', nonce_counter,
             'event_id', evt_id,
             'event_cid', evt_cid,
             'tx_pos', tx_pos,

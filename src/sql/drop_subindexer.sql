@@ -50,3 +50,11 @@ UPDATE vsc_app.withdrawal_request SET
 UPDATE vsc_app.witnesses SET
     last_block = NULL,
     produced = 0;
+
+UPDATE vsc_app.dids SET
+    last_op_ts = NULL,
+    count = 0,
+    event_count = 0;
+
+UPDATE vsc_app.l1_users SET
+    event_count = 0;

@@ -516,7 +516,7 @@ BEGIN
             'block_num', h.block_num,
             'idx_in_block', h.idx_in_block,
             'ts', h.ts,
-            'type', h.op_name,
+            'tx_type', h.op_name,
             'nonce', h.nonce_counter,
             'details', h.details
         )) FROM history h
@@ -551,7 +551,7 @@ BEGIN
     END IF;
     RETURN COALESCE((
         WITH history AS (
-            SELECT te.event_id evt_id, ev.cid evt_cid, te.tx_pos, te.evt_pos, bp.ts, encode(ht.trx_hash, 'hex') || '-' || t1.op_pos l1_tx_id, t2.cid l2_cid, te.evt_type, vsc_app.asset_by_id(te.token) token, te.amount, te.memo
+            SELECT te.event_id evt_id, ev.cid evt_cid, te.tx_pos, te.evt_pos, ev.block_num, bp.ts, encode(ht.trx_hash, 'hex') || '-' || t1.op_pos l1_tx_id, t2.cid l2_cid, te.evt_type, vsc_app.asset_by_id(te.token) token, te.amount, te.memo
             FROM vsc_app.l2_tx_events te
             JOIN vsc_app.events ev ON
                 ev.id = te.event_id
@@ -576,21 +576,25 @@ BEGIN
             LIMIT count
         )
         SELECT jsonb_agg(jsonb_build_object(
+            'id', COALESCE(l1_tx_id, l2_cid),
+            'block_num', block_num,
+            'ts', ts,
             'event_id', evt_id,
             'event_cid', evt_cid,
             'tx_pos', tx_pos,
-            'event_pos_in_tx', evt_pos,
-            'ts', ts,
-            'tx_id', COALESCE(l1_tx_id, l2_cid),
-            'event_type', evt_type,
-            'token', token,
-            'amount', amount,
-            'memo', memo
+            'pos_in_tx', evt_pos,
+            'event', jsonb_build_object(
+                't', evt_type,
+                'tk', token,
+                'amt', amount,
+                'memo', memo
+            )
         )) FROM history
     ), '[]'::jsonb);
 END $$
 LANGUAGE plpgsql STABLE;
 
+-- todo: remove after replacing this call on discord bot
 CREATE OR REPLACE FUNCTION vsc_api.get_l1_contract_call(trx_id VARCHAR, op_pos INTEGER = 0)
 RETURNS jsonb
 AS $function$
@@ -778,6 +782,9 @@ RETURNS jsonb AS $$
 DECLARE
     _did ALIAS FOR did;
 BEGIN
+    IF starts_with(_did, 'hive:') THEN
+        RETURN vsc_api.get_l1_user(REPLACE(_did, 'hive:', ''));
+    END IF;
     RETURN (
         SELECT jsonb_build_object(
             'name', _did,
@@ -1056,6 +1063,7 @@ BEGIN
                 c.id,
                 COALESCE(l2t.cid, (SELECT vsc_app.get_tx_hash_by_op(l1o.block_num, l1o.trx_in_block))) AS input,
                 (SELECT CASE WHEN l2t.id IS NULL THEN 'hive' ELSE 'vsc' END) AS input_src,
+                COALESCE(l2t.block_num, l1o.block_num) block_num,
                 COALESCE(l2bp.ts, l1o.ts) AS ts,
                 COALESCE((
                     SELECT jsonb_agg(k.did)
@@ -1093,6 +1101,7 @@ BEGIN
             'id', c.id,
             'input', c.input,
             'input_src', c.input_src,
+            'block_num', c.block_num,
             'ts', c.ts,
             'signers', c.signers,
             'contract_action', c.contract_action,

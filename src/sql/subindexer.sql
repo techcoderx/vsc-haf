@@ -627,6 +627,8 @@ DECLARE
     e2 INTEGER; -- event array position used in second loop
     _l1_tx_id BIGINT;
     _l2_tx_id INTEGER;
+    _acc_id INTEGER; -- account id of owner
+    _nonce_counter INTEGER; -- event nonce counter of owner before increment
 BEGIN
     IF (SELECT jsonb_array_length(_body->'txs')) != (SELECT jsonb_array_length(_body->'txs_map')) THEN
         RETURN; -- txs must have the same array length as txs_map
@@ -639,6 +641,8 @@ BEGIN
         j := 0::SMALLINT;
         FOR e2 in SELECT value::INTEGER FROM jsonb_array_elements(e1)
         LOOP
+            _nonce_counter := NULL;
+            _acc_id := NULL;
             e := (_body->'events')->e2;
             SELECT id INTO _l2_tx_id FROM vsc_app.l2_txs WHERE cid = (_body->'txs')->>i;
             IF _l2_tx_id IS NULL THEN
@@ -651,13 +655,45 @@ BEGIN
                     o.op_pos = SPLIT_PART((_body->'txs')->>i, '-', 2)::INT;
             END IF;
             IF _l1_tx_id IS NOT NULL OR _l2_tx_id IS NOT NULL THEN
-                INSERT INTO vsc_app.l2_tx_events(event_id, tx_pos, evt_pos, l1_tx_id, l2_tx_id, evt_type, token, amount, memo, owner_name)
+                -- get next nonce
+                IF starts_with(e->>'owner', 'did:') THEN
+                    SELECT d.event_count
+                    INTO _nonce_counter
+                    FROM vsc_app.dids d
+                    WHERE d.did = e->>'owner';
+
+                    IF _nonce_counter IS NULL THEN
+                        INSERT INTO vsc_app.dids(did, nonce_counter) VALUES(e->>'owner', 1);
+                        _nonce_counter := 1;
+                    ELSE
+                        _nonce_counter := _nonce_counter+1;
+                        UPDATE vsc_app.dids SET nonce_counter = _nonce_counter WHERE did = e->>'owner';
+                    END IF;
+                ELSIF starts_with(e->>'owner', 'hive:') THEN
+                    SELECT u.event_count, ha.id
+                    INTO _nonce_counter, _acc_id
+                    FROM vsc_app.l1_users u
+                    RIGHT JOIN hive.vsc_app_accounts ha ON
+                        ha.id = u.id
+                    WHERE ha.name = REPLACE(e->>'owner', 'hive:', '');
+
+                    IF _acc_id IS NOT NULL THEN
+                        _nonce_counter := COALESCE(_nonce_counter, 0)+1;
+                        INSERT INTO vsc_app.l1_users(id, nonce_counter)
+                            VALUES(_acc_id, _nonce_counter)
+                            ON CONFLICT(id) DO UPDATE SET nonce_counter = _nonce_counter; -- upsert
+                    END IF;
+                END IF;
+
+                -- insert event
+                INSERT INTO vsc_app.l2_tx_events(event_id, tx_pos, evt_pos, l1_tx_id, l2_tx_id, nonce_counter, evt_type, token, amount, memo, owner_name)
                     VALUES(
                         new_evt_id,
                         i,
                         j,
                         _l1_tx_id,
                         (SELECT id FROM vsc_app.l2_txs WHERE cid = ((_body->'txs')->>i)),
+                        _nonce_counter,
                         (e->>'t')::INTEGER,
                         (SELECT vsc_app.get_asset_id(e->>'tk')),
                         (e->'amt')::INTEGER,

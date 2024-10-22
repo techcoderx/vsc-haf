@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.l1_operations(
 CREATE TABLE IF NOT EXISTS vsc_app.l1_users(
     id INTEGER PRIMARY KEY,
     count BIGINT DEFAULT 0,
+    event_count INTEGER NOT NULL DEFAULT 0,
     last_op_ts TIMESTAMP
 );
 
@@ -70,6 +71,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.l2_tx_events(
     evt_pos SMALLINT NOT NULL, -- assume each tx can never emit more than 32767 events
     l1_tx_id BIGINT, -- id from l1_txs table
     l2_tx_id INTEGER, -- id from l2_txs table
+    nonce_counter INTEGER, -- nonce counter for pagination purposes
     evt_type INTEGER NOT NULL,
     token SMALLINT NOT NULL, -- 0 for HIVE, 1 for HBD
     amount INTEGER NOT NULL,
@@ -297,6 +299,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.dids(
     id SERIAL PRIMARY KEY,
     did VARCHAR(78) NOT NULL,
     count INTEGER NOT NULL DEFAULT 0,
+    event_count INTEGER NOT NULL DEFAULT 0,
     last_op_ts TIMESTAMP,
     UNIQUE(did)
 );

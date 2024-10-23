@@ -1140,6 +1140,8 @@ LANGUAGE plpgsql STABLE;
 CREATE OR REPLACE FUNCTION vsc_api.list_latest_deposits(count INTEGER = 100, last_id INTEGER = NULL)
 RETURNS jsonb
 AS $function$
+DECLARE
+    _count ALIAS FOR count;
 BEGIN
     IF count <= 0 OR count > 100 THEN
         RETURN jsonb_build_object(
@@ -1149,7 +1151,7 @@ BEGIN
     RETURN (
         WITH deposits AS (
             SELECT c.id, o.block_num, o.trx_in_block, o.ts, c.amount, c.asset, COALESCE(d.did, 'hive:' || a.name) name
-            FROM vsc_app.deposits_to_hive c
+            FROM vsc_app.deposits c
             JOIN vsc_app.l1_operations o ON
                 o.id = c.in_op
             LEFT JOIN vsc_app.dids d ON
@@ -1158,14 +1160,14 @@ BEGIN
                 a.id = c.dest_acc
             WHERE (CASE WHEN last_id IS NOT NULL THEN c.id <= last_id ELSE TRUE END)
             ORDER BY c.id DESC
-            LIMIT count
+            LIMIT _count
         )
         SELECT jsonb_agg(jsonb_build_object(
             'id', id,
             'ts', ts,
             'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
             'block_num', block_num,
-            'username', name,
+            'to', name,
             'amount', ROUND(amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(asset))
         )) FROM deposits
     );

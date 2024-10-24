@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.l1_users(
     id INTEGER PRIMARY KEY,
     count BIGINT DEFAULT 0,
     event_count INTEGER NOT NULL DEFAULT 0,
+    deposit_count INTEGER NOT NULL DEFAULT 0,
     last_op_ts TIMESTAMP
 );
 
@@ -252,6 +253,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.deposits(
     asset SMALLINT NOT NULL,
     dest_acc INTEGER,
     dest_did INTEGER,
+    nonce_counter INTEGER,
     CONSTRAINT deposits_hive_or_did CHECK (
         (dest_acc IS NOT NULL AND dest_did IS NULL) OR
         (dest_acc IS NULL AND dest_did IS NOT NULL)
@@ -297,6 +299,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.dids(
     did VARCHAR(78) NOT NULL,
     count INTEGER NOT NULL DEFAULT 0,
     event_count INTEGER NOT NULL DEFAULT 0,
+    deposit_count INTEGER NOT NULL DEFAULT 0,
     last_op_ts TIMESTAMP,
     UNIQUE(did)
 );

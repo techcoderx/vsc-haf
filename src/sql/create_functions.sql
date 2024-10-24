@@ -290,21 +290,30 @@ AS
 $function$
 DECLARE
     _dest_id INTEGER = NULL;
+    _counter INTEGER;
 BEGIN
     IF _dest_type = 'did' THEN
-        SELECT id INTO _dest_id FROM vsc_app.dids WHERE did=_dest;
+        SELECT id, deposit_count INTO _dest_id, _counter FROM vsc_app.dids WHERE did=_dest;
         IF _dest_id IS NULL THEN
-            INSERT INTO vsc_app.dids(did) VALUES(_dest) RETURNING id INTO _dest_id;
+            _counter := 1;
+            INSERT INTO vsc_app.dids(did, deposit_count) VALUES(_dest, _counter) RETURNING id INTO _dest_id;
+        ELSE
+            _counter := _counter+1;
+            UPDATE vsc_app.dids SET deposit_count = _counter WHERE id = _dest_id;
         END IF;
-        INSERT INTO vsc_app.deposits(in_op, amount, asset, dest_did)
-            VALUES(_in_op, _amount, _asset, _dest_id);
+        INSERT INTO vsc_app.deposits(in_op, amount, asset, dest_did, nonce_counter)
+            VALUES(_in_op, _amount, _asset, _dest_id, _counter);
     ELSIF _dest_type = 'hive' THEN
         SELECT id INTO _dest_id FROM hive.vsc_app_accounts WHERE name=_dest;
         IF _dest_id IS NULL THEN
-            RAISE EXCEPTION 'hive username does not exist';
+            RETURN; -- do nothing as vsc node does not check for this
         END IF;
-        INSERT INTO vsc_app.deposits(in_op, amount, asset, dest_acc)
-            VALUES(_in_op, _amount, _asset, _dest_id);
+        INSERT INTO vsc_app.l1_users(id, deposit_count)
+            VALUES(_dest_id, 1)
+            ON CONFLICT(id) DO UPDATE SET deposit_count = vsc_app.l1_users.deposit_count+1
+            RETURNING vsc_app.l1_users.deposit_count INTO _counter;
+        INSERT INTO vsc_app.deposits(in_op, amount, asset, dest_acc, nonce_counter)
+            VALUES(_in_op, _amount, _asset, _dest_id, _counter);
     ELSE
         RAISE EXCEPTION '_dest_type must be did or hive';
     END IF;

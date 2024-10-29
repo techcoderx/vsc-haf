@@ -1174,6 +1174,70 @@ BEGIN
 END $function$
 LANGUAGE plpgsql STABLE;
 
+CREATE OR REPLACE FUNCTION vsc_api.get_deposits_by_address(address VARCHAR, count INTEGER = 100, last_nonce INTEGER = NULL)
+RETURNS jsonb AS $$
+DECLARE
+    _count ALIAS FOR count;
+BEGIN
+    IF last_nonce IS NOT NULL AND last_nonce < 0 THEN
+        RETURN jsonb_build_object(
+            'error', 'last_nonce must be greater than or equal to 0 if not null'
+        );
+    ELSIF count <= 0 OR count > 100 THEN
+        RETURN jsonb_build_object(
+            'error', 'count must be between 1 and 100'
+        );
+    END IF;
+    IF starts_with(address, 'hive:') THEN
+        RETURN (
+            WITH deposits AS (
+                SELECT c.id, o.block_num, o.trx_in_block, o.ts, c.amount, c.asset, 'hive:' || a.name name, c.nonce_counter
+                FROM vsc_app.deposits c
+                JOIN vsc_app.l1_operations o ON
+                    o.id = c.in_op
+                JOIN hive.vsc_app_accounts a ON
+                    a.id = c.dest_acc
+                WHERE a.name = REPLACE(address, 'hive:', '') AND (CASE WHEN last_nonce IS NOT NULL THEN c.nonce_counter <= last_nonce ELSE TRUE END)
+                ORDER BY c.nonce_counter DESC
+                LIMIT _count
+            )
+            SELECT jsonb_agg(jsonb_build_object(
+                'id', id,
+                'ts', ts,
+                'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
+                'block_num', block_num,
+                'amount', ROUND(amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(asset)),
+                'nonce', nonce_counter
+            )) FROM deposits
+        );
+    ELSIF starts_with(address, 'did:') THEN
+         RETURN (
+            WITH deposits AS (
+                SELECT c.id, o.block_num, o.trx_in_block, o.ts, c.amount, c.asset, d.did name, c.nonce_counter
+                FROM vsc_app.deposits c
+                JOIN vsc_app.l1_operations o ON
+                    o.id = c.in_op
+                JOIN vsc_app.dids d ON
+                    d.id = c.dest_did
+                WHERE d.did = address AND (CASE WHEN last_nonce IS NOT NULL THEN c.nonce_counter <= last_nonce ELSE TRUE END)
+                ORDER BY c.nonce_counter DESC
+                LIMIT _count
+            )
+            SELECT jsonb_agg(jsonb_build_object(
+                'id', id,
+                'ts', ts,
+                'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
+                'block_num', block_num,
+                'amount', ROUND(amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(asset)),
+                'nonce', nonce_counter
+            )) FROM deposits
+        );
+    ELSE
+        RETURN jsonb_build_object('error', 'invalid address');
+    END IF;
+END $$
+LANGUAGE plpgsql STABLE;
+
 CREATE OR REPLACE FUNCTION vsc_api.list_latest_withdrawals(last_id INTEGER = NULL, count INTEGER = 100)
 RETURNS jsonb
 AS $function$

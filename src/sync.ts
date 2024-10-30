@@ -8,7 +8,7 @@ import op_type_map from './operations.js'
 import { EnumBlock, Op } from './processor_types.js'
 
 const MASSIVE_SYNC_THRESHOLD = 100
-const MASSIVE_SYNC_BATCH = 1000
+const MASSIVE_SYNC_BATCH = 10000
 const LIVE_SYNC_CONNECTION_CYCLE_BLKS = 1000
 
 const sync = {

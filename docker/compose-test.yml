@@ -50,7 +50,7 @@ services:
       haf:
         condition: service_healthy
   vsc-test-subindexer:
-    image: vsc-haf:${VSC_HAF_VERSION:-${HIVE_API_NODE_VERSION}}
+    image: vsc-haf:${VSC_TEST_VERSION:-dev}
     profiles:
       - apps
       - vsc-haf

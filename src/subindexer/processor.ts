@@ -497,9 +497,10 @@ const processor = {
                     logger.trace('Bridge ref contents',bridgeRefContent)
                     const result = []
                     for (let w in bridgeRefContent.withdrawals) {
-                        if (typeof bridgeRefContent.withdrawals[w].id !== 'string')
+                        const id = typeof bridgeRefContent.withdrawals[w] === 'string' ? bridgeRefContent.withdrawals[w] : (typeof bridgeRefContent.withdrawals[w] === 'object' ? bridgeRefContent.withdrawals[w].id : '')
+                        if (!id)
                             continue
-                        const parts = bridgeRefContent.withdrawals[w].id.split('-')
+                        const parts = id.split('-')
                         if (parts.length < 2)
                             continue
                         if (/^[0-9a-fA-F]{40}$/i.test(parts[0])) { 
@@ -507,13 +508,13 @@ const processor = {
                             if (isNaN(opPos) || opPos < 0)
                                 continue
                             const vscOpId = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.get_vsc_op_by_tx_hash($1,$2);`,[parts[0].toLowerCase(),opPos])
-                            if (vscOpId.rowCount === 0 || vscOpId.rows[0].op_type !== 11)
+                            if (vscOpId.rowCount === 0 || vscOpId.rows[0].op_type !== 12)
                                 continue
-                            const requestId = (await db.client.query(`SELECT details FROM ${SCHEMA_NAME}.l1_txs WHERE id=$1;`,[vscOpId.rows[0].id])).rows[0].details
-                            result.push(requestId)
+                            const requestId = await db.client.query(`SELECT details FROM ${SCHEMA_NAME}.l1_txs WHERE id=$1::BIGINT;`,[vscOpId.rows[0].id])
+                            result.push(requestId.rows[0].details)
                         } else if (isCID(parts[0])) {
-                            const requestId = (await db.client.query(`SELECT details FROM ${SCHEMA_NAME}.l2_txs WHERE cid=$1;`,[parts[0]])).rows[0].details
-                            result.push(requestId)
+                            const requestId = await db.client.query(`SELECT details FROM ${SCHEMA_NAME}.l2_txs WHERE cid=$1;`,[parts[0]])
+                            result.push(requestId.rows[0].details)
                         }
                     }
                     details.payload = result
@@ -604,21 +605,22 @@ const processor = {
                     result.payload = result.payload as DepositPayload
                     await db.client.query(`SELECT ${SCHEMA_NAME}.insert_l1_tx($1,$2,$3::SMALLINT[],$4::jsonb);`,[
                         op.id,
-                        `{${result.user}}`,
-                        `{1}`,
+                        [result.user],
+                        [1],
                         JSON.stringify({
                             op: 'withdraw',
                             payload: {
-                                from: result.user,
+                                from: 'hive:'+result.user,
                                 to: result.payload.owner,
                                 amount: result.payload.amount+(result.payload.amount2 || 0),
                                 tk: result.payload.asset === 0 ? 'HIVE' : 'HBD'
                             }
                         })
                     ])
+                    break
                 case op_type_map.map.bridge_ref:
                     result.payload = result.payload as BridgeRefResult
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_withdrawal_statuses($1,$2,$3);`,['{'+result.payload.join(',')+'}','completed',result.block_num])
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.update_withdrawal_statuses($1,$2);`,['{'+result.payload.join(',')+'}','completed'])
                     break
                 default:
                     break

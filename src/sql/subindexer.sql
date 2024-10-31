@@ -803,7 +803,7 @@ RETURNS void AS $$
 BEGIN
     UPDATE vsc_app.l2_withdrawals SET
         status = (SELECT id FROM vsc_app.withdrawal_status WHERE name=_status)
-    WHERE in_op = ANY(_ids);
+    WHERE id = ANY(_ids);
 END $$
 LANGUAGE plpgsql VOLATILE;
 

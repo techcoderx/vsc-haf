@@ -378,7 +378,7 @@ const processor = {
                     break
                 case op_type_map.map.withdrawal_request:
                     pl = result.payload as DepositPayload
-                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_withdrawal_request($1,$2,$3,$4,$5);`,[new_vsc_op.rows[0].process_operation,pl.amount,pl.amount2,pl.asset,result.user])
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_deposit($1,$2,$3,$4,$5);`,[new_vsc_op.rows[0].process_operation,pl.amount2,pl.asset,result.user,'hive'])
                     break
                 default:
                     break

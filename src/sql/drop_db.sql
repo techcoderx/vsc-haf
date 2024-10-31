@@ -15,9 +15,6 @@ ALTER TABLE vsc_app.keyauths_archive DROP CONSTRAINT IF EXISTS keyauths_op_id_fk
 ALTER TABLE vsc_app.deposits DROP CONSTRAINT IF EXISTS deposits_in_op_fk;
 ALTER TABLE vsc_app.deposits DROP CONSTRAINT IF EXISTS deposits_dest_acc_fk;
 ALTER TABLE vsc_app.deposits DROP CONSTRAINT IF EXISTS deposits_dest_did_fk;
-ALTER TABLE vsc_app.withdrawal_request DROP CONSTRAINT IF EXISTS withdrawal_request_in_op_fk;
-ALTER TABLE vsc_app.withdrawal_request DROP CONSTRAINT IF EXISTS withdrawal_request_dest_acc_fk;
-ALTER TABLE vsc_app.withdrawal_request DROP CONSTRAINT IF EXISTS withdrawal_request_status_fk;
 ALTER TABLE vsc_app.withdrawals DROP CONSTRAINT IF EXISTS withdrawals_in_op_fk;
 ALTER TABLE vsc_app.withdrawals DROP CONSTRAINT IF EXISTS withdrawals_dest_acc_fk;
 

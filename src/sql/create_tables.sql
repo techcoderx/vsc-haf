@@ -260,17 +260,6 @@ CREATE TABLE IF NOT EXISTS vsc_app.deposits(
     )
 );
 
-CREATE TABLE IF NOT EXISTS vsc_app.withdrawal_request(
-    id SERIAL PRIMARY KEY,
-    in_op BIGINT NOT NULL,
-    amount INTEGER NOT NULL,
-    amount2 INTEGER NOT NULL,
-    asset SMALLINT NOT NULL,
-    dest_acc INTEGER NOT NULL,
-    status SMALLINT DEFAULT 1,
-    UNIQUE(in_op)
-);
-
 CREATE TABLE IF NOT EXISTS vsc_app.withdrawal_status(
     id SERIAL PRIMARY KEY,
     name VARCHAR(10)
@@ -291,7 +280,8 @@ CREATE TABLE IF NOT EXISTS vsc_app.l2_withdrawals(
     to_id INTEGER NOT NULL, -- to account id referencing dids/hive.vsc_app_accounts table
     amount INTEGER NOT NULL, -- amount in mHIVE/mHBD
     asset SMALLINT NOT NULL, -- 0 for HIVE, 1 for HBD
-    memo VARCHAR
+    memo VARCHAR,
+    status SMALLINT DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.dids(

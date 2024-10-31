@@ -1,6 +1,6 @@
 import logger from '../logger.js'
 import db from '../db.js'
-import { L2PayloadTypes, ParsedOp, VscOp, BlockOp, OpBody, BridgeRefPayload, CustomJsonPayloads, BridgeRefResult, ElectionOp, ElectionPayload2, ElectionMember, ElectionMemberWeighted, ShuffledSchedule, UnsignedBlock, BlockPayload, L1ContractCallTxOp, L1TransferWithdrawTxOp, L1TxPayload, NewContractPayload, NewContractOp } from '../processor_types.js'
+import { L2PayloadTypes, ParsedOp, VscOp, BlockOp, OpBody, BridgeRefPayload, CustomJsonPayloads, BridgeRefResult, ElectionOp, ElectionPayload2, ElectionMember, ElectionMemberWeighted, ShuffledSchedule, UnsignedBlock, BlockPayload, L1ContractCallTxOp, L1TransferWithdrawTxOp, L1TxPayload, NewContractPayload, NewContractOp, DepositPayload } from '../processor_types.js'
 import { BlockScheduleParams, LastElectionDetail, WitnessConsensusDid } from '../psql_types.js'
 import ipfs from './ipfs.js'
 import { CID } from 'kubo-rpc-client'
@@ -9,7 +9,7 @@ import { createDag, isCID, encodePayload } from './ipfs_dag.js'
 import { BlsCircuit, initBls } from '../utils/bls-did.js'
 import op_type_map from '../operations.js'
 import { AnchorRefBody, AnchorRefHead, BlockBody, BridgeRef, ContractOutBody, ContractStorageProof, EventOutBody, InputBody } from './ipfs_payload.js'
-import { APP_CONTEXT, CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT, EPOCH_LENGTH, MIN_BLOCKS_SINCE_LAST_ELECTION, MAX_BLOCKS_SINCE_LAST_ELECTION, ROUND_LENGTH, SCHEMA_NAME, SUPERMAJORITY, ELECTION_UPDATE_1_EPOCH, ELECTION_UPDATE_2_EPOCH } from '../constants.js'
+import { APP_CONTEXT, CONTRACT_DATA_AVAILABLITY_PROOF_REQUIRED_HEIGHT, EPOCH_LENGTH, L1_ASSETS, MIN_BLOCKS_SINCE_LAST_ELECTION, MAX_BLOCKS_SINCE_LAST_ELECTION, ROUND_LENGTH, SCHEMA_NAME, SUPERMAJORITY, ELECTION_UPDATE_1_EPOCH, ELECTION_UPDATE_2_EPOCH } from '../constants.js'
 import { shuffle } from '../utils/shuffle-seed.js'
 import BitSet from 'bitset'
 
@@ -87,8 +87,33 @@ const processor = {
         // been validated in main HAF app sync, however we perform further
         // validation and parsing on data only accessible in IPFS here.
         // most of the code for validation here are from vsc-node repo
-        // these are all custom jsons, so we parse the json payload right away
+        // these are all custom jsons (excluding legacy withdraw requests)
         let parsed: OpBody = JSON.parse(op.body)
+        if (op.op_type === op_type_map.map.withdrawal_request) {
+            let details: ParsedOp<DepositPayload> = {
+                valid: true,
+                user: parsed.value.from,
+                block_num: op.block_num,
+                trx_in_block: op.trx_in_block,
+                op_pos: op.op_pos
+            }
+            let p: any = {}
+            try {
+                p = JSON.parse(parsed.value.memo)
+            } catch {
+                const queryString = new URLSearchParams(parsed.value.memo)
+                for(let [key, value] of queryString.entries())
+                    p[key] = value
+            }
+            details.user = parsed.value.from
+            details.payload = {
+                amount: Math.round(parseFloat(parseFloat(p.amount).toFixed(3))*1000),
+                amount2: parseInt(parsed.value.amount.amount),
+                asset: L1_ASSETS.indexOf(parsed.value.amount.nai),
+                owner: parsed.value.to.replace('@','').replace('hive:','')
+            }
+            return details
+        }
         let details: ParsedOp<L2PayloadTypes> = {
             valid: true,
             user: parsed.value.required_auths.length > 0 ? parsed.value.required_auths[0] : parsed.value.required_posting_auths[0],
@@ -475,15 +500,21 @@ const processor = {
                         if (typeof bridgeRefContent.withdrawals[w].id !== 'string')
                             continue
                         const parts = bridgeRefContent.withdrawals[w].id.split('-')
-                        if (parts.length !== 2 || !/^[0-9a-fA-F]{40}$/i.test(parts[0]))
+                        if (parts.length < 2)
                             continue
-                        const opPos = parseInt(parts[1])
-                        if (isNaN(opPos) || opPos < 0)
-                            continue
-                        const vscOpId = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.get_vsc_op_by_tx_hash($1,$2);`,[parts[0].toLowerCase(),opPos])
-                        if (vscOpId.rowCount === 0 || vscOpId.rows[0].op_type !== 11)
-                            continue
-                        result.push(vscOpId.rows[0].id)
+                        if (/^[0-9a-fA-F]{40}$/i.test(parts[0])) { 
+                            const opPos = parseInt(parts[1])
+                            if (isNaN(opPos) || opPos < 0)
+                                continue
+                            const vscOpId = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.get_vsc_op_by_tx_hash($1,$2);`,[parts[0].toLowerCase(),opPos])
+                            if (vscOpId.rowCount === 0 || vscOpId.rows[0].op_type !== 11)
+                                continue
+                            const requestId = (await db.client.query(`SELECT details FROM ${SCHEMA_NAME}.l1_txs WHERE id=$1;`,[vscOpId.rows[0].id])).rows[0].details
+                            result.push(requestId)
+                        } else if (isCID(parts[0])) {
+                            const requestId = (await db.client.query(`SELECT details FROM ${SCHEMA_NAME}.l2_txs WHERE cid=$1;`,[parts[0]])).rows[0].details
+                            result.push(requestId)
+                        }
                     }
                     details.payload = result
                     break
@@ -569,6 +600,22 @@ const processor = {
                         result.payload.voted_weight
                     ])
                     break
+                case op_type_map.map.withdrawal_request:
+                    result.payload = result.payload as DepositPayload
+                    await db.client.query(`SELECT ${SCHEMA_NAME}.insert_l1_tx($1,$2,$3::SMALLINT[],$4::jsonb);`,[
+                        op.id,
+                        `{${result.user}}`,
+                        `{1}`,
+                        JSON.stringify({
+                            op: 'withdraw',
+                            payload: {
+                                from: result.user,
+                                to: result.payload.owner,
+                                amount: result.payload.amount+(result.payload.amount2 || 0),
+                                tk: result.payload.asset === 0 ? 'HIVE' : 'HBD'
+                            }
+                        })
+                    ])
                 case op_type_map.map.bridge_ref:
                     result.payload = result.payload as BridgeRefResult
                     await db.client.query(`SELECT ${SCHEMA_NAME}.update_withdrawal_statuses($1,$2,$3);`,['{'+result.payload.join(',')+'}','completed',result.block_num])

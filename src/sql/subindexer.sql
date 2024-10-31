@@ -95,7 +95,7 @@ BEGIN
             FROM vsc_app.l1_operations vo
             JOIN hive.operations_view ho ON
                 vo.op_id = ho.id
-            WHERE vo.id >= _first_op AND vo.id <= _last_op AND (vo.op_type = 3 OR vo.op_type = 4 OR vo.op_type = 5 OR vo.op_type = 6 OR vo.op_type = 8);
+            WHERE vo.id >= _first_op AND vo.id <= _last_op AND vo.op_type = ANY('{3,4,5,6,8,12}'::INT[]);
 END
 $function$
 LANGUAGE plpgsql STABLE;
@@ -798,38 +798,13 @@ END
 $function$
 LANGUAGE plpgsql VOLATILE;
 
--- Legacy?
-CREATE OR REPLACE FUNCTION vsc_app.update_withdrawal_statuses(_in_op_ids BIGINT[], _status VARCHAR, _current_block_num INTEGER)
-RETURNS void
-AS
-$function$
-DECLARE
-    _status_id SMALLINT;
-    _status_id_failed SMALLINT;
-    _status_id_completed SMALLINT;
+CREATE OR REPLACE FUNCTION vsc_app.update_withdrawal_statuses(_ids BIGINT[], _status VARCHAR)
+RETURNS void AS $$
 BEGIN
-    SELECT id INTO _status_id FROM vsc_app.withdrawal_status WHERE name=_status;
-    IF _status_id IS NULL THEN
-        RAISE EXCEPTION 'status does not exist';
-    END IF;
-
-    UPDATE vsc_app.withdrawal_request SET
-        status=_status_id
-    WHERE in_op = ANY(_in_op_ids);
-
-    SELECT id INTO _status_id_failed FROM vsc_app.withdrawal_status WHERE name='failed';
-    SELECT id INTO _status_id_completed FROM vsc_app.withdrawal_status WHERE name='completed';
-    UPDATE vsc_app.withdrawal_request SET
-        status=_status_id_failed
-    WHERE in_op < (
-        SELECT id
-        FROM vsc_app.l1_operations
-        WHERE block_num < (_current_block_num - 28800)
-        ORDER BY id DESC
-        LIMIT 1
-    ) AND status != _status_id_completed;
-END
-$function$
+    UPDATE vsc_app.l2_withdrawals SET
+        status = (SELECT id FROM vsc_app.withdrawal_status WHERE name=_status)
+    WHERE in_op = ANY(_ids);
+END $$
 LANGUAGE plpgsql VOLATILE;
 
 CREATE OR REPLACE FUNCTION vsc_app.insert_contract(

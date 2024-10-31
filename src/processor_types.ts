@@ -90,7 +90,7 @@ export interface VscOp extends Op {
 
 export type CustomJsonPayloads = BlockOp | NewContractOp | ElectionOp | BridgeRefPayload | L1ContractCallTxOp | L1TransferWithdrawTxOp
 export type BridgeRefResult = bigint[]
-export type L2PayloadTypes = BridgeRefResult | ElectionPayload2 | BlockPayload | L1TxPayload | NewContractPayload
+export type L2PayloadTypes = BridgeRefResult | ElectionPayload2 | BlockPayload | L1TxPayload | NewContractPayload | DepositPayload
 export type L2Tx = L2ContractCallPayload | L2ContractOutPayload | AnchorRefPayload | TransferPayload | WithdrawPayload | EventsPayload
 export interface BlockOp {
     net_id: string

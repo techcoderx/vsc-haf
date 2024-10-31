@@ -321,31 +321,6 @@ END
 $function$
 LANGUAGE plpgsql VOLATILE;
 
--- Legacy?
-CREATE OR REPLACE FUNCTION vsc_app.insert_withdrawal_request(
-    _in_op BIGINT,
-    _amount INTEGER,
-    _amount2 INTEGER,
-    _asset SMALLINT,
-    _dest VARCHAR
-)
-RETURNS void
-AS
-$function$
-DECLARE
-    _dest_id INTEGER = NULL;
-BEGIN
-    SELECT id INTO _dest_id FROM hive.vsc_app_accounts WHERE name=_dest;
-    IF _dest_id IS NULL THEN
-        RAISE EXCEPTION 'hive username does not exist';
-    END IF;
-
-    INSERT INTO vsc_app.withdrawal_request(in_op, amount, amount2, asset, dest_acc)
-        VALUES(_in_op, _amount, _amount2, _asset, _dest_id);
-END
-$function$
-LANGUAGE plpgsql VOLATILE;
-
 CREATE OR REPLACE FUNCTION vsc_app.insert_withdrawal(
     _in_op BIGINT,
     _amount INTEGER,

@@ -44,9 +44,6 @@ SELECT setval(pg_get_serial_sequence('vsc_app.transfers', 'id'), 1, false);
 SELECT setval(pg_get_serial_sequence('vsc_app.anchor_refs', 'id'), 1, false);
 SELECT setval(pg_get_serial_sequence('vsc_app.election_result_members', 'id'), 1, false);
 
-UPDATE vsc_app.withdrawal_request SET
-    status = 1;
-
 UPDATE vsc_app.witnesses SET
     last_block = NULL,
     produced = 0;

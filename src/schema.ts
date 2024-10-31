@@ -84,21 +84,6 @@ const HAF_FKS: FKS_TYPE = {
         fk: 'dest_did',
         ref: SCHEMA_NAME+'.dids(id)'
     },
-    withdrawal_request_in_op_fk: {
-        table: SCHEMA_NAME+'.withdrawal_request',
-        fk: 'in_op',
-        ref: SCHEMA_NAME+'.l1_operations(id)'
-    },
-    withdrawal_request_dest_acc_fk: {
-        table: SCHEMA_NAME+'.withdrawal_request',
-        fk: 'dest_acc',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
-    },
-    withdrawal_request_status_fk: {
-        table: SCHEMA_NAME+'.withdrawal_request',
-        fk: 'status',
-        ref: SCHEMA_NAME+'.withdrawal_status(id)'
-    },
     withdrawals_in_op_fk: {
         table: SCHEMA_NAME+'.withdrawals',
         fk: 'in_op',

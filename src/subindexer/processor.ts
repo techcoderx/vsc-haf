@@ -508,12 +508,16 @@ const processor = {
                             if (isNaN(opPos) || opPos < 0)
                                 continue
                             const vscOpId = await db.client.query(`SELECT * FROM ${SCHEMA_NAME}.get_vsc_op_by_tx_hash($1,$2);`,[parts[0].toLowerCase(),opPos])
-                            if (vscOpId.rowCount === 0 || vscOpId.rows[0].op_type !== 12)
+                            if (vscOpId.rowCount === 0 || (vscOpId.rows[0].op_type !== 12 && vscOpId.rows[0].op_type !== 5))
                                 continue
-                            const requestId = await db.client.query(`SELECT details FROM ${SCHEMA_NAME}.l1_txs WHERE id=$1::BIGINT;`,[vscOpId.rows[0].id])
+                            const requestId = await db.client.query(`SELECT details, tx_type FROM ${SCHEMA_NAME}.l1_txs WHERE id=$1::BIGINT;`,[vscOpId.rows[0].id])
+                            if (requestId.rows[0].tx_type !== 4)
+                                continue
                             result.push(requestId.rows[0].details)
                         } else if (isCID(parts[0])) {
-                            const requestId = await db.client.query(`SELECT details FROM ${SCHEMA_NAME}.l2_txs WHERE cid=$1;`,[parts[0]])
+                            const requestId = await db.client.query(`SELECT details, tx_type FROM ${SCHEMA_NAME}.l2_txs WHERE cid=$1;`,[parts[0]])
+                            if (requestId.rows[0].tx_type !== 4)
+                                continue
                             result.push(requestId.rows[0].details)
                         }
                     }

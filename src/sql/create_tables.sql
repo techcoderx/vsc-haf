@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.l1_users(
     count BIGINT DEFAULT 0,
     event_count INTEGER NOT NULL DEFAULT 0,
     deposit_count INTEGER NOT NULL DEFAULT 0,
+    wdrq_count INTEGER NOT NULL DEFAULT 0,
     last_op_ts TIMESTAMP
 );
 
@@ -281,6 +282,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.l2_withdrawals(
     amount INTEGER NOT NULL, -- amount in mHIVE/mHBD
     asset SMALLINT NOT NULL, -- 0 for HIVE, 1 for HBD
     memo VARCHAR,
+    nonce_counter INTEGER,
     status SMALLINT DEFAULT 1
 );
 
@@ -290,6 +292,7 @@ CREATE TABLE IF NOT EXISTS vsc_app.dids(
     count INTEGER NOT NULL DEFAULT 0,
     event_count INTEGER NOT NULL DEFAULT 0,
     deposit_count INTEGER NOT NULL DEFAULT 0,
+    wdrq_count INTEGER NOT NULL DEFAULT 0,
     last_op_ts TIMESTAMP,
     UNIQUE(did)
 );

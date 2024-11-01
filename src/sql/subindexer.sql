@@ -552,11 +552,16 @@ DECLARE
     _from_id INTEGER = NULL;
     _to_id INTEGER = NULL;
     _new_l2_tx_id INTEGER;
+    _nonce_counter INTEGER;
 BEGIN
     -- prepare from id
     IF (SELECT starts_with(_from, 'did:')) THEN
         SELECT vsc_app.insert_tx_auth_did(NULL, _from, NULL) INTO _from_id;
         _from_acctype := 2::SMALLINT;
+
+        SELECT wdrq_count INTO _nonce_counter FROM vsc_app.dids WHERE id=_from_id;
+        _nonce_counter := COALESCE(_nonce_counter, 0)+1;
+        UPDATE vsc_app.dids SET wdrq_count = _nonce_counter WHERE id=_from_id;
     ELSIF (SELECT starts_with(_from, 'hive:')) THEN
         SELECT id INTO _from_id FROM hive.vsc_app_accounts WHERE name=(SELECT SPLIT_PART(_from, ':', 2));
         _from_acctype := 1::SMALLINT;
@@ -564,6 +569,12 @@ BEGIN
         IF _from_id IS NULL THEN
             RAISE EXCEPTION 'sending from non-existent hive user, %', _from; -- this should never happen
         END IF;
+
+        SELECT wdrq_count INTO _nonce_counter FROM vsc_app.l1_users WHERE id = _from_id;
+        _nonce_counter := COALESCE(_nonce_counter, 0)+1;
+        INSERT INTO vsc_app.l1_users(id, wdrq_count)
+            VALUES(_from_id, _nonce_counter)
+            ON CONFLICT(id) DO UPDATE SET wdrq_count = _nonce_counter; -- upsert
     END IF;
 
     -- prepare to id
@@ -575,8 +586,8 @@ BEGIN
         RAISE EXCEPTION 'sending to non-existent hive user %', _to; -- this shouldn't happen either unless vsc-node doesn't check this properly
     END IF;
 
-    INSERT INTO vsc_app.l2_withdrawals(from_acctype, from_id, to_id, amount, asset, memo)
-        VALUES(_from_acctype, _from_id, _to_id, _amount, (SELECT vsc_app.get_asset_id(_tk)), _memo)
+    INSERT INTO vsc_app.l2_withdrawals(from_acctype, from_id, to_id, amount, asset, memo, nonce_counter)
+        VALUES(_from_acctype, _from_id, _to_id, _amount, (SELECT vsc_app.get_asset_id(_tk)), _memo, _nonce_counter)
         RETURNING id INTO _xfer_id;
 
     RETURN _xfer_id;

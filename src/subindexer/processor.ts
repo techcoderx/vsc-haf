@@ -110,7 +110,7 @@ const processor = {
                 amount: Math.round(parseFloat(parseFloat(p.amount).toFixed(3))*1000),
                 amount2: parseInt(parsed.value.amount.amount),
                 asset: L1_ASSETS.indexOf(parsed.value.amount.nai),
-                owner: parsed.value.to.replace('@','').replace('hive:','')
+                owner: p.to ? p.to.replace('@','').replace('hive:','') : details.user
             }
             return details
         }

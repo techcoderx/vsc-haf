@@ -1165,7 +1165,7 @@ BEGIN
         SELECT jsonb_agg(jsonb_build_object(
             'id', id,
             'ts', ts,
-            'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
+            'tx_hash', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
             'block_num', block_num,
             'to', name,
             'amount', ROUND(amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(asset))
@@ -1204,7 +1204,7 @@ BEGIN
             SELECT jsonb_agg(jsonb_build_object(
                 'id', id,
                 'ts', ts,
-                'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
+                'tx_hash', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
                 'block_num', block_num,
                 'amount', ROUND(amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(asset)),
                 'nonce', nonce_counter
@@ -1226,7 +1226,7 @@ BEGIN
             SELECT jsonb_agg(jsonb_build_object(
                 'id', id,
                 'ts', ts,
-                'l1_tx', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
+                'tx_hash', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
                 'block_num', block_num,
                 'amount', ROUND(amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(asset)),
                 'nonce', nonce_counter
@@ -1262,7 +1262,7 @@ BEGIN
         SELECT jsonb_agg(jsonb_build_object(
             'id', id,
             'ts', ts,
-            'in_op', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
+            'tx_hash', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
             'block_num', block_num,
             'username', name,
             'amount', ROUND(amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(asset))
@@ -1311,7 +1311,7 @@ BEGIN
             SELECT jsonb_agg(jsonb_build_object(
                 'id', id,
                 'ts', ts,
-                'l1_tx', trx_hash,
+                'tx_hash', trx_hash,
                 'block_num', block_num,
                 'to', to_user,
                 'amount', ROUND(amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(asset)),
@@ -1343,7 +1343,7 @@ BEGIN
             SELECT jsonb_agg(jsonb_build_object(
                 'id', id,
                 'ts', ts,
-                'l1_tx', trx_hash,
+                'tx_hash', trx_hash,
                 'block_num', block_num,
                 'to', to_user,
                 'amount', ROUND(amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(asset)),

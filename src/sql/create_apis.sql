@@ -1292,7 +1292,7 @@ BEGIN
         SELECT id INTO _from_id FROM hive.vsc_app_accounts WHERE name = REPLACE(address, 'hive:', '');
         RETURN (
             WITH wdrq AS (
-                SELECT w.id, encode(ht.trx_hash, 'hex') trx_hash, ha.name to_user, o.block_num, o.ts, w.amount, w.asset, w.memo, ws.name status, w.nonce_counter
+                SELECT w.id, encode(ht.trx_hash, 'hex') trx_hash, ha.name to_user, o.block_num, o.ts, w.amount, w.asset, w.memo, (CASE WHEN o.ts < NOW() - INTERVAL '1 day' AND w.status = 1 THEN 'failed' ELSE ws.name END) status, w.nonce_counter
                 FROM vsc_app.l2_withdrawals w
                 JOIN vsc_app.withdrawal_status ws ON
                     ws.id = w.status
@@ -1324,7 +1324,7 @@ BEGIN
         SELECT id INTO _from_id FROM vsc_app.dids WHERE did = address;
         RETURN (
             WITH wdrq AS (
-                SELECT w.id, t.cid trx_hash, ha.name to_user, t.block_num, o.ts, w.amount, w.asset, w.memo, ws.name status, w.nonce_counter
+                SELECT w.id, t.cid trx_hash, ha.name to_user, t.block_num, o.ts, w.amount, w.asset, w.memo, (CASE WHEN o.ts < NOW() - INTERVAL '1 day' AND w.status = 1 THEN 'failed' ELSE ws.name END) status, w.nonce_counter
                 FROM vsc_app.l2_withdrawals w
                 JOIN vsc_app.withdrawal_status ws ON
                     ws.id = w.status

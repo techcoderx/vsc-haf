@@ -1271,6 +1271,93 @@ BEGIN
 END $function$
 LANGUAGE plpgsql STABLE;
 
+CREATE OR REPLACE FUNCTION vsc_api.get_withdrawal_requests_by_address(address VARCHAR, count INTEGER = 100, last_nonce INTEGER = NULL)
+RETURNS jsonb AS $$
+DECLARE
+    _count ALIAS FOR count;
+    _from_id INTEGER;
+BEGIN
+    IF last_nonce IS NOT NULL AND last_nonce < 0 THEN
+        RETURN jsonb_build_object(
+            'error', 'last_nonce must be greater than or equal to 0 if not null'
+        );
+    ELSIF count <= 0 OR count > 100 THEN
+        RETURN jsonb_build_object(
+            'error', 'count must be between 1 and 100'
+        );
+    END IF;
+
+    -- get from id
+    IF starts_with(address, 'hive:') THEN
+        SELECT id INTO _from_id FROM hive.vsc_app_accounts WHERE name = REPLACE(address, 'hive:', '');
+        RETURN (
+            WITH wdrq AS (
+                SELECT w.id, encode(ht.trx_hash, 'hex') trx_hash, ha.name to_user, o.block_num, o.ts, w.amount, w.asset, w.memo, ws.name status, w.nonce_counter
+                FROM vsc_app.l2_withdrawals w
+                JOIN vsc_app.withdrawal_status ws ON
+                    ws.id = w.status
+                JOIN hive.vsc_app_accounts ha ON
+                    ha.id = w.to_id
+                JOIN vsc_app.l1_txs t ON
+                    t.details = w.id AND t.tx_type = 4
+                JOIN vsc_app.l1_operations o ON
+                    o.id = t.id
+                JOIN hive.irreversible_transactions_view ht ON
+                    ht.block_num = o.block_num AND ht.trx_in_block = o.trx_in_block
+                WHERE w.from_acctype = 1 AND w.from_id = _from_id AND (CASE WHEN last_nonce IS NOT NULL THEN w.nonce_counter <= last_nonce ELSE TRUE END)
+                ORDER BY w.nonce_counter DESC
+                LIMIT _count
+            )
+            SELECT jsonb_agg(jsonb_build_object(
+                'id', id,
+                'ts', ts,
+                'l1_tx', trx_hash,
+                'block_num', block_num,
+                'to', to_user,
+                'amount', ROUND(amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(asset)),
+                'memo', memo,
+                'status', status,
+                'nonce', nonce_counter
+            )) FROM wdrq
+        );
+    ELSIF starts_with(address, 'did:') THEN
+        SELECT id INTO _from_id FROM vsc_app.dids WHERE did = address;
+        RETURN (
+            WITH wdrq AS (
+                SELECT w.id, t.cid trx_hash, ha.name to_user, t.block_num, o.ts, w.amount, w.asset, w.memo, ws.name status, w.nonce_counter
+                FROM vsc_app.l2_withdrawals w
+                JOIN vsc_app.withdrawal_status ws ON
+                    ws.id = w.status
+                JOIN hive.vsc_app_accounts ha ON
+                    ha.id = w.to_id
+                JOIN vsc_app.l2_txs t ON
+                    t.details = w.id AND t.tx_type = 4
+                JOIN vsc_app.l2_blocks b ON
+                    b.id = t.block_num
+                JOIN vsc_app.l1_operations o ON
+                    o.id = b.proposed_in_op
+                WHERE w.from_acctype = 2 AND w.from_id = _from_id AND (CASE WHEN last_nonce IS NOT NULL THEN w.nonce_counter <= last_nonce ELSE TRUE END)
+                ORDER BY w.nonce_counter DESC
+                LIMIT _count
+            )
+            SELECT jsonb_agg(jsonb_build_object(
+                'id', id,
+                'ts', ts,
+                'l1_tx', trx_hash,
+                'block_num', block_num,
+                'to', to_user,
+                'amount', ROUND(amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(asset)),
+                'memo', memo,
+                'status', status,
+                'nonce', nonce_counter
+            )) FROM wdrq
+        );
+    ELSE
+        RETURN jsonb_build_object('error', 'invalid address');
+    END IF;
+END $$
+LANGUAGE plpgsql STABLE;
+
 -- Elections
 CREATE OR REPLACE FUNCTION vsc_api.list_epochs(last_epoch INTEGER = NULL, count INTEGER = 100)
 RETURNS jsonb

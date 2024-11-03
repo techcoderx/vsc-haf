@@ -51,7 +51,10 @@ UPDATE vsc_app.witnesses SET
 UPDATE vsc_app.dids SET
     last_op_ts = NULL,
     count = 0,
-    event_count = 0;
+    event_count = 0,
+    wdrq_count = 0;
 
 UPDATE vsc_app.l1_users SET
-    event_count = 0;
+    count = 0,
+    event_count = 0,
+    wdrq_count = 0;

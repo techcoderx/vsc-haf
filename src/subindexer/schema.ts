@@ -185,6 +185,10 @@ export const INDEXES: INDEXES_TYPE = {
     l2_txs_details_idx: {
         table_name: SCHEMA_NAME+'.l2_txs',
         columns: [{ col_name: 'details', order: Ordering.ASC }]
+    },
+    withdraw_req_from_id_idx: {
+        table_name: SCHEMA_NAME+'.l2_withdrawals',
+        columns: [{ col_name: 'from_acctype', order: Ordering.ASC }, { col_name: 'from_id', order: Ordering.ASC }, { col_name: 'nonce_counter', order: Ordering.DESC }]
     }
 }
 

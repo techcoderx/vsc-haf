@@ -754,6 +754,8 @@ BEGIN
             'name', username,
             'tx_count', COALESCE(u.count, 0),
             'event_count', COALESCE(u.event_count, 0),
+            'deposit_count', COALESCE(u.deposit_count, 0),
+            'withdraw_req_count', COALESCE(u.wdrq_count, 0),
             'last_activity', COALESCE(u.last_op_ts, '1970-01-01T00:00:00')
         )
         FROM vsc_app.l1_users u
@@ -776,6 +778,9 @@ BEGIN
         SELECT jsonb_build_object(
             'name', _did,
             'tx_count', COALESCE(d.count, 0),
+            'event_count', COALESCE(d.event_count, 0),
+            'deposit_count', COALESCE(d.deposit_count, 0),
+            'withdraw_req_count', COALESCE(d.wdrq_count, 0),
             'last_activity', COALESCE(d.last_op_ts, '1970-01-01T00:00:00')
         )
         FROM vsc_app.dids d

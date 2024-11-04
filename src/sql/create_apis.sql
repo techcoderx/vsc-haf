@@ -1264,7 +1264,7 @@ BEGIN
             'ts', ts,
             'tx_hash', (SELECT vsc_app.get_tx_hash_by_op(block_num, trx_in_block)),
             'block_num', block_num,
-            'username', name,
+            'to', name,
             'amount', ROUND(amount::decimal/1000,3) || ' ' || (SELECT vsc_app.asset_by_id(asset))
         )) FROM withdrawals
     );

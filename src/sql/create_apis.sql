@@ -1624,6 +1624,15 @@ DECLARE
     _result_int INTEGER;
     _result_varchar VARCHAR;
 BEGIN
+    -- did: address search
+    IF starts_with(_cid, 'did:') THEN
+        SELECT id INTO _result_int FROM vsc_app.dids WHERE did = _cid;
+        RETURN jsonb_build_object(
+            'type', 'address',
+            'result', (CASE WHEN _result_int IS NOT NULL THEN _cid ELSE NULL END)
+        );
+    END IF;
+
     -- Block search
     SELECT id INTO _result_int FROM vsc_app.l2_blocks WHERE block_hash = _cid OR block_header_hash = _cid;
     IF _result_int IS NOT NULL THEN

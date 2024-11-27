@@ -2,7 +2,7 @@ FROM node:20-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
-RUN apk --no-cache add postgresql17-client
+RUN apk --no-cache add postgresql16-client
 RUN adduser --disabled-password --gecos '' haf_admin
 RUN adduser --disabled-password --gecos '' vsc_owner
 COPY . /app

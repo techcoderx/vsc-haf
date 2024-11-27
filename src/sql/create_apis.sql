@@ -6,7 +6,7 @@ GRANT USAGE ON SCHEMA vsc_api TO vsc_user;
 GRANT USAGE ON SCHEMA vsc_app TO vsc_user;
 GRANT SELECT ON ALL TABLES IN SCHEMA vsc_api TO vsc_user;
 GRANT SELECT ON ALL TABLES IN SCHEMA vsc_app TO vsc_user;
-GRANT SELECT ON TABLE hive.vsc_app_accounts TO vsc_user;
+GRANT SELECT ON TABLE hafd.vsc_app_accounts TO vsc_user;
 GRANT SELECT ON vsc_app.transactions_view TO vsc_user;
 GRANT SELECT ON vsc_app.operations_view TO vsc_user;
 
@@ -60,7 +60,7 @@ BEGIN
         FROM vsc_app.l2_blocks b
         JOIN vsc_app.l1_operations o ON
             o.id = b.proposed_in_op
-        JOIN hive.vsc_app_accounts a ON
+        JOIN hafd.vsc_app_accounts a ON
             a.id = b.proposer
         WHERE b.block_header_hash = blk_hash OR b.block_hash = blk_hash;
     IF _block_hash IS NULL THEN
@@ -116,7 +116,7 @@ BEGIN
         FROM vsc_app.l2_blocks b
         JOIN vsc_app.l1_operations o ON
             o.id = b.proposed_in_op
-        JOIN hive.vsc_app_accounts a ON
+        JOIN hafd.vsc_app_accounts a ON
             a.id = b.proposer
         WHERE b.id = blk_id;
     IF _block_hash IS NULL THEN
@@ -177,7 +177,7 @@ BEGIN
         FROM vsc_app.l2_blocks bk
         JOIN vsc_app.l1_operations l1_op ON
             bk.proposed_in_op = l1_op.id
-        JOIN hive.vsc_app_accounts a ON
+        JOIN hafd.vsc_app_accounts a ON
             bk.proposer = a.id
         WHERE bk.id >= blk_id_start AND bk.id < blk_id_start+blk_count
     );
@@ -280,7 +280,7 @@ BEGIN
                 'bv', encode(e.bv, 'hex')
             ))
             FROM vsc_app.election_results e
-            JOIN hive.vsc_app_accounts a ON
+            JOIN hafd.vsc_app_accounts a ON
                 a.id = e.proposer
             WHERE e.proposed_in_op = l1_op_id
         );
@@ -296,7 +296,7 @@ BEGIN
                 'block_hash', b.block_header_hash,
                 'block_body_hash', b.block_hash,
                 'proposer', (
-                    SELECT bp.name FROM hive.vsc_app_accounts bp WHERE bp.id = b.proposer
+                    SELECT bp.name FROM hafd.vsc_app_accounts bp WHERE bp.id = b.proposer
                 ),
                 'txs', (SELECT vsc_app.get_l2_operation_count_in_block(b.id)),
                 'merkle_root', encode(b.merkle_root, 'hex'),
@@ -722,14 +722,14 @@ BEGIN
 
     RETURN COALESCE((
         WITH op AS (
-            SELECT o.id, hive.vsc_app_accounts.name, o.nonce, o.op_type, ot.op_name, ho.block_num, ho.trx_in_block, ho.op_pos, o.ts, ho.body::TEXT
+            SELECT o.id, hafd.vsc_app_accounts.name, o.nonce, o.op_type, ot.op_name, ho.block_num, ho.trx_in_block, ho.op_pos, o.ts, ho.body::TEXT
             FROM vsc_app.l1_operations o
             JOIN vsc_app.l1_operation_types ot ON
                 ot.id = o.op_type
             JOIN hive.operations_view ho ON
                 ho.id = o.op_id
-            JOIN hive.vsc_app_accounts ON
-                hive.vsc_app_accounts.id = o.user_id
+            JOIN hafd.vsc_app_accounts ON
+                hafd.vsc_app_accounts.id = o.user_id
             WHERE ho.block_num >= l1_blk_start AND ho.block_num < l1_blk_start+l1_blk_count
         )
         SELECT jsonb_agg(jsonb_build_object(
@@ -759,7 +759,7 @@ BEGIN
             'last_activity', COALESCE(u.last_op_ts, '1970-01-01T00:00:00')
         )
         FROM vsc_app.l1_users u
-        JOIN hive.vsc_app_accounts ac ON
+        JOIN hafd.vsc_app_accounts ac ON
             ac.id = u.id
         WHERE ac.name=username
     );
@@ -808,7 +808,7 @@ BEGIN
             'produced', w.produced
         )
         FROM vsc_app.witnesses w
-        JOIN hive.vsc_app_accounts a ON
+        JOIN hafd.vsc_app_accounts a ON
             a.id = w.id
         LEFT JOIN vsc_app.l1_operations l1_e ON
             l1_e.id = w.enabled_at
@@ -831,7 +831,7 @@ BEGIN
         WITH result AS (
             SELECT w.witness_id, a.name, w.did, w.consensus_did, w.enabled, vsc_app.get_tx_hash_by_op(l1_e.block_num, l1_e.trx_in_block) enabled_at, vsc_app.get_tx_hash_by_op(l1_d.block_num, l1_d.trx_in_block) disabled_at, w.git_commit, w.last_block, w.produced
             FROM vsc_app.witnesses w
-            JOIN hive.vsc_app_accounts a ON
+            JOIN hafd.vsc_app_accounts a ON
                 a.id = w.id
             LEFT JOIN vsc_app.l1_operations l1_e ON
                 l1_e.id = w.enabled_at
@@ -877,7 +877,7 @@ BEGIN
             FROM vsc_app.l1_operations o
             JOIN vsc_app.l1_operation_types ot ON
                 ot.id = o.op_type
-            JOIN hive.vsc_app_accounts a ON
+            JOIN hafd.vsc_app_accounts a ON
                 a.id = o.user_id
             JOIN hive.operations_view ho ON
                 ho.id = o.op_id
@@ -910,7 +910,7 @@ BEGIN
             FROM vsc_app.l1_operations vo
             JOIN vsc_app.l1_operation_types vt ON
                 vt.id=vo.op_type
-            JOIN hive.vsc_app_accounts va ON
+            JOIN hafd.vsc_app_accounts va ON
                 va.id=vo.user_id
             JOIN hive.operations_view ho ON
                 ho.block_num = vo.block_num AND ho.trx_in_block = vo.trx_in_block AND ho.op_pos = vo.op_pos
@@ -949,7 +949,7 @@ BEGIN
             FROM vsc_app.l1_operations o
             JOIN vsc_app.l1_operation_types ot ON
                 ot.id = o.op_type
-            JOIN hive.vsc_app_accounts a ON
+            JOIN hafd.vsc_app_accounts a ON
                 a.id = o.user_id
             JOIN hive.operations_view ho ON
                 ho.id = o.op_id
@@ -986,7 +986,7 @@ BEGIN
             FROM vsc_app.contracts c
             JOIN vsc_app.l1_operations o ON
                 o.id=c.created_in_op
-            JOIN hive.vsc_app_accounts a ON
+            JOIN hafd.vsc_app_accounts a ON
                 a.id=o.user_id
             ORDER BY o.block_num DESC
             LIMIT count
@@ -1030,7 +1030,7 @@ BEGIN
     FROM vsc_app.contracts c
     JOIN vsc_app.l1_operations o ON
         o.id=c.created_in_op
-    JOIN hive.vsc_app_accounts a ON
+    JOIN hafd.vsc_app_accounts a ON
         a.id=o.user_id
     WHERE c.contract_id = ct_id), jsonb_build_object('error', 'contract not found'));
 END
@@ -1127,7 +1127,7 @@ BEGIN
             SELECT a.name
                 INTO _u
                 FROM vsc_app.witnesses w
-                JOIN hive.vsc_app_accounts a ON
+                JOIN hafd.vsc_app_accounts a ON
                     a.id = w.id
                 WHERE w.sk_owner = _pubkey
                 LIMIT 1;
@@ -1161,7 +1161,7 @@ BEGIN
                 o.id = c.in_op
             LEFT JOIN vsc_app.dids d ON
                 d.id = c.dest_did
-            LEFT JOIN hive.vsc_app_accounts a ON
+            LEFT JOIN hafd.vsc_app_accounts a ON
                 a.id = c.dest_acc
             WHERE (CASE WHEN last_id IS NOT NULL THEN c.id <= last_id ELSE TRUE END)
             ORDER BY c.id DESC
@@ -1200,7 +1200,7 @@ BEGIN
                 FROM vsc_app.deposits c
                 JOIN vsc_app.l1_operations o ON
                     o.id = c.in_op
-                JOIN hive.vsc_app_accounts a ON
+                JOIN hafd.vsc_app_accounts a ON
                     a.id = c.dest_acc
                 WHERE a.name = REPLACE(address, 'hive:', '') AND (CASE WHEN last_nonce IS NOT NULL THEN c.nonce_counter <= last_nonce ELSE TRUE END)
                 ORDER BY c.nonce_counter DESC
@@ -1258,7 +1258,7 @@ BEGIN
             FROM vsc_app.withdrawals c
             JOIN vsc_app.l1_operations o ON
                 o.id=c.in_op
-            JOIN hive.vsc_app_accounts a ON
+            JOIN hafd.vsc_app_accounts a ON
                 a.id=c.dest_acc
             WHERE c.id <= COALESCE(last_id, 2147483647)
             ORDER BY c.id DESC
@@ -1294,14 +1294,14 @@ BEGIN
 
     -- get from id
     IF starts_with(address, 'hive:') THEN
-        SELECT id INTO _from_id FROM hive.vsc_app_accounts WHERE name = REPLACE(address, 'hive:', '');
+        SELECT id INTO _from_id FROM hafd.vsc_app_accounts WHERE name = REPLACE(address, 'hive:', '');
         RETURN (
             WITH wdrq AS (
                 SELECT w.id, encode(ht.trx_hash, 'hex') trx_hash, ha.name to_user, o.block_num, o.ts, w.amount, w.asset, w.memo, (CASE WHEN o.ts < NOW() - INTERVAL '1 day' AND w.status = 1 THEN 'failed' ELSE ws.name END) status, w.nonce_counter
                 FROM vsc_app.l2_withdrawals w
                 JOIN vsc_app.withdrawal_status ws ON
                     ws.id = w.status
-                JOIN hive.vsc_app_accounts ha ON
+                JOIN hafd.vsc_app_accounts ha ON
                     ha.id = w.to_id
                 JOIN vsc_app.l1_txs t ON
                     t.details = w.id AND t.tx_type = 4
@@ -1333,7 +1333,7 @@ BEGIN
                 FROM vsc_app.l2_withdrawals w
                 JOIN vsc_app.withdrawal_status ws ON
                     ws.id = w.status
-                JOIN hive.vsc_app_accounts ha ON
+                JOIN hafd.vsc_app_accounts ha ON
                     ha.id = w.to_id
                 JOIN vsc_app.l2_txs t ON
                     t.details = w.id AND t.tx_type = 4
@@ -1379,7 +1379,7 @@ BEGIN
             FROM vsc_app.election_results e
             JOIN vsc_app.l1_operations o ON
                 o.id = e.proposed_in_op
-            JOIN hive.vsc_app_accounts a ON
+            JOIN hafd.vsc_app_accounts a ON
                 a.id = e.proposer
             WHERE e.epoch <= COALESCE(last_epoch, 2147483647)
             ORDER BY e.epoch DESC
@@ -1475,7 +1475,7 @@ BEGIN
         FROM vsc_app.election_results e
         JOIN vsc_app.l1_operations o ON
             o.id = e.proposed_in_op
-        JOIN hive.vsc_app_accounts a ON
+        JOIN hafd.vsc_app_accounts a ON
             a.id = e.proposer
         WHERE e.epoch = epoch_num
     ), jsonb_build_object('error', 'epoch not found')));
@@ -1514,7 +1514,7 @@ BEGIN
             FROM vsc_app.l2_blocks bk
             JOIN vsc_app.l1_operations l1_op ON
                 bk.proposed_in_op = l1_op.id
-            JOIN hive.vsc_app_accounts a ON
+            JOIN hafd.vsc_app_accounts a ON
                 bk.proposer = a.id
             WHERE bk.proposed_in_op >= _start_op AND bk.proposed_in_op < _end_op AND bk.id >= start_id
             ORDER BY bk.id ASC

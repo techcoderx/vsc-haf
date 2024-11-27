@@ -468,7 +468,7 @@ const processor = {
                         for (let m in electedMembers.members) {
                             if (typeof electedMembers.members[m].account !== 'string' || typeof electedMembers.members[m].key !== 'string')
                                 continue
-                            const accountExists = await db.client.query(`SELECT * FROM hive.${APP_CONTEXT}_accounts WHERE name=$1;`,[electedMembers.members[m].account])
+                            const accountExists = await db.client.query(`SELECT * FROM hafd.${APP_CONTEXT}_accounts WHERE name=$1;`,[electedMembers.members[m].account])
                             if (accountExists.rows.length === 0)
                                 continue
                             validatedElectedMembers.push({

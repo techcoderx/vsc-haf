@@ -11,7 +11,7 @@ const context = {
     create: async () => {
         if (await context.exists())
             return logger.info('App context already exists, skipping app context creation')
-        await db.client.query('SELECT hive.app_create_context($1,$2,$3);',[APP_CONTEXT,SCHEMA_NAME,false])
+        await db.client.query('SELECT hive.app_create_context($1,$2,$3::BOOLEAN,$4::BOOLEAN);',[APP_CONTEXT,SCHEMA_NAME,false,true])
         logger.info('Created app context',APP_CONTEXT)
     },
     attach: async () => {

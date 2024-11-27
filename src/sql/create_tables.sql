@@ -121,9 +121,9 @@ CREATE TABLE IF NOT EXISTS vsc_app.contract_outputs(
 CREATE TABLE IF NOT EXISTS vsc_app.transfers(
     id BIGSERIAL PRIMARY KEY,
     from_acctype SMALLINT NOT NULL, -- from account type, 1 for hive, 2 for did
-    from_id INTEGER NOT NULL, -- from account id referencing dids/hive.vsc_app_accounts table
+    from_id INTEGER NOT NULL, -- from account id referencing dids/hafd.vsc_app_accounts table
     to_acctype SMALLINT NOT NULL, -- to account type, 1 for hive, 2 for did
-    to_id INTEGER NOT NULL, -- to account id referencing dids/hive.vsc_app_accounts table
+    to_id INTEGER NOT NULL, -- to account id referencing dids/hafd.vsc_app_accounts table
     amount INTEGER NOT NULL, -- amount in mHIVE/mHBD
     coin SMALLINT NOT NULL, -- 0 for HIVE, 1 for HBD
     memo VARCHAR
@@ -277,8 +277,8 @@ CREATE TABLE IF NOT EXISTS vsc_app.withdrawals(
 CREATE TABLE IF NOT EXISTS vsc_app.l2_withdrawals(
     id BIGSERIAL PRIMARY KEY,
     from_acctype SMALLINT NOT NULL, -- from account type, 1 for hive, 2 for did
-    from_id INTEGER NOT NULL, -- from account id referencing dids/hive.vsc_app_accounts table
-    to_id INTEGER NOT NULL, -- to account id referencing dids/hive.vsc_app_accounts table
+    from_id INTEGER NOT NULL, -- from account id referencing dids/hafd.vsc_app_accounts table
+    to_id INTEGER NOT NULL, -- to account id referencing dids/hafd.vsc_app_accounts table
     amount INTEGER NOT NULL, -- amount in mHIVE/mHBD
     asset SMALLINT NOT NULL, -- 0 for HIVE, 1 for HBD
     memo VARCHAR,

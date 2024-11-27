@@ -105,7 +105,7 @@ RETURNS VARCHAR
 AS $function$
 BEGIN
     IF _acctype = 1 THEN
-        RETURN 'hive:' || (SELECT name FROM hive.vsc_app_accounts WHERE id=_id);
+        RETURN 'hive:' || (SELECT name FROM hafd.vsc_app_accounts WHERE id=_id);
     ELSIF _acctype = 2 THEN
         RETURN (SELECT did from vsc_app.dids WHERE id=_id);
     ELSE
@@ -129,7 +129,7 @@ DECLARE
     _trx_in_block SMALLINT;
     _op_pos INTEGER;
 BEGIN
-    SELECT id INTO _hive_user_id FROM hive.vsc_app_accounts WHERE name=_username;
+    SELECT id INTO _hive_user_id FROM hafd.vsc_app_accounts WHERE name=_username;
     IF _hive_user_id IS NULL THEN
         RAISE EXCEPTION 'Could not process non-existent user %', _username;
     END IF;
@@ -186,7 +186,7 @@ DECLARE
     _current_sk_owner VARCHAR = NULL;
     _current_enabled BOOLEAN = NULL;
 BEGIN
-    SELECT id INTO _hive_user_id FROM hive.vsc_app_accounts WHERE name=_username;
+    SELECT id INTO _hive_user_id FROM hafd.vsc_app_accounts WHERE name=_username;
     IF _hive_user_id IS NULL THEN
         RAISE EXCEPTION 'Could not process non-existent user %', _username;
     END IF;
@@ -304,7 +304,7 @@ BEGIN
         INSERT INTO vsc_app.deposits(in_op, amount, asset, dest_did, nonce_counter)
             VALUES(_in_op, _amount, _asset, _dest_id, _counter);
     ELSIF _dest_type = 'hive' THEN
-        SELECT id INTO _dest_id FROM hive.vsc_app_accounts WHERE name=_dest;
+        SELECT id INTO _dest_id FROM hafd.vsc_app_accounts WHERE name=_dest;
         IF _dest_id IS NULL THEN
             RETURN; -- do nothing as vsc node does not check for this
         END IF;
@@ -333,7 +333,7 @@ $function$
 DECLARE
     _dest_id INTEGER = NULL;
 BEGIN
-    SELECT id INTO _dest_id FROM hive.vsc_app_accounts WHERE name=_dest;
+    SELECT id INTO _dest_id FROM hafd.vsc_app_accounts WHERE name=_dest;
     IF _dest_id IS NULL THEN
         RAISE EXCEPTION 'hive username does not exist';
     END IF;

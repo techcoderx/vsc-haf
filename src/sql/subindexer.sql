@@ -164,7 +164,7 @@ BEGIN
             ka.consensus_did,
             1
         FROM toggle_state l
-        JOIN hive.vsc_app_accounts a ON
+        JOIN hafd.vsc_app_accounts a ON
             a.id = l.witness_id
         JOIN keyauths_state ka ON
             ka.user_id = l.witness_id
@@ -182,7 +182,7 @@ BEGIN
     RETURN QUERY
         SELECT a.name, em.consensus_did, em.weight
             FROM vsc_app.election_result_members em
-            JOIN hive.vsc_app_accounts a ON
+            JOIN hafd.vsc_app_accounts a ON
                 a.id = em.witness_id
             WHERE epoch = _epoch
             ORDER BY em.idx ASC;
@@ -319,7 +319,7 @@ DECLARE
     _callers VARCHAR[];
     _caller VARCHAR;
 BEGIN
-    SELECT id INTO _acc_id FROM hive.vsc_app_accounts WHERE name=_proposer;
+    SELECT id INTO _acc_id FROM hafd.vsc_app_accounts WHERE name=_proposer;
     SELECT l2_head_block+1 INTO _new_block_id FROM vsc_app.subindexer_state LIMIT 1;
     INSERT INTO vsc_app.l2_blocks(id, proposed_in_op, proposer, block_hash, block_header_hash, br_start, br_end, merkle_root, voted_weight, sig, bv)
         VALUES(_new_block_id, _proposed_in_op, _acc_id, _block_hash, _block_header_hash, _br_start, _br_end, _merkle, _voted_weight, _sig, _bv);
@@ -501,7 +501,7 @@ BEGIN
         SELECT vsc_app.insert_tx_auth_did(NULL, _from, NULL) INTO _from_id;
         _from_acctype := 2::SMALLINT;
     ELSIF (SELECT starts_with(_from, 'hive:')) THEN
-        SELECT id INTO _from_id FROM hive.vsc_app_accounts WHERE name=(SELECT SPLIT_PART(_from, ':', 2));
+        SELECT id INTO _from_id FROM hafd.vsc_app_accounts WHERE name=(SELECT SPLIT_PART(_from, ':', 2));
         _from_acctype := 1::SMALLINT;
 
         IF _from_id IS NULL THEN
@@ -514,7 +514,7 @@ BEGIN
         SELECT vsc_app.insert_tx_auth_did(NULL, _to, NULL) INTO _to_id;
         _to_acctype := 2::SMALLINT;
     ELSIF (SELECT starts_with(_to, 'hive:')) THEN
-        SELECT id INTO _to_id FROM hive.vsc_app_accounts WHERE name=(SELECT SPLIT_PART(_to, ':', 2));
+        SELECT id INTO _to_id FROM hafd.vsc_app_accounts WHERE name=(SELECT SPLIT_PART(_to, ':', 2));
         _to_acctype := 1::SMALLINT;
 
         IF _to_id IS NULL THEN
@@ -522,7 +522,7 @@ BEGIN
         END IF;
     ELSE
         -- assume hive account otherwise?
-        SELECT id INTO _to_id FROM hive.vsc_app_accounts WHERE name=_to;
+        SELECT id INTO _to_id FROM hafd.vsc_app_accounts WHERE name=_to;
         _to_acctype := 1::SMALLINT;
 
         IF _to_id IS NULL THEN
@@ -563,7 +563,7 @@ BEGIN
         _nonce_counter := COALESCE(_nonce_counter, 0)+1;
         UPDATE vsc_app.dids SET wdrq_count = _nonce_counter WHERE id=_from_id;
     ELSIF (SELECT starts_with(_from, 'hive:')) THEN
-        SELECT id INTO _from_id FROM hive.vsc_app_accounts WHERE name=(SELECT SPLIT_PART(_from, ':', 2));
+        SELECT id INTO _from_id FROM hafd.vsc_app_accounts WHERE name=(SELECT SPLIT_PART(_from, ':', 2));
         _from_acctype := 1::SMALLINT;
 
         IF _from_id IS NULL THEN
@@ -581,7 +581,7 @@ BEGIN
     IF (SELECT starts_with(_to, 'hive:')) THEN
         _to := (SELECT SPLIT_PART(_to, ':', 2));
     END IF;
-    SELECT id INTO _to_id FROM hive.vsc_app_accounts WHERE name=_to;
+    SELECT id INTO _to_id FROM hafd.vsc_app_accounts WHERE name=_to;
     IF _to_id IS NULL THEN
         RAISE EXCEPTION 'sending to non-existent hive user %', _to; -- this shouldn't happen either unless vsc-node doesn't check this properly
     END IF;
@@ -684,7 +684,7 @@ BEGIN
                     SELECT u.event_count, ha.id
                     INTO _nonce_counter, _acc_id
                     FROM vsc_app.l1_users u
-                    RIGHT JOIN hive.vsc_app_accounts ha ON
+                    RIGHT JOIN hafd.vsc_app_accounts ha ON
                         ha.id = u.id
                     WHERE ha.name = REPLACE(e->>'owner', 'hive:', '');
 
@@ -755,7 +755,7 @@ BEGIN
             RAISE EXCEPTION 'caller auths must be either 1s or 2s.';
         END IF;
         _caller_id := NULL;
-        SELECT id INTO _caller_id FROM hive.vsc_app_accounts WHERE name=_callers[i];
+        SELECT id INTO _caller_id FROM hafd.vsc_app_accounts WHERE name=_callers[i];
         IF _caller_id IS NULL THEN
             RAISE EXCEPTION 'hive username % does not exist', _callers[i];
         END IF;
@@ -790,7 +790,7 @@ BEGIN
     IF (SELECT EXISTS (SELECT 1 FROM vsc_app.election_results WHERE epoch=_epoch)) THEN
         RETURN;
     END IF;
-    SELECT id INTO _acc_id FROM hive.vsc_app_accounts WHERE name=_proposer;
+    SELECT id INTO _acc_id FROM hafd.vsc_app_accounts WHERE name=_proposer;
     INSERT INTO vsc_app.election_results(epoch, proposed_in_op, proposer, data_cid, voted_weight, weight_total, sig, bv)
         VALUES(_epoch, _proposed_in_op, _acc_id, _data_cid, _voted_weight, _weight_total, _sig, _bv);
 

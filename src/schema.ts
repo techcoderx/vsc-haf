@@ -17,7 +17,7 @@ const HAF_FKS: FKS_TYPE = {
     l1_op_user_id_fk: {
         table: SCHEMA_NAME+'.l1_operations',
         fk: 'user_id',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
+        ref: `hafd.${APP_CONTEXT}_accounts(id)`
     },
     l1_op_type_fk: {
         table: SCHEMA_NAME+'.l1_operations',
@@ -27,12 +27,12 @@ const HAF_FKS: FKS_TYPE = {
     l1_users_fk: {
         table: SCHEMA_NAME+'.l1_users',
         fk: 'id',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
+        ref: `hafd.${APP_CONTEXT}_accounts(id)`
     },
     witness_account_fk: {
         table: SCHEMA_NAME+'.witnesses',
         fk: 'id',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
+        ref: `hafd.${APP_CONTEXT}_accounts(id)`
     },
     witness_enabled_at_fk: {
         table: SCHEMA_NAME+'.witnesses',
@@ -47,7 +47,7 @@ const HAF_FKS: FKS_TYPE = {
     witness_toggle_wid_fk: {
         table: SCHEMA_NAME+'.witness_toggle_archive',
         fk: 'witness_id',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
+        ref: `hafd.${APP_CONTEXT}_accounts(id)`
     },
     witness_toggle_op_id_fk: {
         table: SCHEMA_NAME+'.witness_toggle_archive',
@@ -57,7 +57,7 @@ const HAF_FKS: FKS_TYPE = {
     keyauths_uid_fk: {
         table: SCHEMA_NAME+'.keyauths_archive',
         fk: 'user_id',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
+        ref: `hafd.${APP_CONTEXT}_accounts(id)`
     },
     keyauths_op_id_fk: {
         table: SCHEMA_NAME+'.keyauths_archive',
@@ -77,7 +77,7 @@ const HAF_FKS: FKS_TYPE = {
     deposits_dest_acc_fk: {
         table: SCHEMA_NAME+'.deposits',
         fk: 'dest_acc',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
+        ref: `hafd.${APP_CONTEXT}_accounts(id)`
     },
     deposits_dest_did_fk: {
         table: SCHEMA_NAME+'.deposits',
@@ -92,7 +92,7 @@ const HAF_FKS: FKS_TYPE = {
     withdrawals_dest_acc_fk: {
         table: SCHEMA_NAME+'.withdrawals',
         fk: 'dest_acc',
-        ref: `hive.${APP_CONTEXT}_accounts(id)`
+        ref: `hafd.${APP_CONTEXT}_accounts(id)`
     }
 }
 
@@ -160,10 +160,6 @@ const schema = {
         await db.client.query(`INSERT INTO ${SCHEMA_NAME}.withdrawal_status(name) VALUES('completed');`)
         await db.client.query(`INSERT INTO ${SCHEMA_NAME}.withdrawal_status(name) VALUES('failed');`)
         await db.client.query('COMMIT;')
-
-        // inheritance for forking app
-        for (let t in HAF_TABLES)
-            await db.client.query(`ALTER TABLE ${SCHEMA_NAME}.${HAF_TABLES[t]} INHERIT hive.${SCHEMA_NAME};`)
 
         // use 'accounts' state provider
         await db.client.query(`SELECT hive.app_state_provider_import('ACCOUNTS',$1);`,[APP_CONTEXT])

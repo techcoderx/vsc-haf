@@ -507,6 +507,13 @@ BEGIN
         IF _from_id IS NULL THEN
             RAISE EXCEPTION 'sending from non-existent hive user'; -- this should never happen
         END IF;
+    ELSIF (SELECT starts_with(_from, 'vs')) THEN
+        SELECT id INTO _from_id FROM vsc_app.contracts WHERE contract_id=_from;
+        _from_acctype := 3::SMALLINT;
+
+         IF _from_id IS NULL THEN
+            RAISE EXCEPTION 'sending from non-existent contract'; -- this should never happen
+        END IF;
     END IF;
 
     -- prepare to id
@@ -519,6 +526,13 @@ BEGIN
 
         IF _to_id IS NULL THEN
             RETURN -1; -- todo: handle sending to non-existent hive username
+        END IF;
+    ELSIF (SELECT starts_with(_to, 'vs')) THEN
+        SELECT id INTO _to_id FROM vsc_app.contracts WHERE contract_id=_to;
+        _to_acctype := 3::SMALLINT;
+
+        IF _to_id IS NULL THEN
+            RETURN -1; -- todo: handle sending to non-existent contract
         END IF;
     ELSE
         -- assume hive account otherwise?

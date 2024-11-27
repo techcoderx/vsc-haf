@@ -138,7 +138,8 @@ CREATE TABLE IF NOT EXISTS vsc_app.events(
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.contracts(
-    contract_id VARCHAR(68) PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
+    contract_id VARCHAR(68) NOT NULL,
     created_in_op BIGINT NOT NULL,
     last_updated_in_op BIGINT,
     name VARCHAR,
@@ -146,7 +147,8 @@ CREATE TABLE IF NOT EXISTS vsc_app.contracts(
     code VARCHAR(59) NOT NULL,
     proof_hash VARCHAR(59),
     proof_sig BYTEA,
-    proof_bv BYTEA
+    proof_bv BYTEA,
+    UNIQUE(contract_id)
 );
 
 CREATE TABLE IF NOT EXISTS vsc_app.witnesses(

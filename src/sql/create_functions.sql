@@ -107,7 +107,9 @@ BEGIN
     IF _acctype = 1 THEN
         RETURN 'hive:' || (SELECT name FROM hafd.vsc_app_accounts WHERE id=_id);
     ELSIF _acctype = 2 THEN
-        RETURN (SELECT did from vsc_app.dids WHERE id=_id);
+        RETURN (SELECT did FROM vsc_app.dids WHERE id=_id);
+    ELSIF _acctype = 3 THEN
+        RETURN (SELECT contract_id FROM vsc_app.contracts WHERE id=_id);
     ELSE
         RETURN '';
     END IF;

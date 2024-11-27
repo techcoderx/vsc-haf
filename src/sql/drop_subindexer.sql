@@ -37,6 +37,7 @@ TRUNCATE TABLE vsc_app.contract_outputs;
 TRUNCATE TABLE vsc_app.anchor_refs;
 TRUNCATE TABLE vsc_app.anchor_ref_txs;
 
+SELECT setval(pg_get_serial_sequence('vsc_app.contracts', 'id'), 1, false);
 SELECT setval(pg_get_serial_sequence('vsc_app.l2_txs', 'id'), 1, false);
 SELECT setval(pg_get_serial_sequence('vsc_app.events', 'id'), 1, false);
 SELECT setval(pg_get_serial_sequence('vsc_app.contract_calls', 'id'), 1, false);

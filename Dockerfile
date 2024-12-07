@@ -10,7 +10,7 @@ COPY ./scripts /app/scripts
 WORKDIR /app
 RUN chown -R vsc_owner:vsc_owner /app
 
-FROM base as prod-deps
+FROM base AS prod-deps
 USER vsc_owner
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
 

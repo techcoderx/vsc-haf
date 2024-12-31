@@ -5,7 +5,43 @@
 ## Required Dependencies
 
 * `nodejs` and `npm` (Latest LTS, v18 minimum supported)
-* Synced [HAF](https://gitlab.syncad.com/hive/haf) node
+* Synced [HAF](https://gitlab.syncad.com/hive/haf) node, ideally using [`haf_api_node`](https://gitlab.syncad.com/hive/haf_api_node) compose
+
+## Docker Setup
+
+This assumes HAF is running through [`haf_api_node`](https://gitlab.syncad.com/hive/haf_api_node).
+
+Clone this repository, then add the following in the `.env` file in `haf_api_node` directory:
+
+```env
+COMPOSE_FILE="${COMPOSE_FILE}:/path/to/vsc-haf/repo/docker/compose.yml"
+VSC_HAF_VERSION=latest
+VSC_HAF_GITHUB_API_KEY=YOUR_OPTIONAL_GITHUB_API_KEY
+VSC_HAF_IPFS_API_URL=http://YOUR_IPFS_URL:5001
+VSC_HAF_SUBINDEXER_LOG_LEVEL=info
+```
+
+Build the Docker image:
+
+```sh
+cd /path/to/vsc-haf/repo
+./scripts/build_instance.sh
+```
+
+Run the HAF app sync:
+```sh
+docker compose up -d vsc-haf-block-processing
+```
+
+Run the subindexer (IPFS daemon must be already running):
+```sh
+docker compose up -d vsc-haf-subindexer
+```
+
+Run the PostgREST server:
+```sh
+docker compose up -d vsc-haf-postgrest
+```
 
 ## Setup
 

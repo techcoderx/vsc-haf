@@ -759,7 +759,7 @@ BEGIN
             'last_activity', COALESCE(u.last_op_ts, '1970-01-01T00:00:00')
         )
         FROM vsc_app.l1_users u
-        JOIN hafd.vsc_app_accounts ac ON
+        RIGHT JOIN hafd.vsc_app_accounts ac ON
             ac.id = u.id
         WHERE ac.name=username
     );

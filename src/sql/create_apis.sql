@@ -1076,9 +1076,9 @@ BEGIN
                 c.contract_output_tx_id AS output
             FROM vsc_app.contract_calls c
             LEFT JOIN vsc_app.l2_txs l2t ON
-                c.id = l2t.details
+                c.id = l2t.details AND l2t.tx_type = 1
             LEFT JOIN vsc_app.l1_txs l1t ON
-                c.id = l1t.details
+                c.id = l1t.details AND l1t.tx_type = 1
             LEFT JOIN vsc_app.l1_operations l1o ON
                 l1t.id = l1o.id
             LEFT JOIN vsc_app.l2_blocks l2b ON

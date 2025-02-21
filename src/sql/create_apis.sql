@@ -663,14 +663,14 @@ BEGIN
                 ))
                 FROM vsc_app.contract_calls c
                 LEFT JOIN vsc_app.l2_txs t ON
-                    c.id = t.details
+                    c.id = t.details AND t.tx_type = 1
                 LEFT JOIN vsc_app.l1_txs t1 ON
-                    c.id = t1.details
+                    c.id = t1.details AND t1.tx_type = 1
                 LEFT JOIN vsc_app.l1_operations l1o ON
                     t1.id = l1o.id
                 LEFT JOIN hive.transactions_view ht ON
                     ht.block_num = l1o.block_num AND ht.trx_in_block = l1o.trx_in_block
-                WHERE (t.tx_type = 1 OR t1.tx_type = 1) AND c.contract_output_tx_id = co_cid
+                WHERE c.contract_output_tx_id = co_cid
             )
         )
         FROM vsc_app.contract_outputs co

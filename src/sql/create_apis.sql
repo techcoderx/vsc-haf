@@ -23,7 +23,8 @@ BEGIN
             'db_version', s1.db_version,
             'operations', (SELECT COUNT(*) FROM vsc_mainnet.l1_operations),
             'witnesses', (SELECT COUNT(*) FROM vsc_mainnet.witnesses)
-    ) FROM s1, s2);
+        ) FROM s1, s2
+    );
 END
 $function$
 LANGUAGE plpgsql STABLE;
@@ -63,7 +64,7 @@ BEGIN
             'last_update_ts', l1_last.ts,
             'last_update_tx', vsc_mainnet.get_tx_hash_by_op(l1_last.block_num, l1_last.trx_in_block),
             'first_seen_ts', l1_first.ts,
-            'first_seen_tx', vsc_mainnet.get_tx_hash_by_op(l1_first.block_num, l1_first.trx_in_block),
+            'first_seen_tx', vsc_mainnet.get_tx_hash_by_op(l1_first.block_num, l1_first.trx_in_block)
         )
         FROM vsc_mainnet.witnesses w
         JOIN hafd.vsc_mainnet_accounts a ON
@@ -113,7 +114,7 @@ BEGIN
             'last_update_ts', r.last_update_ts,
             'last_update_tx', r.last_update_tx,
             'first_seen_ts', r.first_seen_ts,
-            'first_seen_tx', r.first_seen_tx,
+            'first_seen_tx', r.first_seen_tx
         )) FROM result r
     ));
 END $$

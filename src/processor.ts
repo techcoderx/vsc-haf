@@ -174,7 +174,7 @@ const processor = {
                         result.user,
                         pl.consensus_did,
                         pl.peer_id,
-                        pl.peer_addrs,
+                        JSON.stringify(pl.peer_addrs),
                         pl.version_id,
                         pl.git_commit,
                         pl.protocol_version,

@@ -141,9 +141,8 @@ BEGIN
         RAISE EXCEPTION 'Could not process non-existent user %', _username;
     END IF;
 
-    INSERT INTO vsc_mainnet.witnesses (id, consensus_did, peer_id, peer_addrs, version_id, git_commit, protocol_version, gateway_key, enabled, last_update, first_seen)
-        VALUES(_hive_user_id, _consensus_did, _peer_id, _peer_addrs, _version_id, _git_commit, _protocol_version, _gateway_key, _enabled, _op_id, _op_id)
-        ON CONFLICT(id) DO UPDATE SET
+    IF (SELECT EXISTS (SELECT 1 FROM vsc_mainnet.witnesses WHERE id = _hive_user_id)) THEN
+        UPDATE vsc_mainnet.witnesses SET
             consensus_did = _consensus_did,
             peer_id = _peer_id,
             peer_addrs = _peer_addrs,
@@ -152,7 +151,12 @@ BEGIN
             protocol_version = _protocol_version,
             gateway_key = _gateway_key,
             enabled = _enabled,
-            last_update = _op_id;
+            last_update = _op_id
+        WHERE id = _hive_user_id;
+    ELSE
+        INSERT INTO vsc_mainnet.witnesses (id, consensus_did, peer_id, peer_addrs, version_id, git_commit, protocol_version, gateway_key, enabled, last_update, first_seen)
+            VALUES(_hive_user_id, _consensus_did, _peer_id, _peer_addrs, _version_id, _git_commit, _protocol_version, _gateway_key, _enabled, _op_id, _op_id);
+    END IF;
 END $$
 LANGUAGE plpgsql VOLATILE;
 

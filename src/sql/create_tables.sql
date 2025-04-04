@@ -3,7 +3,7 @@ CREATE SCHEMA IF NOT EXISTS vsc_mainnet;
 
 CREATE TABLE IF NOT EXISTS vsc_mainnet.l1_operation_types(
     id SERIAL PRIMARY KEY,
-    op_name VARCHAR(25) NOT NULL,
+    op_name VARCHAR(30) NOT NULL,
     filterer BIGINT GENERATED ALWAYS AS (2^(id-1)) STORED,
     UNIQUE(op_name)
 );

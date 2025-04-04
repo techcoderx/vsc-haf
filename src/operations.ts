@@ -35,7 +35,7 @@ const op_type_map: OpTypeMod = {
             let cjtype = CUSTOM_JSON_IDS[idx].split('.')[1]
             return op_type_map.map[cjtype]
         } else if (tx_type === TxTypes.Transfer)
-            return op_type_map.map.transfer
+            return op_type_map.map.l1_transfer
         else if (tx_type === TxTypes.TransferToSavings)
             return op_type_map.map.transfer_to_savings
         else if (tx_type === TxTypes.TransferFromSavings)

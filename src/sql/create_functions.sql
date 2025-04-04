@@ -153,8 +153,7 @@ BEGIN
             gateway_key = _gateway_key,
             enabled = _enabled,
             last_update = _op_id;
-END
-$function$
+END $$
 LANGUAGE plpgsql VOLATILE;
 
 -- Helper function for parsing L1 payload mainly for use by vsc_mainnet_api schema

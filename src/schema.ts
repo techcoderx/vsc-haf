@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import { dirname } from 'path'
 import { fileURLToPath } from 'url'
-import { START_BLOCK, DB_VERSION, APP_CONTEXT, SCHEMA_NAME, CUSTOM_JSON_IDS, CUSTOM_JSON_ALIAS, XFER_ACTIONS } from './constants.js'
+import { START_BLOCK, DB_VERSION, APP_CONTEXT, SCHEMA_NAME, CUSTOM_JSON_IDS } from './constants.js'
 import db from './db.js'
 import context from './context.js'
 import logger from './logger.js'
@@ -36,63 +36,13 @@ const HAF_FKS: FKS_TYPE = {
     },
     witness_enabled_at_fk: {
         table: SCHEMA_NAME+'.witnesses',
-        fk: 'enabled_at',
+        fk: 'last_update',
         ref: SCHEMA_NAME+'.l1_operations(id)'
     },
     witness_disabled_at_fk: {
         table: SCHEMA_NAME+'.witnesses',
-        fk: 'disabled_at',
+        fk: 'first_seen',
         ref: SCHEMA_NAME+'.l1_operations(id)'
-    },
-    witness_toggle_wid_fk: {
-        table: SCHEMA_NAME+'.witness_toggle_archive',
-        fk: 'witness_id',
-        ref: `hafd.${APP_CONTEXT}_accounts(id)`
-    },
-    witness_toggle_op_id_fk: {
-        table: SCHEMA_NAME+'.witness_toggle_archive',
-        fk: 'op_id',
-        ref: SCHEMA_NAME+'.l1_operations(id)'
-    },
-    keyauths_uid_fk: {
-        table: SCHEMA_NAME+'.keyauths_archive',
-        fk: 'user_id',
-        ref: `hafd.${APP_CONTEXT}_accounts(id)`
-    },
-    keyauths_op_id_fk: {
-        table: SCHEMA_NAME+'.keyauths_archive',
-        fk: 'op_id',
-        ref: SCHEMA_NAME+'.l1_operations(id)'
-    },
-    multisig_txref_in_op_fk: {
-        table: SCHEMA_NAME+'.multisig_txrefs',
-        fk: 'in_op',
-        ref: SCHEMA_NAME+'.l1_operations(id)'
-    },
-    deposits_in_op_fk: {
-        table: SCHEMA_NAME+'.deposits',
-        fk: 'in_op',
-        ref: SCHEMA_NAME+'.l1_operations(id)'
-    },
-    deposits_dest_acc_fk: {
-        table: SCHEMA_NAME+'.deposits',
-        fk: 'dest_acc',
-        ref: `hafd.${APP_CONTEXT}_accounts(id)`
-    },
-    deposits_dest_did_fk: {
-        table: SCHEMA_NAME+'.deposits',
-        fk: 'dest_did',
-        ref: SCHEMA_NAME+'.dids(id)'
-    },
-    withdrawals_in_op_fk: {
-        table: SCHEMA_NAME+'.withdrawals',
-        fk: 'in_op',
-        ref: SCHEMA_NAME+'.l1_operations(id)'
-    },
-    withdrawals_dest_acc_fk: {
-        table: SCHEMA_NAME+'.withdrawals',
-        fk: 'dest_acc',
-        ref: `hafd.${APP_CONTEXT}_accounts(id)`
     }
 }
 
@@ -113,22 +63,6 @@ const INDEXES: INDEXES_TYPE = {
     l1_operation_user_txtype_idx: {
         table_name: SCHEMA_NAME+'.l1_operations',
         columns: [{ col_name: 'user_id', order: Ordering.ASC }, { col_name: 'op_type', order: Ordering.ASC }]
-    },
-    witness_did_idx: {
-        table_name: SCHEMA_NAME+'.witnesses',
-        columns: [{ col_name: 'did', order: Ordering.ASC }]
-    },
-    witness_sk_owner_idx: {
-        table_name: SCHEMA_NAME+'.witnesses',
-        columns: [{ col_name: 'sk_owner', order: Ordering.ASC }]
-    },
-    witness_toggle_archive_witness_id_op_id_idx: {
-        table_name: SCHEMA_NAME+'.witness_toggle_archive',
-        columns: [{ col_name: 'witness_id', order: Ordering.ASC }, { col_name: 'op_id', order: Ordering.DESC }]
-    },
-    keyauths_archive_witness_id_op_id_idx: {
-        table_name: SCHEMA_NAME+'.keyauths_archive',
-        columns: [{ col_name: 'user_id', order: Ordering.ASC }, { col_name: 'op_id', order: Ordering.DESC }]
     }
 }
 
@@ -149,16 +83,15 @@ const schema = {
         let startBlock = Math.max(START_BLOCK-1,0)
         await db.client.query('START TRANSACTION;')
         await db.client.query(`INSERT INTO ${SCHEMA_NAME}.state(last_processed_block, db_version) VALUES($1, $2);`,[startBlock,DB_VERSION])
+        for (let c in CUSTOM_JSON_IDS)
+            await db.client.query(`INSERT INTO ${SCHEMA_NAME}.l1_operation_types(op_name) VALUES($1);`,[CUSTOM_JSON_IDS[c].split('.')[1]])
         await db.client.query(`INSERT INTO ${SCHEMA_NAME}.l1_operation_types(op_name) VALUES('announce_node');`)
         await db.client.query(`INSERT INTO ${SCHEMA_NAME}.l1_operation_types(op_name) VALUES('rotate_multisig');`)
-        for (let c in CUSTOM_JSON_IDS)
-            if (typeof CUSTOM_JSON_ALIAS[CUSTOM_JSON_IDS[c]] === 'undefined')
-                await db.client.query(`INSERT INTO ${SCHEMA_NAME}.l1_operation_types(op_name) VALUES($1);`,[CUSTOM_JSON_IDS[c].split('.')[1]])
-        for (let c in XFER_ACTIONS)
-            await db.client.query(`INSERT INTO ${SCHEMA_NAME}.l1_operation_types(op_name) VALUES($1);`,[XFER_ACTIONS[c]])
-        await db.client.query(`INSERT INTO ${SCHEMA_NAME}.withdrawal_status(name) VALUES('pending');`)
-        await db.client.query(`INSERT INTO ${SCHEMA_NAME}.withdrawal_status(name) VALUES('completed');`)
-        await db.client.query(`INSERT INTO ${SCHEMA_NAME}.withdrawal_status(name) VALUES('failed');`)
+        await db.client.query(`INSERT INTO ${SCHEMA_NAME}.l1_operation_types(op_name) VALUES('transfer');`)
+        await db.client.query(`INSERT INTO ${SCHEMA_NAME}.l1_operation_types(op_name) VALUES('transfer_to_savings');`)
+        await db.client.query(`INSERT INTO ${SCHEMA_NAME}.l1_operation_types(op_name) VALUES('transfer_from_savings');`)
+        await db.client.query(`INSERT INTO ${SCHEMA_NAME}.l1_operation_types(op_name) VALUES('interest');`)
+        await db.client.query(`INSERT INTO ${SCHEMA_NAME}.l1_operation_types(op_name) VALUES('fill_transfer_from_savings');`)
         await db.client.query('COMMIT;')
 
         // use 'accounts' state provider

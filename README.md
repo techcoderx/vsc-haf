@@ -15,10 +15,10 @@ Clone this repository, then add the following in the `.env` file in `haf_api_nod
 
 ```env
 COMPOSE_FILE="${COMPOSE_FILE}:/path/to/vsc-haf/repo/docker/compose.yml"
-VSC_HAF_VERSION=latest
-VSC_HAF_GITHUB_API_KEY=YOUR_OPTIONAL_GITHUB_API_KEY
-VSC_HAF_IPFS_API_URL=http://YOUR_IPFS_URL:5001
-VSC_HAF_SUBINDEXER_LOG_LEVEL=info
+VSC_MAINNET_HAF_VERSION=latest
+VSC_MAINNET_HAF_GITHUB_API_KEY=YOUR_OPTIONAL_GITHUB_API_KEY
+VSC_MAINNET_HAF_IPFS_API_URL=http://YOUR_IPFS_URL:5001
+VSC_MAINNET_HAF_SUBINDEXER_LOG_LEVEL=info
 ```
 
 Build the Docker image:
@@ -47,10 +47,10 @@ docker compose up -d vsc-haf-postgrest
 
 ### PostgreSQL Roles
 ```pgsql
-CREATE ROLE vsc_app WITH LOGIN PASSWORD 'vscpass' CREATEROLE INHERIT IN ROLE hive_applications_group;
+CREATE ROLE vsc_mainnet WITH LOGIN PASSWORD 'vscpass' CREATEROLE INHERIT IN ROLE hive_applications_group;
 CREATE ROLE vsc_user WITH LOGIN INHERIT IN ROLE hive_applications_group;
-GRANT CREATE ON DATABASE block_log TO vsc_app;
-GRANT vsc_user TO vsc_app;
+GRANT CREATE ON DATABASE block_log TO vsc_mainnet;
+GRANT vsc_user TO vsc_mainnet;
 ```
 
 ### PostgREST Installation
@@ -82,7 +82,7 @@ npm start
 
 ## Start PostgREST server
 ```bash
-./scripts/postgrest_start.sh postgres://vsc_app:<vsc_app_password>@localhost:5432/block_log <server_port>
+./scripts/postgrest_start.sh postgres://vsc_mainnet:<vsc_app_password>@localhost:5432/block_log <server_port>
 ```
 
 ## Periodically fetch latest [vsc-node](https://github.com/vsc-eco/vsc-node) commit in crontab

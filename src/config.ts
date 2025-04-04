@@ -3,7 +3,7 @@ import * as dotenv from 'dotenv'
 
 dotenv.config()
 const config = yargs(process.argv)
-    .env('VSC_HAF')
+    .env('VSC_MAINNET_HAF')
     .options({
         postgresUrl: {
             type: 'string',
@@ -16,10 +16,6 @@ const config = yargs(process.argv)
         logFile: {
             type: 'string',
             default: './logs/output.log'
-        },
-        ipfsApiUrl: {
-            type: 'string',
-            default: 'http://localhost:5001'
         }
     })
     .parseSync()

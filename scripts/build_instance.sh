@@ -14,12 +14,11 @@ Usage: $0 [OPTION[=VALUE]]...
 Builds the Docker images.
 OPTIONS:
     --tag=TAG                       The image tag to use (default: latest)
-    --schema=SCHEMA                 The schema name to use (default: vsc_app)
-    --api-schema=SCHEMA             The API schema name to use (default: vsc_api)
-    --app-context=CONTEXT_NAME      HAF app context name to use (default: vsc_app)
+    --schema=SCHEMA                 The schema name to use (default: vsc_mainnet)
+    --api-schema=SCHEMA             The API schema name to use (default: vsc_mainnet_api)
+    --app-context=CONTEXT_NAME      HAF app context name to use (default: vsc_mainnet)
     --test-schema                   Shortcut of --schema=vsc_test --api-schema=vsc_tapi --app-context=vsc_test
     --plain-output                  Uses --progress=plain arg in Docker build command
-    --gh-fh                         Builds the gh-fh image
     --help,-h,-?                    Displays this help message
 EOF
 }
@@ -43,9 +42,6 @@ while [ $# -gt 0 ]; do
         ;;
     --plain-output)
         BUILD_ARGS="$BUILD_ARGS --progress=plain"
-        ;;
-    --gh-fh)
-        GH_FH="true"
         ;;
     --help|-h|-?)
         print_help
@@ -73,8 +69,4 @@ if [ -n "$BUILD_ARGS" ]; then
     echo Build args: $BUILD_ARGS
 fi
 
-docker build -t vsc-haf:$TAG $BUILD_ARGS -f $SCRIPTPATH/../Dockerfile .
-
-if [ $GH_FH = "true" ]; then
-    docker build -t vsc-haf/gh-fh:$TAG -f $SCRIPTPATH/../Dockerfile.gh_fh .
-fi
+docker build -t vsc-mainnet-haf:$TAG $BUILD_ARGS -f $SCRIPTPATH/../Dockerfile .

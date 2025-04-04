@@ -1,7 +1,7 @@
 import db from './db.js'
 import logger from './logger.js'
 import { TxTypes } from './processor_types.js'
-import { CUSTOM_JSON_IDS, SCHEMA_NAME, XFER_ACTIONS } from './constants.js'
+import { CUSTOM_JSON_IDS, SCHEMA_NAME } from './constants.js'
 import { L1OpTypes } from './psql_types.js'
 
 type OpTypeIDMap = {
@@ -33,11 +33,17 @@ const op_type_map: OpTypeMod = {
         }
         else if (tx_type === TxTypes.CustomJSON) {
             let cjtype = CUSTOM_JSON_IDS[idx].split('.')[1]
-            if (cjtype === 'announce_tx')
-                cjtype = 'tx'
             return op_type_map.map[cjtype]
         } else if (tx_type === TxTypes.Transfer)
-            return op_type_map.map[XFER_ACTIONS[idx]]
+            return op_type_map.map.transfer
+        else if (tx_type === TxTypes.TransferToSavings)
+            return op_type_map.map.transfer_to_savings
+        else if (tx_type === TxTypes.TransferFromSavings)
+            return op_type_map.map.transfer_from_savings
+        else if (tx_type === TxTypes.HbdInterest)
+            return op_type_map.map.interest
+        else if (tx_type === TxTypes.FillTransferFromSavings)
+            return op_type_map.map.fill_transfer_from_savings
         else
             return -1
     }

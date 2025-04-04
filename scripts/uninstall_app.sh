@@ -22,7 +22,6 @@ POSTGRES_USER=${POSTGRES_USER:-"haf_admin"}
 POSTGRES_HOST=${POSTGRES_HOST:-"localhost"}
 POSTGRES_PORT=${POSTGRES_PORT:-5432}
 POSTGRES_URL=${POSTGRES_URL:-""}
-SUBINDEXER=false
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -37,9 +36,6 @@ while [ $# -gt 0 ]; do
         ;;
     --postgres-url=*)
         POSTGRES_URL="${1#*=}"
-        ;;
-    --subindexer)
-        SUBINDEXER=true
         ;;
     --help|-h|-?)
         print_help
@@ -62,16 +58,6 @@ while [ $# -gt 0 ]; do
 done
 
 POSTGRES_ACCESS_ADMIN=${POSTGRES_URL:-"postgresql://$POSTGRES_USER@$POSTGRES_HOST:$POSTGRES_PORT/haf_block_log"}
-
-if [[ $SUBINDEXER = true ]]; then
-    echo "Uninstalling VSC-HAF subindexer..."
-else
-    echo "Uninstalling VSC-HAF app..."
-fi
+echo "Uninstalling VSC-HAF app..."
 echo "Connection URL: ${POSTGRES_ACCESS_ADMIN}"
-
-psql "$POSTGRES_ACCESS_ADMIN" -v "ON_ERROR_STOP=OFF" -f "$SCRIPTPATH/../src/sql/drop_subindexer.sql"
-
-if [[ $SUBINDEXER = false ]]; then
-    psql "$POSTGRES_ACCESS_ADMIN" -v "ON_ERROR_STOP=OFF" -f "$SCRIPTPATH/../src/sql/drop_db.sql"
-fi
+psql "$POSTGRES_ACCESS_ADMIN" -v "ON_ERROR_STOP=OFF" -f "$SCRIPTPATH/../src/sql/drop_db.sql"

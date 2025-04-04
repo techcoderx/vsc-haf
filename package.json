@@ -1,6 +1,6 @@
 {
   "name": "vsc-haf",
-  "version": "1.27.6.0.0",
+  "version": "1.27.7.0.2",
   "description": "HAF indexer for VSC",
   "keywords": [
     "hive",
@@ -12,10 +12,8 @@
   "type": "module",
   "scripts": {
     "start": "node dist/index.js",
-    "subindexer": "node dist/subindexer/index.js",
     "compile": "tsc; ./scripts/post_compile.sh",
     "dev": "node --loader ts-node/esm src/index.ts",
-    "dev-subindexer": "node --loader ts-node/esm src/subindexer/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -29,36 +27,14 @@
   },
   "homepage": "https://github.com/techcoderx/vsc-haf#readme",
   "dependencies": {
-    "@chainsafe/bls": "^7.1.3",
-    "@chainsafe/blst": "^0.2.11",
-    "@didtools/codecs": "^3.0.0",
-    "@ipld/dag-cbor": "^9.2.2",
-    "bech32": "^2.0.0",
-    "bitset": "^5.2.3",
-    "bs58": "^5.0.0",
-    "codeco": "^1.4.3",
-    "did-resolver": "^4.1.0",
-    "dids": "^4.0.4",
     "dotenv": "^16.4.7",
-    "eip55": "^2.1.1",
-    "key-did-provider-ed25519": "^3.0.2",
-    "key-did-resolver": "^3.0.0",
-    "kubo-rpc-client": "^3.0.4",
     "log4js": "^6.9.1",
-    "multiformats": "^12.1.3",
     "pg": "^8.13.1",
-    "randombytes": "^2.1.0",
-    "secp256k1": "^5.0.1",
-    "seedrandom": "^3.0.5",
     "source-map-support": "^0.5.21",
-    "uint8arrays": "^5.1.0",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
     "@types/pg": "^8.11.11",
-    "@types/randombytes": "^2.0.3",
-    "@types/secp256k1": "^4.0.6",
-    "@types/seedrandom": "^3.0.8",
     "@types/yargs": "^17.0.33",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"

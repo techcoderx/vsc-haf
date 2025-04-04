@@ -3,9 +3,9 @@ set -xe
 
 SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit 1; pwd -P )"
 
-DEFAULT_API_SCHEMA_NAME=vsc_api
-DEFAULT_SCHEMA_NAME=vsc_app
-DEFAULT_APP_CONTEXT_NAME=vsc_app
+DEFAULT_API_SCHEMA_NAME=vsc_mainnet_api
+DEFAULT_SCHEMA_NAME=vsc_mainnet
+DEFAULT_APP_CONTEXT_NAME=vsc_mainnet
 
 API_SCHEMA_NAME=$DEFAULT_API_SCHEMA_NAME
 SCHEMA_NAME=$DEFAULT_SCHEMA_NAME
@@ -18,9 +18,9 @@ Usage: $0 [OPTION[=VALUE]]...
 
 Copies PostgreSQL scripts into dist folder with speficied schema and app context name.
 OPTIONS:
-    --schema=SCHEMA                 The schema name to use (default: vsc_app)
-    --api-schema=SCHEMA             The API schema name to use (default: vsc_api)
-    --app-context=CONTEXT_NAME      HAF app context name to use (default: vsc_app)
+    --schema=SCHEMA                 The schema name to use (default: vsc_mainnet)
+    --api-schema=SCHEMA             The API schema name to use (default: vsc_mainnet_api)
+    --app-context=CONTEXT_NAME      HAF app context name to use (default: vsc_mainnet)
     --help,-h,-?                    Displays this help message
 EOF
 }
@@ -74,7 +74,7 @@ if [[ "$APP_CONTEXT_NAME" != "$DEFAULT_APP_CONTEXT_NAME" ]]; then
     ${SED_COMMAND} -i "s/'${DEFAULT_APP_CONTEXT_NAME}'/'${APP_CONTEXT_NAME}'/g" $DESTINATION_PATH/sql/drop_db.sql
     ${SED_COMMAND} -i "s/const APP_CONTEXT = '${DEFAULT_APP_CONTEXT_NAME}/const APP_CONTEXT = '${APP_CONTEXT_NAME}/g" $DESTINATION_PATH/constants.js
     if [[ $IS_DOCKER = true ]]; then
-        ${SED_COMMAND} -i "s/vsc_app/${APP_CONTEXT_NAME}/g" $DESTINATION_PATH/../scripts/block_processing_healthcheck.sh
+        ${SED_COMMAND} -i "s/vsc_mainnet/${APP_CONTEXT_NAME}/g" $DESTINATION_PATH/../scripts/block_processing_healthcheck.sh
     fi
 fi
 

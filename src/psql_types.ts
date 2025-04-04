@@ -9,32 +9,3 @@ export type L1OpTypes = {
     op_name: string
     filterer: bigint
 }
-
-/* Mainly subindexer types below this point */
-export type SubindexerNextOps = {
-    first_op?: number
-    last_op?: number
-}
-
-export type BlockScheduleParams = {
-    rnd_length: number
-    total_rnds: number
-    mod_length: number
-    mod3: number
-    past_rnd_height: number
-    next_rnd_height: number
-    block_id: string
-    epoch: number
-}
-
-export type WitnessConsensusDid = {
-    name: string
-    consensus_did: string
-    weight: number
-}
-
-export type LastElectionDetail = {
-    epoch: number
-    bh: number
-    total_weight: number
-}

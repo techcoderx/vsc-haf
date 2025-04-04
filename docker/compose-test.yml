@@ -1,6 +1,6 @@
 services:
   vsc-test-install:
-    image: vsc-haf:${VSC_TEST_VERSION:-dev}
+    image: vsc-mainnet-haf:${VSC_TEST_VERSION:-dev}
     profiles:
       - apps
       - vsc-test
@@ -14,7 +14,7 @@ services:
       haf:
         condition: service_healthy
   vsc-test-uninstall:
-    image: vsc-haf:${VSC_TEST_VERSION:-dev}
+    image: vsc-mainnet-haf:${VSC_TEST_VERSION:-dev}
     profiles:
       - vsc-test-uninstall
     environment:
@@ -27,13 +27,13 @@ services:
       haf:
         condition: service_healthy
   vsc-test-block-processing:
-    image: vsc-haf:${VSC_TEST_VERSION:-dev}
+    image: vsc-mainnet-haf:${VSC_TEST_VERSION:-dev}
     profiles:
       - apps
       - vsc-test
     environment:
       POSTGRES_URL: postgresql://vsc_owner@haf/haf_block_log
-      VSC_HAF_LOG_LEVEL: ${VSC_TEST_LOG_LEVEL:-trace}
+      VSC_MAINNET_HAF_LOG_LEVEL: ${VSC_TEST_LOG_LEVEL:-trace}
     command:
       - process_blocks
     healthcheck:
@@ -50,14 +50,14 @@ services:
       haf:
         condition: service_healthy
   vsc-test-subindexer:
-    image: vsc-haf:${VSC_TEST_VERSION:-dev}
+    image: vsc-mainnet-haf:${VSC_TEST_VERSION:-dev}
     profiles:
       - apps
-      - vsc-haf
+      - vsc-mainnet-haf
     environment:
       POSTGRES_URL: postgresql://vsc_owner@haf/haf_block_log
-      VSC_HAF_LOG_LEVEL: ${VSC_TEST_LOG_LEVEL:-info}
-      VSC_HAF_IPFS_API_URL: ${VSC_TEST_IPFS_API_URL:-http://172.17.0.1:5001}
+      VSC_MAINNET_HAF_LOG_LEVEL: ${VSC_TEST_LOG_LEVEL:-info}
+      VSC_MAINNET_HAF_IPFS_API_URL: ${VSC_TEST_IPFS_API_URL:-http://172.17.0.1:5001}
     command:
       - subindexer
     networks:

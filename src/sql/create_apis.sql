@@ -7,8 +7,8 @@ GRANT USAGE ON SCHEMA vsc_mainnet TO vsc_user;
 GRANT SELECT ON ALL TABLES IN SCHEMA vsc_mainnet_api TO vsc_user;
 GRANT SELECT ON ALL TABLES IN SCHEMA vsc_mainnet TO vsc_user;
 GRANT SELECT ON TABLE hafd.vsc_mainnet_accounts TO vsc_user;
-GRANT SELECT ON vsc_mainnet.transactions_view TO vsc_user;
-GRANT SELECT ON vsc_mainnet.operations_view TO vsc_user;
+GRANT SELECT ON hive.irreversible_operations_view TO vsc_user;
+GRANT SELECT ON hive.irreversible_transactions_view TO vsc_user;
 
 -- GET /
 CREATE OR REPLACE FUNCTION vsc_mainnet_api.home()
@@ -141,7 +141,7 @@ BEGIN
                 ot.id = o.op_type
             JOIN hafd.vsc_mainnet_accounts a ON
                 a.id = o.user_id
-            JOIN hive.operations_view ho ON
+            JOIN hive.irreversible_operations_view ho ON
                 ho.id = o.op_id
             WHERE a.name = username AND
                 (SELECT CASE WHEN last_nonce IS NOT NULL THEN o.nonce <= last_nonce ELSE TRUE END) AND
@@ -174,9 +174,9 @@ BEGIN
                 vt.id=vo.op_type
             JOIN hafd.vsc_mainnet_accounts va ON
                 va.id=vo.user_id
-            JOIN hive.operations_view ho ON
+            JOIN hive.irreversible_operations_view ho ON
                 ho.block_num = vo.block_num AND ho.trx_in_block = vo.trx_in_block AND ho.op_pos = vo.op_pos
-            JOIN hive.transactions_view ht ON
+            JOIN hive.irreversible_transactions_view ht ON
                 ho.block_num = ht.block_num AND ho.trx_in_block = ht.trx_in_block
             WHERE ht.trx_hash = decode(trx_id, 'hex')
             ORDER BY vo.id ASC
@@ -213,7 +213,7 @@ BEGIN
                 ot.id = o.op_type
             JOIN hafd.vsc_mainnet_accounts a ON
                 a.id = o.user_id
-            JOIN hive.operations_view ho ON
+            JOIN hive.irreversible_operations_view ho ON
                 ho.id = o.op_id
             WHERE (SELECT CASE WHEN bitmask_filter IS NOT NULL THEN (ot.filterer & bitmask_filter) > 0 ELSE TRUE END)
             ORDER BY o.id DESC

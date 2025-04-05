@@ -9,9 +9,6 @@ import { FKS_TYPE, INDEXES_TYPE, Ordering } from './schema_types.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-// tables to be registered for forking HAF app
-const HAF_TABLES: string[] = []
-
 // FK name: FKS_TYPE
 const HAF_FKS: FKS_TYPE = {
     l1_op_user_id_fk: {

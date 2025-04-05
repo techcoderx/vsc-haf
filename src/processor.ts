@@ -3,29 +3,12 @@ import db from './db.js'
 import logger from './logger.js'
 import { NodeAnnouncePayload, Op, OpBody, ParsedOp, PayloadTypes, TxTypes } from './processor_types.js'
 import op_type_map from './operations.js'
-const getMultisigAccount = () => {
-    return MULTISIG_ACCOUNT
-}
-
-const ethReg = new RegExp('^(0x)?[0-9a-fA-F]{40}$')
-
-export const isValidHiveUsername = (value: string): boolean => {
-    if (typeof value !== 'string' || value.length < 3 || value.length > 16) return false
-    const ref = value.split('.')
-    for (let i = 0, len = ref.length; i < len; i++) {
-        if (!/^[a-z]/.test(ref[i])) return false
-        if (!/^[a-z0-9-]*$/.test(ref[i])) return false
-        if (!/[a-z0-9]$/.test(ref[i])) return false
-        if (ref[i].length < 3) return false
-    }
-    return true
-}
 
 const processor = {
     validateAndParse: async (op: Op, ts: Date): Promise<ParsedOp<PayloadTypes>> => {
         try {
             let parsed: OpBody = JSON.parse(op.body)
-            const msAcc = getMultisigAccount()
+            const msAcc = MULTISIG_ACCOUNT
             if (!parsed.value)
                 return { valid: false }
             if (parsed.type === 'custom_json_operation') {
@@ -57,7 +40,7 @@ const processor = {
                     tx_type: TxTypes.CustomJSON,
                     op_type: cjidx
                 }
-                if (isSystemTx && payload.net_id !== NETWORK_ID)
+                if (!isSystemTx && payload.net_id !== NETWORK_ID)
                     return { valid: false }
                 return details
             } else if (parsed.type === 'account_update_operation') {
@@ -165,7 +148,7 @@ const processor = {
         let result = await processor.validateAndParse(op, ts)
         if (result.valid) {
             logger.trace('Processing op',result)
-            let op_number = op_type_map.translate(result.tx_type!, result.op_type!, result.user === getMultisigAccount())
+            let op_number = op_type_map.translate(result.tx_type!, result.op_type!, result.user === MULTISIG_ACCOUNT)
             let new_vsc_op = await db.client.query(`SELECT ${SCHEMA_NAME}.process_operation($1,$2,$3,$4);`,[result.user, result.id, op_number, result.ts])
             switch (op_number) {
                 case op_type_map.map.announce_node:

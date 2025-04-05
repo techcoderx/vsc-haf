@@ -176,7 +176,7 @@ BEGIN
         IF _payload2 ? 'did_keys' IS TRUE THEN
             _payload := jsonb_set(_payload::jsonb, '{did_keys}', _payload2->'did_keys');
         END IF;
-    ELSIF _op_name = 'rotate_multisig' OR _op_name = 'l1_transfer' OR op_name = 'transfer_to_savings' OR op_name = 'transfer_from_savings' OR op_name = 'interest' OR op_name = 'fill_transfer_from_savings' THEN
+    ELSIF _op_name = 'rotate_multisig' OR _op_name = 'l1_transfer' OR _op_name = 'transfer_to_savings' OR _op_name = 'transfer_from_savings' OR _op_name = 'interest' OR _op_name = 'fill_transfer_from_savings' THEN
         _payload := _op_body;
     ELSE
         _payload := _op_body->>'json';

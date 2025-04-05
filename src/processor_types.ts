@@ -58,8 +58,3 @@ export type NodeAnnouncePayload = {
     witnessEnabled: boolean
     consensus_did: string
 }
-
-export type BLSAggSign<T> = {
-    sig: T,
-    bv: T
-}

@@ -23,7 +23,7 @@ BEGIN
             'db_version', s1.db_version,
             'operations', (SELECT COUNT(*) FROM vsc_mainnet.l1_operations),
             'witnesses', (SELECT COUNT(*) FROM vsc_mainnet.witnesses)
-        ) FROM s1, s2
+        ) FROM s1
     );
 END
 $function$

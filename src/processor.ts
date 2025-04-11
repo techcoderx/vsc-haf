@@ -123,7 +123,7 @@ const processor = {
                     ts,
                     user: msAcc,
                     block_num: op.block_num,
-                    tx_type: TxTypes.TransferToSavings
+                    tx_type: TxTypes.HbdInterest
                 }
             } else if (parsed.type === 'fill_transfer_from_savings_operation') {
                 if ((parsed.value.from !== msAcc && parsed.value.to !== msAcc))

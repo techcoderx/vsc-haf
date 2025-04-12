@@ -63,7 +63,7 @@ const processor = {
                     block_num: op.block_num,
                     tx_type: TxTypes.AccountUpdate
                 }
-                if (typeof payload.vsc_node !== 'object' || payload.vsc_node.net_id !== NETWORK_ID_ANNOUNCE)
+                if (typeof payload.vsc_node !== 'object' || (payload.vsc_node.net_id !== NETWORK_ID_ANNOUNCE && payload.vsc_node.net_id !== NETWORK_ID))
                     return { valid: false }
                 details.payload = {
                     peer_id: payload.vsc_node.peer_id,

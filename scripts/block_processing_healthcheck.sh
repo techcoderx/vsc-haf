@@ -30,7 +30,7 @@ STARTUP_TIME="$(cat /tmp/block_processing_startup_time.txt)"
 CHECK="SET TIME ZONE 'UTC'; \
        SELECT ((now() - (SELECT last_active_at FROM hafd.contexts WHERE name = 'vsc_mainnet')) < interval '1 minute' \
                AND (SELECT last_active_at FROM hafd.contexts WHERE name = 'vsc_mainnet') > '${STARTUP_TIME}'::timestamp) OR \
-              ((SELECT current_block_num FROM hafd.contexts WHERE name = 'vsc_mainnet') >= (SELECT consistent_block FROM hafd.irreversible_data))"
+              hive.is_app_in_sync('vsc_mainnet');"
 
 # the docker container probably won't have a locale set, do this to suppress the warning
 export LC_ALL=C

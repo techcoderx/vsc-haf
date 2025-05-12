@@ -1,10 +1,11 @@
 # VSC-HAF
 
-[VSC](https://github.com/vsc-eco/vsc-node) HAF indexer and API server. Indexes Hive from the VSC genesis block number for the relevant VSC operations using the HAF app sync algorithm.
+[VSC](https://github.com/vsc-eco/go-vsc-node) HAF indexer and API server. Indexes Hive from the VSC genesis block number for the relevant VSC operations using the HAF app sync algorithm.
+
+This is currently used for L1 operation history and witness metadata on [VSC Blocks](https://github.com/techcoderx/vsc-explorer).
 
 ## Required Dependencies
 
-* `nodejs` and `npm` (Latest LTS, v18 minimum supported)
 * Synced [HAF](https://gitlab.syncad.com/hive/haf) node, ideally using [`haf_api_node`](https://gitlab.syncad.com/hive/haf_api_node) compose
 
 ## Docker Setup
@@ -16,9 +17,6 @@ Clone this repository, then add the following in the `.env` file in `haf_api_nod
 ```env
 COMPOSE_FILE="${COMPOSE_FILE}:/path/to/vsc-haf/repo/docker/compose.yml"
 VSC_MAINNET_HAF_VERSION=latest
-VSC_MAINNET_HAF_GITHUB_API_KEY=YOUR_OPTIONAL_GITHUB_API_KEY
-VSC_MAINNET_HAF_IPFS_API_URL=http://YOUR_IPFS_URL:5001
-VSC_MAINNET_HAF_SUBINDEXER_LOG_LEVEL=info
 ```
 
 Build the Docker image:
@@ -30,17 +28,17 @@ cd /path/to/vsc-haf/repo
 
 Run the HAF app sync:
 ```sh
-docker compose up -d vsc-haf-block-processing
+docker compose up -d vsc-mainnet-haf-block-processing
 ```
 
 Run the subindexer (IPFS daemon must be already running):
 ```sh
-docker compose up -d vsc-haf-subindexer
+docker compose up -d vsc-mainnet-haf-subindexer
 ```
 
 Run the PostgREST server:
 ```sh
-docker compose up -d vsc-haf-postgrest
+docker compose up -d vsc-mainnet-haf-postgrest
 ```
 
 ## Setup
@@ -83,9 +81,4 @@ npm start
 ## Start PostgREST server
 ```bash
 ./scripts/postgrest_start.sh postgres://vsc_mainnet:<vsc_app_password>@localhost:5432/block_log <server_port>
-```
-
-## Periodically fetch latest [vsc-node](https://github.com/vsc-eco/vsc-node) commit in crontab
-```cron
-*/5 * * * * /path/to/this/repo/scripts/github_fetch_head.sh --postgres-url=<psql_url> --api-key=<github_api_key> --run-once
 ```

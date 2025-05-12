@@ -31,11 +31,6 @@ Run the HAF app sync:
 docker compose up -d vsc-mainnet-haf-block-processing
 ```
 
-Run the subindexer (IPFS daemon must be already running):
-```sh
-docker compose up -d vsc-mainnet-haf-subindexer
-```
-
 Run the PostgREST server:
 ```sh
 docker compose up -d vsc-mainnet-haf-postgrest

@@ -78,48 +78,6 @@ BEGIN
 END $$
 LANGUAGE plpgsql STABLE;
 
-CREATE OR REPLACE FUNCTION vsc_mainnet_api.list_witnesses_by_id(id_start INTEGER = 0, count INTEGER = 50)
-RETURNS jsonb AS $$
-BEGIN
-    IF count > 50 OR count <= 0 THEN
-        RETURN jsonb_build_object(
-            'error', 'count must be between 1 and 50'
-        );
-    END IF;
-    RETURN COALESCE((
-        WITH result AS (
-            SELECT w.witness_id, a.name, w.consensus_did, w.peer_id, w.peer_addrs, w.version_id, w.git_commit, w.protocol_version, w.gateway_key, w.enabled, vsc_mainnet.get_tx_hash_by_op(l1_last.block_num, l1_last.trx_in_block) last_update_tx, vsc_mainnet.get_tx_hash_by_op(l1_first.block_num, l1_first.trx_in_block) first_seen_tx, l1_last.ts last_update_ts, l1_first.ts first_seen_ts
-            FROM vsc_mainnet.witnesses w
-            JOIN hafd.vsc_mainnet_accounts a ON
-                a.id = w.id
-            LEFT JOIN vsc_mainnet.l1_operations l1_last ON
-                l1_last.id = w.last_update
-            LEFT JOIN vsc_mainnet.l1_operations l1_first ON
-                l1_first.id = w.first_seen
-            WHERE w.witness_id >= id_start
-            ORDER BY w.witness_id
-            LIMIT count
-        )
-        SELECT jsonb_agg(jsonb_build_object(
-            'id', r.witness_id,
-            'username', r.name,
-            'consensus_did', r.consensus_did,
-            'peer_id', r.peer_id,
-            'peer_addrs', r.peer_addrs,
-            'version_id', r.version_id,
-            'git_commit', r.git_commit,
-            'protocol_version', r.protocol_version,
-            'gateway_key', r.gateway_key,
-            'enabled', r.enabled,
-            'last_update_ts', r.last_update_ts,
-            'last_update_tx', r.last_update_tx,
-            'first_seen_ts', r.first_seen_ts,
-            'first_seen_tx', r.first_seen_tx
-        )) FROM result r
-    ));
-END $$
-LANGUAGE plpgsql STABLE;
-
 CREATE OR REPLACE FUNCTION vsc_mainnet_api.get_op_history_by_l1_user(username VARCHAR, count INTEGER = 50, last_nonce INTEGER = NULL, bitmask_filter BIGINT = NULL)
 RETURNS jsonb AS $$
 BEGIN
@@ -159,39 +117,6 @@ BEGIN
             'block_num', result.block_num,
             'payload', vsc_mainnet.parse_l1_payload(result.op_name, result.body)
         )) FROM result
-    ), '[]'::jsonb);
-END $$
-LANGUAGE plpgsql STABLE;
-
-CREATE OR REPLACE FUNCTION vsc_mainnet_api.get_ops_by_l1_tx(trx_id VARCHAR)
-RETURNS jsonb AS $$
-BEGIN
-    RETURN COALESCE((
-        WITH results AS (
-            SELECT vo.id, va.name, vo.nonce, vo.op_type, vt.op_name, vo.block_num, vo.trx_in_block, vo.op_pos, vo.ts, vsc_mainnet.parse_l1_payload(vt.op_name, ho.body::jsonb->'value') payload
-            FROM vsc_mainnet.l1_operations vo
-            JOIN vsc_mainnet.l1_operation_types vt ON
-                vt.id=vo.op_type
-            JOIN hafd.vsc_mainnet_accounts va ON
-                va.id=vo.user_id
-            JOIN hive.irreversible_operations_view ho ON
-                ho.block_num = vo.block_num AND ho.trx_in_block = vo.trx_in_block AND ho.op_pos = vo.op_pos
-            JOIN hive.irreversible_transactions_view ht ON
-                ho.block_num = ht.block_num AND ho.trx_in_block = ht.trx_in_block
-            WHERE ht.trx_hash = decode(trx_id, 'hex')
-            ORDER BY vo.id ASC
-        )
-        SELECT jsonb_agg(jsonb_build_object(
-            'id', r.id,
-            'username', r.name,
-            'nonce', r.nonce,
-            'type', r.op_name,
-            'block_num', r.block_num,
-            'l1_tx', trx_id,
-            'op_pos', r.op_pos,
-            'ts', r.ts,
-            'payload', r.payload
-        )) FROM results r
     ), '[]'::jsonb);
 END $$
 LANGUAGE plpgsql STABLE;

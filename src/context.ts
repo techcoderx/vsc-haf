@@ -1,7 +1,11 @@
 import { APP_CONTEXT, SCHEMA_NAME } from './constants.js'
 import logger from './logger.js'
 import db from './db.js'
-import { AppNextBlock } from './psql_types.js'
+
+type AppNextBlock = {
+    first_block?: number
+    last_block?: number
+}
 
 const context = {
     exists: async () => {

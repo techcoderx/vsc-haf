@@ -2,7 +2,6 @@ import db from './db.js'
 import logger from './logger.js'
 import { TxTypes } from './processor_types.js'
 import { CUSTOM_JSON_IDS, SCHEMA_NAME } from './constants.js'
-import { L1OpTypes } from './psql_types.js'
 
 type OpTypeIDMap = {
     [key: string]: number
@@ -12,6 +11,12 @@ type OpTypeMod = {
     map: OpTypeIDMap
     retrieveMap: () => Promise<void>,
     translate: (tx_type: TxTypes, idx: number, is_ms_account: boolean) => number
+}
+
+type L1OpTypes = {
+    id: number
+    op_name: string
+    filterer: bigint
 }
 
 // op_type -> id mapping

@@ -80,6 +80,8 @@ LANGUAGE plpgsql STABLE;
 
 CREATE OR REPLACE FUNCTION vsc_mainnet_api.get_op_history_by_l1_user(username VARCHAR, count INTEGER = 50, last_nonce INTEGER = NULL, bitmask_filter BIGINT = NULL)
 RETURNS jsonb AS $$
+DECLARE
+    _user_id INTEGER;
 BEGIN
     IF last_nonce IS NOT NULL AND last_nonce < 0 THEN
         RETURN jsonb_build_object(
@@ -91,17 +93,22 @@ BEGIN
         );
     END IF;
 
+    SELECT a.id INTO _user_id FROM hafd.vsc_mainnet_accounts a WHERE a.name = username;
+    IF _user_id IS NULL THEN
+        RETURN jsonb_build_object(
+            'error', 'user does not exist'
+        );
+    END IF;
+
     RETURN COALESCE((
         WITH result AS (
-            SELECT o.id, a.name, o.nonce, o.block_num, o.trx_in_block, o.ts, ot.op_name, ho.body::jsonb->'value' body
+            SELECT o.id, o.nonce, o.block_num, o.trx_in_block, o.ts, ot.op_name, ho.body::jsonb->'value' body
             FROM vsc_mainnet.l1_operations o
             JOIN vsc_mainnet.l1_operation_types ot ON
                 ot.id = o.op_type
-            JOIN hafd.vsc_mainnet_accounts a ON
-                a.id = o.user_id
             JOIN hive.irreversible_operations_view ho ON
                 ho.id = o.op_id
-            WHERE a.name = username AND
+            WHERE o.user_id = _user_id AND
                 (SELECT CASE WHEN last_nonce IS NOT NULL THEN o.nonce <= last_nonce ELSE TRUE END) AND
                 (SELECT CASE WHEN bitmask_filter IS NOT NULL THEN (ot.filterer & bitmask_filter) > 0 ELSE TRUE END)
             ORDER BY o.id DESC
@@ -109,7 +116,7 @@ BEGIN
         )
         SELECT jsonb_agg(jsonb_build_object(
             'id', result.id,
-            'username', result.name,
+            'username', username,
             'nonce', result.nonce,
             'ts', result.ts,
             'type', result.op_name,

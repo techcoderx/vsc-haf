@@ -16,7 +16,9 @@ export const CUSTOM_JSON_IDS = [
     'vsc.stake_hbd',
     'vsc.unstake_hbd',
     'vsc.consensus_stake',
-    'vsc.consensus_unstake'
+    'vsc.consensus_unstake',
+    'vsc.tss_sign',
+    'vsc.tss_commitment'
 ]
 export const L1_ASSETS = [
     '@@000000021', // HIVE

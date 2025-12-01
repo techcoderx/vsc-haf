@@ -72,7 +72,7 @@ const processor = {
                     git_commit: payload.vsc_node.git_commit,
                     protocol_version: payload.vsc_node.protocol_version,
                     gateway_key: payload.vsc_node.gateway_key,
-                    witnessEnabled: typeof payload.vsc_node.Witness === 'object' && payload.vsc_node.Witness.enabled,
+                    witnessEnabled: typeof payload.vsc_node.witness === 'object' && payload.vsc_node.witness.enabled,
                 } as NodeAnnouncePayload
                 if (Array.isArray(payload.did_keys))
                     for (let i in payload.did_keys)

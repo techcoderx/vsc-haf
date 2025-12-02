@@ -14,6 +14,7 @@ const processor = {
             if (parsed.type === 'custom_json_operation') {
                 let cjidx = CUSTOM_JSON_IDS.indexOf(parsed.value.id)
                 const isSystemTx = [0,1].includes(cjidx)
+                const isTss = parsed.value.id.startsWith('vsc.tss_')
                 if (cjidx === -1 || !parsed.value.json)
                     return { valid: false }
                 let user: string
@@ -40,7 +41,7 @@ const processor = {
                     tx_type: TxTypes.CustomJSON,
                     op_type: cjidx
                 }
-                if (!isSystemTx && payload.net_id !== NETWORK_ID)
+                if (!isSystemTx && !isTss && payload.net_id !== NETWORK_ID)
                     return { valid: false }
                 return details
             } else if (parsed.type === 'account_update_operation') {

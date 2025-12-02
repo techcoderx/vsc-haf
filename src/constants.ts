@@ -17,6 +17,8 @@ export const CUSTOM_JSON_IDS = [
     'vsc.unstake_hbd',
     'vsc.consensus_stake',
     'vsc.consensus_unstake',
+
+    // tss ops
     'vsc.tss_sign',
     'vsc.tss_commitment'
 ]

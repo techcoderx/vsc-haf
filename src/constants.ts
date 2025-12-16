@@ -6,10 +6,13 @@ export const CUSTOM_JSON_IDS = [
     'vsc.fr_sync',
     'vsc.actions',
 
-    // issued by everyone else
+    // system operations
     'vsc.produce_block',
     'vsc.create_contract',
+    'vsc.update_contract',
     'vsc.election_result',
+
+    // user operations
     'vsc.withdraw',
     'vsc.call',
     'vsc.transfer',

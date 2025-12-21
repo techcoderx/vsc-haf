@@ -1,11 +1,12 @@
 {
-  "name": "vsc-haf",
-  "version": "1.27.7.0.3",
-  "description": "HAF indexer for VSC",
+  "name": "magi-haf",
+  "version": "1.28.6",
+  "description": "HAF indexer for Magi",
   "keywords": [
     "hive",
     "haf",
     "vsc",
+    "magi",
     "typescript"
   ],
   "main": "src/index.ts",

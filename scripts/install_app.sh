@@ -59,7 +59,7 @@ done
 
 POSTGRES_ACCESS_ADMIN=${POSTGRES_URL:-"postgresql://$POSTGRES_USER@$POSTGRES_HOST:$POSTGRES_PORT/haf_block_log"}
 
-echo "Installing VSC-HAF app built in roles..."
+echo "Installing Magi-HAF app built in roles..."
 echo "Connection URL: ${POSTGRES_ACCESS_ADMIN}"
 
 psql "$POSTGRES_ACCESS_ADMIN" -v "ON_ERROR_STOP=ON" -f "$SCRIPTPATH/../src/sql/builtin_roles.sql"

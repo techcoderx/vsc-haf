@@ -1,14 +1,14 @@
-SET ROLE vsc_owner;
-CREATE SCHEMA IF NOT EXISTS vsc_mainnet;
+SET ROLE magi_owner;
+CREATE SCHEMA IF NOT EXISTS magi_app;
 
-CREATE TABLE IF NOT EXISTS vsc_mainnet.l1_operation_types(
+CREATE TABLE IF NOT EXISTS magi_app.l1_operation_types(
     id SERIAL PRIMARY KEY,
     op_name VARCHAR(30) NOT NULL,
     filterer BIGINT GENERATED ALWAYS AS (2^(id-1)) STORED,
     UNIQUE(op_name)
 );
 
-CREATE TABLE IF NOT EXISTS vsc_mainnet.l1_operations(
+CREATE TABLE IF NOT EXISTS magi_app.l1_operations(
     id BIGSERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
     nonce INTEGER NOT NULL,
@@ -21,13 +21,13 @@ CREATE TABLE IF NOT EXISTS vsc_mainnet.l1_operations(
     UNIQUE(block_num, trx_in_block, op_pos)
 );
 
-CREATE TABLE IF NOT EXISTS vsc_mainnet.l1_users(
+CREATE TABLE IF NOT EXISTS magi_app.l1_users(
     id INTEGER PRIMARY KEY,
     count BIGINT DEFAULT 0,
     last_op_ts TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS vsc_mainnet.witnesses(
+CREATE TABLE IF NOT EXISTS magi_app.witnesses(
     id INTEGER PRIMARY KEY, -- hive user id
     witness_id SERIAL, -- sequential vsc witness id
     consensus_did VARCHAR,
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS vsc_mainnet.witnesses(
     first_seen BIGINT NOT NULL -- from l1_operations
 );
 
-CREATE TABLE IF NOT EXISTS vsc_mainnet.state(
+CREATE TABLE IF NOT EXISTS magi_app.state(
     id SERIAL PRIMARY KEY,
     last_processed_block INTEGER NOT NULL DEFAULT 0,
     db_version INTEGER NOT NULL DEFAULT 1

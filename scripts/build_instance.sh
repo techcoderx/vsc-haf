@@ -14,10 +14,10 @@ Usage: $0 [OPTION[=VALUE]]...
 Builds the Docker images.
 OPTIONS:
     --tag=TAG                       The image tag to use (default: latest)
-    --schema=SCHEMA                 The schema name to use (default: vsc_mainnet)
-    --api-schema=SCHEMA             The API schema name to use (default: vsc_mainnet_api)
-    --app-context=CONTEXT_NAME      HAF app context name to use (default: vsc_mainnet)
-    --test-schema                   Shortcut of --schema=vsc_test --api-schema=vsc_tapi --app-context=vsc_test
+    --schema=SCHEMA                 The schema name to use (default: magi_app)
+    --api-schema=SCHEMA             The API schema name to use (default: magi_api)
+    --app-context=CONTEXT_NAME      HAF app context name to use (default: magi_app)
+    --test-schema                   Shortcut of --schema=magi_test --api-schema=magi_tapi --app-context=magi_test
     --plain-output                  Uses --progress=plain arg in Docker build command
     --help,-h,-?                    Displays this help message
 EOF
@@ -29,7 +29,7 @@ while [ $# -gt 0 ]; do
         TAG="${1#*=}"
         ;;
     --test-schema)
-        BUILD_ARGS="$BUILD_ARGS --build-arg SCHEMA_NAME=vsc_test --build-arg API_SCHEMA_NAME=vsc_tapi --build-arg APP_CONTEXT=vsc_test"
+        BUILD_ARGS="$BUILD_ARGS --build-arg SCHEMA_NAME=magi_test --build-arg API_SCHEMA_NAME=magi_tapi --build-arg APP_CONTEXT=magi_test"
         ;;
     --schema=*)
         BUILD_ARGS="$BUILD_ARGS --build-arg SCHEMA_NAME=${1#*=}"
@@ -69,4 +69,4 @@ if [ -n "$BUILD_ARGS" ]; then
     echo Build args: $BUILD_ARGS
 fi
 
-docker build -t vsc-mainnet-haf:$TAG $BUILD_ARGS -f $SCRIPTPATH/../Dockerfile .
+docker build -t magi-haf:$TAG $BUILD_ARGS -f $SCRIPTPATH/../Dockerfile .

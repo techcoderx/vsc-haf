@@ -3,7 +3,7 @@ import * as dotenv from 'dotenv'
 
 dotenv.config()
 const config = yargs(process.argv)
-    .env('VSC_MAINNET_HAF')
+    .env('MAGI_HAF')
     .options({
         postgresUrl: {
             type: 'string',

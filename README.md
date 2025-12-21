@@ -1,8 +1,8 @@
-# VSC-HAF
+# Magi-HAF
 
-[VSC](https://github.com/vsc-eco/go-vsc-node) HAF indexer and API server. Indexes Hive from the VSC genesis block number for the relevant VSC operations using the HAF app sync algorithm.
+[Magi](https://github.com/vsc-eco/go-vsc-node) HAF indexer and API server. Indexes Hive from the Magi genesis block number for the relevant VSC operations using the HAF app sync algorithm.
 
-This is currently used for L1 operation history and witness metadata on [VSC Blocks](https://github.com/techcoderx/vsc-explorer).
+This is currently used for L1 operation history and witness metadata on [Magi Blocks](https://github.com/techcoderx/vsc-explorer).
 
 ## Required Dependencies
 
@@ -16,7 +16,7 @@ Clone this repository, then add the following in the `.env` file in `haf_api_nod
 
 ```env
 COMPOSE_FILE="${COMPOSE_FILE}:/path/to/vsc-haf/repo/docker/compose.yml"
-VSC_MAINNET_HAF_VERSION=latest
+MAGI_HAF_VERSION=latest
 ```
 
 Build the Docker image:
@@ -28,22 +28,22 @@ cd /path/to/vsc-haf/repo
 
 Run the HAF app sync:
 ```sh
-docker compose up -d vsc-mainnet-haf-block-processing
+docker compose up -d magi-haf-block-processing
 ```
 
 Run the PostgREST server:
 ```sh
-docker compose up -d vsc-mainnet-haf-postgrest
+docker compose up -d magi-haf-postgrest
 ```
 
 ## Setup
 
 ### PostgreSQL Roles
 ```pgsql
-CREATE ROLE vsc_mainnet WITH LOGIN PASSWORD 'vscpass' CREATEROLE INHERIT IN ROLE hive_applications_group;
-CREATE ROLE vsc_user WITH LOGIN INHERIT IN ROLE hive_applications_group;
-GRANT CREATE ON DATABASE block_log TO vsc_mainnet;
-GRANT vsc_user TO vsc_mainnet;
+CREATE ROLE magi_app WITH LOGIN PASSWORD 'vscpass' CREATEROLE INHERIT IN ROLE hive_applications_group;
+CREATE ROLE magi_user WITH LOGIN INHERIT IN ROLE hive_applications_group;
+GRANT CREATE ON DATABASE block_log TO magi_app;
+GRANT magi_user TO magi_app;
 ```
 
 ### PostgREST Installation
@@ -75,5 +75,5 @@ npm start
 
 ## Start PostgREST server
 ```bash
-./scripts/postgrest_start.sh postgres://vsc_mainnet:<vsc_app_password>@localhost:5432/block_log <server_port>
+./scripts/postgrest_start.sh postgres://magi_app:<magi_app_password>@localhost:5432/block_log <server_port>
 ```

@@ -58,6 +58,6 @@ while [ $# -gt 0 ]; do
 done
 
 POSTGRES_ACCESS_ADMIN=${POSTGRES_URL:-"postgresql://$POSTGRES_USER@$POSTGRES_HOST:$POSTGRES_PORT/haf_block_log"}
-echo "Uninstalling VSC-HAF app..."
+echo "Uninstalling Magi-HAF app..."
 echo "Connection URL: ${POSTGRES_ACCESS_ADMIN}"
 psql "$POSTGRES_ACCESS_ADMIN" -v "ON_ERROR_STOP=OFF" -f "$SCRIPTPATH/../src/sql/drop_db.sql"

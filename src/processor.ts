@@ -1,4 +1,4 @@
-import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, NETWORK_ID_ANNOUNCE, MULTISIG_ACCOUNT } from './constants.js'
+import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT } from './constants.js'
 import db from './db.js'
 import logger from './logger.js'
 import { NodeAnnouncePayload, Op, OpBody, ParsedOp, PayloadTypes, TxTypes } from './processor_types.js'
@@ -64,7 +64,7 @@ const processor = {
                     block_num: op.block_num,
                     tx_type: TxTypes.AccountUpdate
                 }
-                if (typeof payload.vsc_node !== 'object' || (payload.vsc_node.net_id !== NETWORK_ID_ANNOUNCE && payload.vsc_node.net_id !== NETWORK_ID))
+                if (typeof payload.vsc_node !== 'object' || payload.vsc_node.net_id !== NETWORK_ID)
                     return { valid: false }
                 details.payload = {
                     peer_id: payload.vsc_node.peer_id,
@@ -150,7 +150,7 @@ const processor = {
         if (result.valid) {
             logger.trace('Processing op',result)
             let op_number = op_type_map.translate(result.tx_type!, result.op_type!, result.user === MULTISIG_ACCOUNT)
-            let new_vsc_op = await db.client.query(`SELECT ${SCHEMA_NAME}.process_operation($1,$2,$3,$4);`,[result.user, result.id, op_number, result.ts])
+            let new_magi_op = await db.client.query(`SELECT ${SCHEMA_NAME}.process_operation($1,$2,$3,$4);`,[result.user, result.id, op_number, result.ts])
             switch (op_number) {
                 case op_type_map.map.announce_node:
                     let pl = result.payload as NodeAnnouncePayload
@@ -164,7 +164,7 @@ const processor = {
                         pl.protocol_version,
                         pl.gateway_key,
                         pl.witnessEnabled,
-                        new_vsc_op.rows[0].process_operation
+                        new_magi_op.rows[0].process_operation
                     ])
                     break
                 default:

@@ -1,6 +1,6 @@
 export const DB_VERSION = 1
-export const APP_CONTEXT = 'vsc_mainnet'
-export const SCHEMA_NAME = 'vsc_mainnet'
+export const APP_CONTEXT = 'magi_app'
+export const SCHEMA_NAME = 'magi_app'
 export const CUSTOM_JSON_IDS = [
     // issued by MULTISIG_ACCOUNT with active auth only
     'vsc.fr_sync',
@@ -31,6 +31,5 @@ export const L1_ASSETS = [
 ]
 export const START_BLOCK = 94601000
 export const NETWORK_ID = 'vsc-mainnet'
-export const NETWORK_ID_ANNOUNCE = 'go-mainnet'
 export const MULTISIG_ACCOUNT = 'vsc.gateway'
 export const DAO_ACCOUNT = 'vsc.dao'

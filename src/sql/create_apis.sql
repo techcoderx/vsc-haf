@@ -1,35 +1,35 @@
-SET ROLE vsc_owner;
+SET ROLE magi_owner;
 
-DROP SCHEMA IF EXISTS vsc_mainnet_api CASCADE;
-CREATE SCHEMA IF NOT EXISTS vsc_mainnet_api AUTHORIZATION vsc_owner;
-GRANT USAGE ON SCHEMA vsc_mainnet_api TO vsc_user;
-GRANT USAGE ON SCHEMA vsc_mainnet TO vsc_user;
-GRANT SELECT ON ALL TABLES IN SCHEMA vsc_mainnet_api TO vsc_user;
-GRANT SELECT ON ALL TABLES IN SCHEMA vsc_mainnet TO vsc_user;
-GRANT SELECT ON TABLE hafd.vsc_mainnet_accounts TO vsc_user;
-GRANT SELECT ON hive.irreversible_operations_view TO vsc_user;
-GRANT SELECT ON hive.irreversible_transactions_view TO vsc_user;
+DROP SCHEMA IF EXISTS magi_api CASCADE;
+CREATE SCHEMA IF NOT EXISTS magi_api AUTHORIZATION magi_owner;
+GRANT USAGE ON SCHEMA magi_api TO magi_user;
+GRANT USAGE ON SCHEMA magi_app TO magi_user;
+GRANT SELECT ON ALL TABLES IN SCHEMA magi_api TO magi_user;
+GRANT SELECT ON ALL TABLES IN SCHEMA magi_app TO magi_user;
+GRANT SELECT ON TABLE hafd.magi_app_accounts TO magi_user;
+GRANT SELECT ON hive.irreversible_operations_view TO magi_user;
+GRANT SELECT ON hive.irreversible_transactions_view TO magi_user;
 
 -- GET /
-CREATE OR REPLACE FUNCTION vsc_mainnet_api.home()
+CREATE OR REPLACE FUNCTION magi_api.home()
 RETURNS jsonb
 AS
 $function$
 BEGIN
     RETURN (
-        WITH s1 AS (SELECT * FROM vsc_mainnet.state)
+        WITH s1 AS (SELECT * FROM magi_app.state)
         SELECT jsonb_build_object(
             'last_processed_block', s1.last_processed_block,
             'db_version', s1.db_version,
-            'operations', (SELECT COUNT(*) FROM vsc_mainnet.l1_operations),
-            'witnesses', (SELECT COUNT(*) FROM vsc_mainnet.witnesses)
+            'operations', (SELECT COUNT(*) FROM magi_app.l1_operations),
+            'witnesses', (SELECT COUNT(*) FROM magi_app.witnesses)
         ) FROM s1
     );
 END
 $function$
 LANGUAGE plpgsql STABLE;
 
-CREATE OR REPLACE FUNCTION vsc_mainnet_api.get_l1_user(username VARCHAR)
+CREATE OR REPLACE FUNCTION magi_api.get_l1_user(username VARCHAR)
 RETURNS jsonb AS $$
 BEGIN
     RETURN (
@@ -38,15 +38,15 @@ BEGIN
             'tx_count', COALESCE(u.count, 0),
             'last_activity', COALESCE(u.last_op_ts, '1970-01-01T00:00:00')
         )
-        FROM vsc_mainnet.l1_users u
-        RIGHT JOIN hafd.vsc_mainnet_accounts ac ON
+        FROM magi_app.l1_users u
+        RIGHT JOIN hafd.magi_app_accounts ac ON
             ac.id = u.id
         WHERE ac.name=username
     );
 END $$
 LANGUAGE plpgsql STABLE;
 
-CREATE OR REPLACE FUNCTION vsc_mainnet_api.get_witness(username VARCHAR)
+CREATE OR REPLACE FUNCTION magi_api.get_witness(username VARCHAR)
 RETURNS jsonb AS $$
 BEGIN    
     RETURN COALESCE((
@@ -62,23 +62,23 @@ BEGIN
             'gateway_key', w.gateway_key,
             'enabled', w.enabled,
             'last_update_ts', l1_last.ts,
-            'last_update_tx', vsc_mainnet.get_tx_hash_by_op(l1_last.block_num, l1_last.trx_in_block),
+            'last_update_tx', magi_app.get_tx_hash_by_op(l1_last.block_num, l1_last.trx_in_block),
             'first_seen_ts', l1_first.ts,
-            'first_seen_tx', vsc_mainnet.get_tx_hash_by_op(l1_first.block_num, l1_first.trx_in_block)
+            'first_seen_tx', magi_app.get_tx_hash_by_op(l1_first.block_num, l1_first.trx_in_block)
         )
-        FROM vsc_mainnet.witnesses w
-        JOIN hafd.vsc_mainnet_accounts a ON
+        FROM magi_app.witnesses w
+        JOIN hafd.magi_app_accounts a ON
             a.id = w.id
-        LEFT JOIN vsc_mainnet.l1_operations l1_last ON
+        LEFT JOIN magi_app.l1_operations l1_last ON
             l1_last.id = w.last_update
-        LEFT JOIN vsc_mainnet.l1_operations l1_first ON
+        LEFT JOIN magi_app.l1_operations l1_first ON
             l1_first.id = w.first_seen
         WHERE a.name = username
     ), '{"id":null,"error":"witness does not exist"}'::jsonb);
 END $$
 LANGUAGE plpgsql STABLE;
 
-CREATE OR REPLACE FUNCTION vsc_mainnet_api.get_op_history_by_l1_user(username VARCHAR, count INTEGER = 50, last_nonce INTEGER = NULL, bitmask_filter BIGINT = NULL)
+CREATE OR REPLACE FUNCTION magi_api.get_op_history_by_l1_user(username VARCHAR, count INTEGER = 50, last_nonce INTEGER = NULL, bitmask_filter BIGINT = NULL)
 RETURNS jsonb AS $$
 DECLARE
     _user_id INTEGER;
@@ -93,7 +93,7 @@ BEGIN
         );
     END IF;
 
-    SELECT a.id INTO _user_id FROM hafd.vsc_mainnet_accounts a WHERE a.name = username;
+    SELECT a.id INTO _user_id FROM hafd.magi_app_accounts a WHERE a.name = username;
     IF _user_id IS NULL THEN
         RETURN jsonb_build_object(
             'error', 'user does not exist'
@@ -103,8 +103,8 @@ BEGIN
     RETURN COALESCE((
         WITH result AS (
             SELECT o.id, o.nonce, o.block_num, o.trx_in_block, o.ts, ot.op_name, ho.body::jsonb->'value' body
-            FROM vsc_mainnet.l1_operations o
-            JOIN vsc_mainnet.l1_operation_types ot ON
+            FROM magi_app.l1_operations o
+            JOIN magi_app.l1_operation_types ot ON
                 ot.id = o.op_type
             JOIN hive.irreversible_operations_view ho ON
                 ho.id = o.op_id
@@ -120,15 +120,15 @@ BEGIN
             'nonce', result.nonce,
             'ts', result.ts,
             'type', result.op_name,
-            'l1_tx', vsc_mainnet.get_tx_hash_by_op(result.block_num, result.trx_in_block),
+            'l1_tx', magi_app.get_tx_hash_by_op(result.block_num, result.trx_in_block),
             'block_num', result.block_num,
-            'payload', vsc_mainnet.parse_l1_payload(result.op_name, result.body)
+            'payload', magi_app.parse_l1_payload(result.op_name, result.body)
         )) FROM result
     ), '[]'::jsonb);
 END $$
 LANGUAGE plpgsql STABLE;
 
-CREATE OR REPLACE FUNCTION vsc_mainnet_api.list_latest_ops(count INTEGER = 100, bitmask_filter BIGINT = NULL, with_payload BOOLEAN = FALSE)
+CREATE OR REPLACE FUNCTION magi_api.list_latest_ops(count INTEGER = 100, bitmask_filter BIGINT = NULL, with_payload BOOLEAN = FALSE)
 RETURNS jsonb AS $$
 BEGIN
     IF count <= 0 OR count > 100 THEN
@@ -140,10 +140,10 @@ BEGIN
     RETURN COALESCE((
         WITH result AS (
             SELECT o.id, a.name, o.nonce, o.block_num, o.trx_in_block, o.ts, ot.op_name, ho.body::jsonb->'value' body
-            FROM vsc_mainnet.l1_operations o
-            JOIN vsc_mainnet.l1_operation_types ot ON
+            FROM magi_app.l1_operations o
+            JOIN magi_app.l1_operation_types ot ON
                 ot.id = o.op_type
-            JOIN hafd.vsc_mainnet_accounts a ON
+            JOIN hafd.magi_app_accounts a ON
                 a.id = o.user_id
             JOIN hive.irreversible_operations_view ho ON
                 ho.id = o.op_id
@@ -157,9 +157,9 @@ BEGIN
             'nonce', result.nonce,
             'type', result.op_name,
             'ts', result.ts,
-            'l1_tx', vsc_mainnet.get_tx_hash_by_op(result.block_num, result.trx_in_block),
+            'l1_tx', magi_app.get_tx_hash_by_op(result.block_num, result.trx_in_block),
             'block_num', result.block_num,
-            'payload', (CASE WHEN with_payload THEN vsc_mainnet.parse_l1_payload(result.op_name, result.body) ELSE NULL END)
+            'payload', (CASE WHEN with_payload THEN magi_app.parse_l1_payload(result.op_name, result.body) ELSE NULL END)
         )) FROM result
     ), '[]'::jsonb);
 END $$

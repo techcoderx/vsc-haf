@@ -29,7 +29,7 @@ export const L1_ASSETS = [
     '@@000000021', // HIVE
     '@@000000013', // HBD
 ]
-export const START_BLOCK = 94601000
-export const NETWORK_ID = 'vsc-mainnet'
+export const START_BLOCK = 2
+export const NETWORK_ID = 'vsc-testnet'
 export const MULTISIG_ACCOUNT = 'vsc.gateway'
 export const DAO_ACCOUNT = 'vsc.dao'

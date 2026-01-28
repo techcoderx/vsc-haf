@@ -69,4 +69,4 @@ if [ -n "$BUILD_ARGS" ]; then
     echo Build args: $BUILD_ARGS
 fi
 
-docker build -t magi-haf:$TAG $BUILD_ARGS -f $SCRIPTPATH/../Dockerfile .
+docker build -t techcoderx/magi-haf:$TAG $BUILD_ARGS -f $SCRIPTPATH/../Dockerfile .

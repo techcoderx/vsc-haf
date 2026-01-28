@@ -1,6 +1,6 @@
 services:
   magi-haf-install:
-    image: magi-haf:${MAGI_HAF_VERSION:-${HIVE_API_NODE_VERSION}}
+    image: techcoderx/magi-haf:${MAGI_HAF_VERSION:-${HIVE_API_NODE_VERSION}}
     profiles:
       - apps
       - magi-haf
@@ -14,7 +14,7 @@ services:
       haf:
         condition: service_healthy
   magi-haf-uninstall:
-    image: magi-haf:${MAGI_HAF_VERSION:-${HIVE_API_NODE_VERSION}}
+    image: techcoderx/magi-haf:${MAGI_HAF_VERSION:-${HIVE_API_NODE_VERSION}}
     profiles:
       - magi-haf-uninstall
     environment:
@@ -27,7 +27,7 @@ services:
       haf:
         condition: service_healthy
   magi-haf-block-processing:
-    image: magi-haf:${MAGI_HAF_VERSION:-${HIVE_API_NODE_VERSION}}
+    image: techcoderx/magi-haf:${MAGI_HAF_VERSION:-${HIVE_API_NODE_VERSION}}
     profiles:
       - apps
       - magi-haf

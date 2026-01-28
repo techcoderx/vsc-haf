@@ -1,4 +1,4 @@
-import { CUSTOM_JSON_IDS, SCHEMA_NAME, NETWORK_ID, MULTISIG_ACCOUNT } from './constants.js'
+import { CUSTOM_JSON_IDS, SCHEMA_NAME, MULTISIG_ACCOUNT } from './constants.js'
 import db from './db.js'
 import logger from './logger.js'
 import { NodeAnnouncePayload, Op, OpBody, ParsedOp, PayloadTypes, TxTypes } from './processor_types.js'
@@ -41,8 +41,8 @@ const processor = {
                     tx_type: TxTypes.CustomJSON,
                     op_type: cjidx
                 }
-                if (!isSystemTx && !isTss && payload.net_id !== NETWORK_ID)
-                    return { valid: false }
+                // if (!isSystemTx && !isTss && payload.net_id !== NETWORK_ID)
+                //     return { valid: false }
                 return details
             } else if (parsed.type === 'account_update_operation') {
                 if (parsed.value.account === msAcc)
@@ -64,7 +64,7 @@ const processor = {
                     block_num: op.block_num,
                     tx_type: TxTypes.AccountUpdate
                 }
-                if (typeof payload.vsc_node !== 'object' || payload.vsc_node.net_id !== NETWORK_ID)
+                if (typeof payload.vsc_node !== 'object')
                     return { valid: false }
                 details.payload = {
                     peer_id: payload.vsc_node.peer_id,

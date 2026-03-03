@@ -77,3 +77,14 @@ services:
         condition: service_healthy
       haf:
         condition: service_healthy
+  magi-haf-postgrest-rewriter:
+    image: techcoderx/magi-haf-postgrest-rewriter:${MAGI_HAF_VERSION:-${HIVE_API_NODE_VERSION}}
+    profiles:
+      - magi-haf-pr
+    networks:
+      haf-network:
+    ports:
+      - ${MAGI_HAF_PR_PORT:-10715}:8080
+    depends_on:
+      magi-haf-postgrest:
+        condition: service_healthy

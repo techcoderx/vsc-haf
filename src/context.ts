@@ -1,10 +1,10 @@
-import { APP_CONTEXT, SCHEMA_NAME } from './constants.js'
+import { APP_CONTEXT, SCHEMA_NAME, MASSIVE_STAGE_NAME, MASSIVE_SYNC_DISTANCE, MASSIVE_SYNC_BATCH } from './constants.js'
 import logger from './logger.js'
 import db from './db.js'
 
-type AppNextBlock = {
-    first_block?: number
-    last_block?: number
+export type BlocksRange = {
+    first_block: number | null
+    last_block: number | null
 }
 
 const context = {
@@ -15,17 +15,15 @@ const context = {
     create: async () => {
         if (await context.exists())
             return logger.info('App context already exists, skipping app context creation')
-        await db.client.query('SELECT hive.app_create_context($1,$2,$3::BOOLEAN,$4::BOOLEAN);',[APP_CONTEXT,SCHEMA_NAME,false,true])
-        logger.info('Created app context',APP_CONTEXT)
-    },
-    attach: async () => {
-        let isAttached = await db.client.query('SELECT hive.app_context_is_attached($1);',[APP_CONTEXT])
-        if (!isAttached.rows[0].app_context_is_attached) {
-            logger.info('Attaching app context...')
-            await db.client.query('CALL hive.appproc_context_attach($1);',[APP_CONTEXT])
-            logger.info('App context attached successfully')
-        } else
-            logger.info('App context already attached, skipping')
+        await db.client.query(
+            `SELECT hive.app_create_context($1, $2, false, true,
+                ARRAY[
+                    hive.stage($3::hafd.stage_name, $4, $5),
+                    hive.live_stage()
+                ]::hafd.application_stage[]);`,
+            [APP_CONTEXT, SCHEMA_NAME, MASSIVE_STAGE_NAME, MASSIVE_SYNC_DISTANCE, MASSIVE_SYNC_BATCH]
+        )
+        logger.info('Created app context',APP_CONTEXT,'with stages')
     },
     detach: async () => {
         let isAttached = await db.client.query('SELECT hive.app_context_is_attached($1);',[APP_CONTEXT])
@@ -36,8 +34,15 @@ const context = {
         } else
             logger.info('App context already detached, skipping')
     },
-    nextBlocks: async (): Promise<AppNextBlock> => {
-        return (await db.client.query<AppNextBlock>('SELECT * FROM hive.app_next_block($1);',[APP_CONTEXT])).rows[0]
+    nextIteration: async (): Promise<BlocksRange> => {
+        let res = await db.client.query<BlocksRange>('CALL ' + SCHEMA_NAME + '.next_iteration(NULL, NULL);')
+        return res.rows[0]
+    },
+    currentStage: async (): Promise<string> => {
+        let res = await db.client.query<{ get_current_stage_name: string }>(
+            'SELECT hive.get_current_stage_name($1);',[APP_CONTEXT]
+        )
+        return res.rows[0].get_current_stage_name
     }
 }
 

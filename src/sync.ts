@@ -3,116 +3,60 @@ import schema from './schema.js'
 import context from './context.js'
 import logger from './logger.js'
 import processor from './processor.js'
-import { APP_CONTEXT, SCHEMA_NAME } from './constants.js'
+import { APP_CONTEXT, SCHEMA_NAME, LIVE_SYNC_CONNECTION_CYCLE_BLKS } from './constants.js'
 import op_type_map from './operations.js'
 import { EnumBlock, Op } from './processor_types.js'
 
-const MASSIVE_SYNC_THRESHOLD = 100
-const MASSIVE_SYNC_BATCH = 10000
-const LIVE_SYNC_CONNECTION_CYCLE_BLKS = 1000
+const LIVE_STAGE = 'LIVE'
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 const sync = {
     terminating: false,
+    indexesBuilt: false,
     prebegin: async () => {
-        // update functions
         await schema.createFx()
-
         await op_type_map.retrieveMap()
-
-        // attach context
-        await context.attach()
-        sync.begin()
+        await sync.loop()
     },
-    begin: async (): Promise<void> => {
-        if (sync.terminating) return sync.close()
+    loop: async (): Promise<void> => {
+        while (!sync.terminating) {
+            let range = await context.nextIteration()
+            if (range.first_block === null || range.last_block === null) {
+                await sleep(500)
+                continue
+            }
+            let firstBlock = range.first_block
+            let lastBlock = range.last_block
+            let stage = await context.currentStage()
 
-        // query next block
-        await db.client.query('START TRANSACTION;')
-        let nextBlocks = await context.nextBlocks()
-        if (!nextBlocks.first_block || !nextBlocks.last_block) {
-            await db.client.query('COMMIT;')
-            setTimeout(() => sync.begin(),1000)
-            return
-        }
+            if (stage === LIVE_STAGE && !sync.indexesBuilt) {
+                logger.info('Begin post-massive sync')
+                await schema.indexCreate()
+                await schema.fkCreate()
+                logger.info('Post-massive sync complete, entering live sync')
+                sync.indexesBuilt = true
+            }
 
-        let firstBlock = nextBlocks.first_block
-        let lastBlock = nextBlocks.last_block
-        let count = lastBlock - firstBlock + 1
-        logger.info('Blocks to sync: ['+firstBlock+','+lastBlock+'], count:',count)
-        if (count > MASSIVE_SYNC_THRESHOLD) {
-            await db.client.query('COMMIT;')
-            await context.detach()
-            logger.info('Begin massive sync')
-            sync.massive(firstBlock,Math.min(firstBlock+MASSIVE_SYNC_BATCH-1,Math.floor((firstBlock+MASSIVE_SYNC_BATCH-1)/MASSIVE_SYNC_BATCH)*MASSIVE_SYNC_BATCH,lastBlock),lastBlock)
-        } else {
-            logger.info('Begin live sync')
-            sync.live(firstBlock)
-        }
-    },
-    massive: async (firstBlock: number, lastBlock: number ,targetBlock: number): Promise<void> => {
-        if (sync.terminating) return sync.close()
-        let start = new Date().getTime()
-        await db.client.query('START TRANSACTION;')
-        await db.client.query('SELECT hive.app_state_providers_update($1,$2,$3);',[firstBlock,lastBlock,APP_CONTEXT])
-        let blocks = await db.client.query<EnumBlock>(`SELECT * FROM ${SCHEMA_NAME}.enum_block($1,$2);`,[firstBlock,lastBlock])
-        let ops = await db.client.query<Op>(`SELECT * FROM ${SCHEMA_NAME}.enum_op($1,$2);`,[firstBlock,lastBlock])
-        let count = 0
-        for (let op in ops.rows) {
-            let processed = await processor.process(ops.rows[op], blocks.rows[ops.rows[op].block_num-firstBlock].created_at)
-            if (processed)
-                count++
-        }
-        await db.client.query(`UPDATE ${SCHEMA_NAME}.state SET last_processed_block=$1;`,[lastBlock])
-        await db.client.query(`SELECT hive.app_set_current_block_num($1,$2);`,[APP_CONTEXT,lastBlock])
-        await db.client.query('COMMIT;')
-        let timeTaken = (new Date().getTime()-start)/1000
-        logger.info('Massive Sync - Block #'+firstBlock+' to #'+lastBlock+' / '+targetBlock+' - '+count+' ops - '+((lastBlock-firstBlock)/timeTaken).toFixed(3)+'b/s, '+(count/timeTaken).toFixed(3)+'op/s')
-        if (lastBlock >= targetBlock)
-            sync.postMassive()
-        else
-            sync.massive(lastBlock+1,Math.min(lastBlock+MASSIVE_SYNC_BATCH,targetBlock),targetBlock)
-    },
-    postMassive: async (): Promise<void> => {
-        logger.info('Begin post-massive sync')
-        await schema.indexCreate()
-        await schema.fkCreate()
-        logger.info('Post-masstive sync complete, entering live sync')
-        await context.attach()
-        sync.begin()
-    },
-    live: async (nextBlock?: number): Promise<void> => {
-        if (sync.terminating) return sync.close()
+            let start = new Date().getTime()
+            await db.client.query('SELECT hive.app_state_providers_update($1,$2,$3);',[firstBlock,lastBlock,APP_CONTEXT])
+            let blocks = await db.client.query<EnumBlock>(`SELECT * FROM ${SCHEMA_NAME}.enum_block($1,$2);`,[firstBlock,lastBlock])
+            let ops = await db.client.query<Op>(`SELECT * FROM ${SCHEMA_NAME}.enum_op($1,$2);`,[firstBlock,lastBlock])
+            let count = 0
+            for (let op in ops.rows) {
+                let processed = await processor.process(ops.rows[op], blocks.rows[ops.rows[op].block_num-firstBlock].created_at)
+                if (processed)
+                    count++
+            }
+            await db.client.query(`UPDATE ${SCHEMA_NAME}.state SET last_processed_block=$1;`,[lastBlock])
 
-        // query next blocks
-        if (!nextBlock) {
-            await db.client.query('START TRANSACTION;')
-            nextBlock = (await context.nextBlocks()).first_block
-            if (nextBlock === null) {
-                await db.client.query('COMMIT;')
-                setTimeout(() => sync.live(),500)
-                return
+            let timeTaken = (new Date().getTime()-start)/1000
+            if (firstBlock === lastBlock) {
+                logger.info(stage+' Sync - Block #'+firstBlock+' - '+count+' ops - '+(timeTaken*1000).toFixed(0)+'ms')
+            } else {
+                logger.info(stage+' Sync - Block #'+firstBlock+' to #'+lastBlock+' - '+count+' ops - '+((lastBlock-firstBlock+1)/timeTaken).toFixed(3)+'b/s, '+(count/timeTaken).toFixed(3)+'op/s')
             }
         }
-
-        let start = new Date().getTime()
-        await db.client.query('SELECT hive.app_state_providers_update($1,$2,$3);',[nextBlock,nextBlock,APP_CONTEXT])
-        let blocks = await db.client.query<EnumBlock>(`SELECT * FROM ${SCHEMA_NAME}.enum_block($1,$2);`,[nextBlock,nextBlock])
-        let ops = await db.client.query<Op>(`SELECT * FROM ${SCHEMA_NAME}.enum_op($1,$2);`,[nextBlock,nextBlock])
-        let count = 0
-        for (let op in ops.rows) {
-            let processed = await processor.process(ops.rows[op], blocks.rows[0].created_at)
-            if (processed)
-                count++
-        }
-        await db.client.query(`UPDATE ${SCHEMA_NAME}.state SET last_processed_block=$1;`,[nextBlock])
-        await db.client.query('COMMIT;')
-        let timeTakenMs = new Date().getTime()-start
-        logger.info('Live Sync - Block #'+nextBlock+' - '+count+' ops - '+timeTakenMs+'ms')
-        if (nextBlock! % LIVE_SYNC_CONNECTION_CYCLE_BLKS === 0) {
-            // restart db connection every 1k blocks to ensure no memory leak from long running db connection
-            await db.restart()
-        }
-        sync.live()
+        await sync.close()
     },
     close: async (): Promise<void> => {
         await db.disconnect()

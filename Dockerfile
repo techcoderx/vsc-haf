@@ -1,8 +1,5 @@
 FROM node:22-alpine AS base
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-RUN npm i -g corepack@latest
-RUN corepack enable
+RUN npm i -g pnpm
 RUN apk --no-cache add postgresql16-client
 RUN adduser --disabled-password --gecos '' haf_admin
 RUN adduser --disabled-password --gecos '' magi_owner

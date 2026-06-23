@@ -1,10 +1,6 @@
 export const DB_VERSION = 1
 export const APP_CONTEXT = 'magi_app'
 export const SCHEMA_NAME = 'magi_app'
-export const MASSIVE_STAGE_NAME = 'MASSIVE_SYNC'
-export const MASSIVE_SYNC_DISTANCE = 100
-export const MASSIVE_SYNC_BATCH = 10000
-export const LIVE_SYNC_CONNECTION_CYCLE_BLKS = 1000
 export const CUSTOM_JSON_IDS = [
     // issued by MULTISIG_ACCOUNT with active auth only
     'vsc.fr_sync',

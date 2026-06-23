@@ -1,18 +1,5 @@
 SET ROLE magi_owner;
 
-CREATE OR REPLACE PROCEDURE magi_app.next_iteration(INOUT _first_block INTEGER, INOUT _last_block INTEGER)
-AS
-$function$
-DECLARE
-    _range hive.blocks_range;
-BEGIN
-    CALL hive.app_next_iteration(ARRAY['magi_app']::TEXT[], _range);
-    _first_block := (_range).first_block;
-    _last_block := (_range).last_block;
-END
-$function$
-LANGUAGE plpgsql;
-
 DROP TYPE IF EXISTS magi_app.op_type CASCADE;
 CREATE TYPE magi_app.op_type AS (
     id BIGINT,
